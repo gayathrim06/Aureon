@@ -1,0 +1,362 @@
+@import "tailwindcss";
+
+@variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --color-indigo-primary: #4f46e5;
+  --color-indigo-hover: #4338ca;
+  --color-slate-dark: #090d16;
+  --color-slate-card: #111827;
+}
+
+@layer base {
+  :root {
+    --bg-app: #f8fafc;
+    --bg-surface: #ffffff;
+    --bg-card: #ffffff;
+    --bg-card-hover: #f1f5f9;
+    --bg-sidebar: #ffffff;
+    --bg-header: rgba(255, 255, 255, 0.85);
+    --border-subtle: #e2e8f0;
+    --border-strong: #cbd5e1;
+    --text-main: #0f172a;
+    --text-muted: #64748b;
+    --text-accent: #4f46e5;
+    --shadow-custom: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+  }
+
+  .dark {
+    --bg-app: #090d16;
+    --bg-surface: #111827;
+    --bg-card: #111827;
+    --bg-card-hover: #1e293b;
+    --bg-sidebar: #0b0f17;
+    --bg-header: rgba(17, 24, 39, 0.85);
+    --border-subtle: #1e293b;
+    --border-strong: #334155;
+    --text-main: #f8fafc;
+    --text-muted: #94a3b8;
+    --text-accent: #818cf8;
+    --shadow-custom: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.05);
+  }
+
+  .warm {
+    --bg-app: #f3e8d2;
+    --bg-surface: #e9dcbe;
+    --bg-card: #e9dcbe;
+    --bg-card-hover: #dfcfad;
+    --bg-sidebar: #e4d5b2;
+    --bg-header: rgba(233, 220, 190, 0.95);
+    --border-subtle: #cbb68e;
+    --border-strong: #b8a074;
+    --text-main: #342314;
+    --text-muted: #69523c;
+    --text-accent: #b45309;
+    --shadow-custom: 0 4px 15px -2px rgba(180, 83, 9, 0.15), 0 2px 4px -2px rgba(180, 83, 9, 0.1);
+  }
+}
+
+body {
+  margin: 0;
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background-color: var(--bg-app);
+  color: var(--text-main);
+  transition: background-color 0.2s ease, color 0.2s ease;
+  min-height: 100vh;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(100, 116, 139, 0.3);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 116, 139, 0.5);
+}
+
+/* Glassmorphism */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid #e2e8f0;
+}
+
+.dark .glass-panel {
+  background: rgba(17, 24, 39, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid #1e293b;
+}
+
+/* Clean Professional Buttons */
+.aureon-btn-primary {
+  background-color: #4f46e5;
+  color: #ffffff;
+  transition: all 0.15s ease;
+}
+
+.aureon-btn-primary:hover {
+  background-color: #4338ca;
+  box-shadow: 0 4px 14px 0 rgba(79, 70, 229, 0.35);
+}
+
+.dark .aureon-btn-primary {
+  background-color: #6366f1;
+  color: #ffffff;
+}
+
+.dark .aureon-btn-primary:hover {
+  background-color: #4f46e5;
+  box-shadow: 0 0 20px 0 rgba(99, 102, 241, 0.4);
+}
+
+/* Gradient Text for Headlines */
+.aureon-gradient-text {
+  background: linear-gradient(135deg, #0f172a 0%, #4338ca 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.dark .aureon-gradient-text {
+  background: linear-gradient(135deg, #ffffff 0%, #818cf8 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Status Pulse */
+@keyframes statusPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(1.05); }
+}
+
+.status-pulse {
+  animation: statusPulse 2s infinite ease-in-out;
+}
+
+/* Warm Eye-Care Sepia Amber Theme Rules */
+html.warm,
+html[data-theme='warm'] {
+  background-color: #f3e8d2 !important;
+  color: #342314 !important;
+  filter: sepia(35%) saturate(140%) hue-rotate(-12deg) brightness(97%);
+}
+
+html.warm body,
+html[data-theme='warm'] body,
+html.warm main,
+html[data-theme='warm'] main {
+  background-color: #f3e8d2 !important;
+  color: #342314 !important;
+}
+
+html.warm *,
+html[data-theme='warm'] * {
+  border-color: #cbb68e !important;
+}
+
+/* Match ANY div, section, card, table, or element inside main in Warm Mode */
+html.warm main div,
+html.warm main section,
+html.warm main article,
+html.warm main table,
+html.warm main tr,
+html.warm main th,
+html.warm main td,
+html.warm main [class*="bg-"],
+html.warm [class*="bg-slate"],
+html.warm [class*="bg-gray"],
+html.warm [class*="bg-indigo"],
+html.warm [class*="bg-purple"],
+html.warm [class*="bg-rose"],
+html.warm [class*="bg-blue"],
+html.warm [class*="bg-emerald"],
+html.warm [class*="bg-[#"] {
+  background: #e8dbbe !important;
+  background-color: #e8dbbe !important;
+  background-image: none !important;
+  color: #342314 !important;
+}
+
+/* Preserve Button Colors in Warm Mode */
+html.warm .bg-purple-600,
+html.warm .bg-blue-600,
+html.warm .bg-emerald-600,
+html.warm .bg-rose-600,
+html.warm .aureon-btn-primary {
+  background-color: #c25e00 !important;
+  color: #ffffff !important;
+}
+
+/* Terminal / Code Box Override in Warm Mode */
+html.warm .bg-black,
+html.warm pre,
+html.warm code {
+  background-color: #dfcfad !important;
+  color: #342314 !important;
+}
+
+/* Typography Overrides in Warm Mode */
+html.warm main h1,
+html.warm main h2,
+html.warm main h3,
+html.warm main h4,
+html.warm main h5,
+html.warm main h6,
+html.warm main p,
+html.warm main span,
+html.warm main label,
+html.warm [class*="text-slate"],
+html.warm [class*="text-gray"],
+html.warm [class*="text-white"],
+html.warm [class*="text-[#"] {
+  color: #342314 !important;
+}
+
+html.warm .text-slate-400,
+html.warm .text-slate-500,
+html.warm .text-slate-600,
+html.warm .text-gray-400,
+html.warm .text-gray-500,
+html.warm .text-gray-600 {
+  color: #69523c !important;
+}
+
+/* Header & Sidebar Specific Warm Backgrounds */
+html.warm header,
+html.warm nav,
+html.warm aside {
+  background-color: #e3d3b0 !important;
+}
+
+html.warm input, html.warm select, html.warm textarea {
+  background-color: #f3e8d2 !important;
+  border-color: #b8a074 !important;
+  color: #342314 !important;
+}
+
+/* Clean Light Theme Comprehensive Card & Element Overrides */
+html.light,
+html[data-theme='light'] {
+  background-color: #f8fafc !important;
+  color: #0f172a !important;
+  filter: none !important;
+}
+
+html.light body,
+html[data-theme='light'] body,
+html.light main,
+html[data-theme='light'] main {
+  background-color: #f8fafc !important;
+  color: #0f172a !important;
+}
+
+html.light *,
+html[data-theme='light'] * {
+  border-color: #e2e8f0 !important;
+}
+
+/* Match ANY div, section, card, table, or element inside main in Light Mode */
+html.light main div,
+html.light main section,
+html.light main article,
+html.light main table,
+html.light main tr,
+html.light main th,
+html.light main td,
+html.light main [class*="bg-slate-9"],
+html.light main [class*="bg-slate-8"],
+html.light main [class*="bg-slate-7"],
+html.light main [class*="bg-gray-9"],
+html.light main [class*="bg-gray-8"],
+html.light main [class*="bg-indigo-9"],
+html.light main [class*="bg-purple-9"],
+html.light main [class*="bg-rose-9"],
+html.light main [class*="bg-gradient-to-"],
+html.light main [class*="bg-[#"] {
+  background: #ffffff !important;
+  background-color: #ffffff !important;
+  background-image: none !important;
+  color: #0f172a !important;
+  border-color: #e2e8f0 !important;
+}
+
+/* Preserve Primary Buttons in Light Mode */
+html.light .bg-purple-600,
+html.light .bg-blue-600,
+html.light .bg-indigo-600,
+html.light .bg-emerald-600,
+html.light .bg-rose-600,
+html.light .aureon-btn-primary {
+  background-color: #4f46e5 !important;
+  color: #ffffff !important;
+}
+
+/* Terminal / Code Box Override in Light Mode */
+html.light .bg-black,
+html.light pre,
+html.light code {
+  background-color: #f1f5f9 !important;
+  color: #0f172a !important;
+}
+
+/* Typography Overrides in Light Mode */
+html.light main h1,
+html.light main h2,
+html.light main h3,
+html.light main h4,
+html.light main h5,
+html.light main h6,
+html.light main p,
+html.light main span,
+html.light main label,
+html.light [class*="text-slate-100"],
+html.light [class*="text-slate-200"],
+html.light [class*="text-slate-300"],
+html.light [class*="text-indigo-100"],
+html.light [class*="text-indigo-200"],
+html.light [class*="text-purple-100"],
+html.light [class*="text-purple-200"],
+html.light [class*="text-white"],
+html.light [class*="text-[#F8FAFC]"] {
+  color: #0f172a !important;
+}
+
+html.light .text-slate-400,
+html.light .text-slate-500,
+html.light .text-slate-600,
+html.light .text-gray-400,
+html.light .text-gray-500,
+html.light .text-gray-600 {
+  color: #64748b !important;
+}
+
+/* Header & Sidebar Specific Light Backgrounds */
+html.light header,
+html.light nav,
+html.light aside {
+  background-color: #ffffff !important;
+  border-color: #e2e8f0 !important;
+}
+
+html.light input, html.light select, html.light textarea {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+
+
