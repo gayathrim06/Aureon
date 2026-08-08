@@ -1,0 +1,32 @@
+# React
+aureon-app/node_modules/
+aureon-app/dist/
+
+# Environment files
+aureon-backend/.env
+.env
+
+# Python
+aureon-backend/__pycache__/
+aureon-backend/**/__pycache__/
+*.py[cod]
+
+# Django database
+aureon-backend/db.sqlite3
+*.sqlite3
+
+# Virtual environment
+aureon-backend/venv/
+aureon-backend/.venv/
+venv/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+# Local backup
+aureon-app-backup/
