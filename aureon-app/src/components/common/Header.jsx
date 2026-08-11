@@ -3,22 +3,13 @@ import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { 
   Sun, Moon, Shield, Bell, Search, User, LogOut, ChevronDown, 
-  Key, Activity, AlertTriangle, Layers, Laptop, UserCheck, Bug, LogIn
+  Key, Activity
 } from 'lucide-react';
 
 export const Header = ({ currentTab, onSelectTab, onNavigateHome }) => {
-  const { user, logout, switchRole, sessionExpiry } = useAuth();
+  const { user, logout, sessionExpiry } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const [showProfileMenu, setShowProfileMenu] = useState(false);
-  const [showSwitchMenu, setShowSwitchMenu] = useState(false);
-
-  const rolesList = [
-    { id: 'ROLE_ADMIN', label: 'Alex Vance (System Admin)', roleName: 'System Admin', icon: Shield },
-    { id: 'ROLE_PM', label: 'Sarah Jenkins (Senior PM)', roleName: 'Project Manager', icon: Layers },
-    { id: 'ROLE_LEAD', label: 'David Chen (Tech Lead)', roleName: 'Team Lead', icon: UserCheck },
-    { id: 'ROLE_DEV', label: 'Marcus Brody (Developer)', roleName: 'Developer', icon: Laptop },
-    { id: 'ROLE_QA', label: 'Elena Rostova (QA Lead)', roleName: 'QA Engineer', icon: Bug },
-  ];
 
   const formatTimer = (seconds) => {
     const m = Math.floor(seconds / 60);
@@ -111,20 +102,6 @@ export const Header = ({ currentTab, onSelectTab, onNavigateHome }) => {
                   <User className="w-4 h-4 text-gray-400" /> My Profile
                 </button>
 
-                <div className="pt-1 border-t border-gray-100 dark:border-gray-700">
-                  <span className="text-[9px] uppercase font-bold text-gray-400 px-3 block">Switch User Account</span>
-                  {rolesList.map(r => (
-                    <button
-                      key={r.id}
-                      onClick={() => { setShowProfileMenu(false); switchRole(r.id); }}
-                      className={`w-full flex items-center justify-between px-3 py-1.5 text-[11px] rounded-md transition-colors ${
-                        user?.role === r.id ? 'font-bold text-blue-600 bg-blue-50 dark:bg-blue-950/40' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/50'
-                      }`}
-                    >
-                      <span>{r.label}</span>
-                    </button>
-                  ))}
-                </div>
 
                 <div className="pt-1 border-t border-gray-100 dark:border-gray-700">
                   <button

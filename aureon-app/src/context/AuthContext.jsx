@@ -1,5 +1,4 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { initialUsers } from '../services/mockData';
 import { logAuditEvent } from '../services/auditLogger';
 import { apiClient } from '../services/apiClient';
 
@@ -94,7 +93,17 @@ export const AuthProvider = ({ children }) => {
 
       if (drfRes.ok) {
         const drfData = await drfRes.json();
-        const loggedUser = drfData.user;
+        const rawUser = drfData.user;
+
+        // Normalize backend user object so existing components work:
+        // - user.role  → role_code (e.g. 'ROLE_ADMIN')  not UUID
+        // - user.name  → full_name  (display name)
+        const loggedUser = {
+          ...rawUser,
+          role: rawUser.role_code || rawUser.role,
+          name: rawUser.full_name || rawUser.name,
+        };
+
         const newSessionToken = drfData.session_token || `sess_${loggedUser.id}_${Date.now()}`;
 
         setUser(loggedUser);
@@ -109,72 +118,37 @@ export const AuthProvider = ({ children }) => {
 
         logAuditEvent({
           user: loggedUser,
-          role: loggedUser.role_code || loggedUser.role,
+          role: loggedUser.role,
           action: 'USER_LOGIN_SUCCESS',
           resource: `Django REST Session Created (${newSessionToken})`,
           status: 'SUCCESS'
         });
 
-        showToast(`Welcome back, ${loggedUser.full_name || loggedUser.name}!`, 'success');
+        showToast(`Welcome back, ${loggedUser.name}!`, 'success');
         return { success: true, user: loggedUser };
       }
     } catch (err) {
-      // API offline fallback below
-    }
-
-    // 2. Client-Side Fallback Validation & Lockout Tracking
-    const foundUser = initialUsers.find(u => 
-      u.email.toLowerCase() === cleanInput ||
-      u.role.toLowerCase().includes(cleanInput) ||
-      u.email.split('@')[0].toLowerCase() === cleanInput
-    );
-    
-    if (!foundUser) {
       const newCount = failedLoginsCount + 1;
       setFailedLoginsCount(newCount);
       if (newCount >= 5) {
         setIsLocked(true);
-        setLockoutRemaining(900); // 15 minutes lockout
+        setLockoutRemaining(900);
         return { success: false, message: 'Account locked due to 5 consecutive failed login attempts.' };
       }
-      return { success: false, message: `Invalid user credentials (${newCount}/5 failed attempts). Try demo logins below.` };
+      return {
+        success: false,
+        message: `Unable to reach the authentication server (${newCount}/5 failed attempts). Please ensure the backend is running.`
+      };
     }
 
-    const newAccess = `jwt_access_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    const newRefresh = `jwt_refresh_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    const newSessToken = `sess_${foundUser.id}_${Date.now()}`;
-
-    setUser(foundUser);
-    setAccessToken(newAccess);
-    setRefreshToken(newRefresh);
-    setSessionToken(newSessToken);
-    setFailedLoginsCount(0);
-
-    localStorage.setItem(TOKEN_KEY, newAccess);
-    localStorage.setItem(REFRESH_TOKEN_KEY, newRefresh);
-    localStorage.setItem(SESSION_TOKEN_KEY, newSessToken);
-
-    // Seed mock active session list
-    setActiveSessions([
-      {
-        id: `sess_1`,
-        device: 'Current Web Browser (Windows 11 / Chrome)',
-        ip: '127.0.0.1 (Localhost)',
-        loginAt: new Date().toLocaleTimeString(),
-        isCurrent: true
-      }
-    ]);
-
-    logAuditEvent({
-      user: foundUser,
-      role: foundUser.role,
-      action: 'AUTH_LOGIN_SUCCESS',
-      resource: `JWT Token & Session Issued (${newSessToken})`,
-      status: 'SUCCESS'
-    });
-
-    showToast(`Welcome back, ${foundUser.name || foundUser.full_name}! Signed in as ${foundUser.role}.`, 'success');
-    return { success: true, user: foundUser };
+    const newCount = failedLoginsCount + 1;
+    setFailedLoginsCount(newCount);
+    if (newCount >= 5) {
+      setIsLocked(true);
+      setLockoutRemaining(900);
+      return { success: false, message: 'Account locked due to 5 consecutive failed login attempts.' };
+    }
+    return { success: false, message: `Invalid email or password (${newCount}/5 failed attempts).` };
   };
 
   const register = (data) => {
@@ -218,27 +192,7 @@ export const AuthProvider = ({ children }) => {
     showToast('Signed out of Aureon Engineering Workspace.', 'info');
   };
 
-  // Direct login for a selected role account
-  const switchRole = (targetRoleId) => {
-    const targetUser = initialUsers.find(u => u.role === targetRoleId) || initialUsers[0];
-    const newAccess = `jwt_access_${Date.now()}`;
-    const newSessToken = `sess_${targetUser.id}_${Date.now()}`;
 
-    setUser(targetUser);
-    setAccessToken(newAccess);
-    setSessionToken(newSessToken);
-    setFailedLoginsCount(0);
-    localStorage.setItem(TOKEN_KEY, newAccess);
-    localStorage.setItem(SESSION_TOKEN_KEY, newSessToken);
-
-    logAuditEvent({
-      user: targetUser,
-      role: targetRoleId,
-      action: 'ROLE_ACCOUNT_LOGIN',
-      resource: `Session Started for ${targetUser.name} (${targetRoleId})`,
-      status: 'SUCCESS'
-    });
-  };
 
   return (
     <AuthContext.Provider
@@ -257,7 +211,6 @@ export const AuthProvider = ({ children }) => {
         login,
         register,
         logout,
-        switchRole,
         showToast,
         setToastMessage
       }}
