@@ -416,6 +416,48 @@ export const Register = () => {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* Department Dropdown */}
+              <div className="space-y-1.5">
+                <label className="block text-xs font-semibold uppercase tracking-wider text-[#CBD5E1]">
+                  Department
+                </label>
+                <select
+                  className="w-full px-3.5 py-2.5 bg-[#111827] text-[#F8FAFC] text-sm rounded-[12px] border border-[#334155] focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/25 focus:outline-none"
+                  {...register('department')}
+                >
+                  <option value="Engineering">Engineering</option>
+                  <option value="Quality Assurance">Quality Assurance</option>
+                  <option value="Product Delivery">Product Delivery</option>
+                  <option value="Platform & Infrastructure">Platform & Infrastructure</option>
+                  <option value="Executive Management">Executive Management</option>
+                </select>
+              </div>
+
+              {/* Designation Dropdown */}
+              <div className="space-y-1.5">
+                <label className="block text-xs font-semibold uppercase tracking-wider text-[#CBD5E1]">
+                  Designation / Title
+                </label>
+                <select
+                  className="w-full px-3.5 py-2.5 bg-[#111827] text-[#F8FAFC] text-sm rounded-[12px] border border-[#334155] focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/25 focus:outline-none"
+                  {...register('designation')}
+                >
+                  <option value="Software Developer">Software Developer</option>
+                  <option value="Frontend Developer">Frontend Developer</option>
+                  <option value="Backend Developer">Backend Developer</option>
+                  <option value="Full Stack Developer">Full Stack Developer</option>
+                  <option value="Senior Architect">Senior Architect</option>
+                  <option value="Tech Lead">Tech Lead</option>
+                  <option value="Senior Project Manager">Senior Project Manager</option>
+                  <option value="QA Engineer">QA Engineer</option>
+                  <option value="QA Automation Lead">QA Automation Lead</option>
+                  <option value="DevOps Engineer">DevOps Engineer</option>
+                  <option value="CTO / Tech Executive">CTO / Tech Executive</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {/* Password */}
               <Input
                 label="Password"
