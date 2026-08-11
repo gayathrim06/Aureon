@@ -60,6 +60,8 @@ export const Login = ({ onNavigateHome }) => {
           role_code: regData.role,
           department: regData.department,
           designation: regData.designation,
+          gender: regData.gender || 'PREFER_NOT_TO_SAY',
+          avatar_preset: regData.avatarPreset || null,
         })
       });
       const data = await res.json();
@@ -256,11 +258,10 @@ export const Login = ({ onNavigateHome }) => {
                   onChange={(e) => setRegData({ ...regData, role: e.target.value })}
                   className="w-full p-2.5 rounded-lg bg-gray-800 border border-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 font-medium"
                 >
-                  <option value="ROLE_DEV">Developer (Software Engineering)</option>
-                  <option value="ROLE_QA">QA Engineer (Quality Assurance)</option>
-                  <option value="ROLE_LEAD">Team Lead (Technical Lead)</option>
-                  <option value="ROLE_PM">Project Manager (Product Delivery)</option>
-                  <option value="ROLE_ADMIN">System Administrator (Executive)</option>
+                  <option value="ROLE_DEV">Developer</option>
+                  <option value="ROLE_QA">QA Engineer</option>
+                  <option value="ROLE_LEAD">Team Lead</option>
+                  <option value="ROLE_PM">Project Manager</option>
                 </select>
               </div>
 

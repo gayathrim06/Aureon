@@ -8,23 +8,49 @@ import {
   Mail,
   Phone,
   Building,
-  Shield,
   Lock,
   Eye,
   EyeOff,
   CheckCircle2,
   GitBranch,
-  Code
+  Camera,
+  Upload,
+  UserCheck,
+  Sparkles,
+  X
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { Input } from '../components/common/Input';
 import { Button } from '../components/common/Button';
 import { ProgressBar } from '../components/common/ProgressBar';
 
+const PRESET_AVATARS = {
+  MALE: [
+    { id: 'male_1', label: 'Male Dev 1', url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150' },
+    { id: 'male_2', label: 'Male Dev 2', url: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150' },
+    { id: 'male_3', label: 'Male Dev 3', url: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150' },
+  ],
+  FEMALE: [
+    { id: 'female_1', label: 'Female Dev 1', url: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150' },
+    { id: 'female_2', label: 'Female Dev 2', url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150' },
+    { id: 'female_3', label: 'Female Dev 3', url: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150' },
+  ],
+  NEUTRAL: [
+    { id: 'tech_1', label: 'Tech Avatar 1', url: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150' },
+    { id: 'tech_2', label: 'Tech Avatar 2', url: 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=150' },
+  ]
+};
+
 export const Register = () => {
   const [showPassword, setShowPassword] = useState(false);
-  const [passwordValue, setPasswordValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+
+  // Avatar & Profile State
+  const [avatarMode, setAvatarMode] = useState('preset'); // 'preset' | 'upload'
+  const [gender, setGender] = useState('PREFER_NOT_TO_SAY'); // 'MALE' | 'FEMALE' | 'PREFER_NOT_TO_SAY'
+  const [selectedAvatar, setSelectedAvatar] = useState(PRESET_AVATARS.MALE[0].url);
+  const [uploadedPreview, setUploadedPreview] = useState(null);
+  const [uploadedFile, setUploadedFile] = useState(null);
 
   const { register: authRegister } = useAuth();
   const navigate = useNavigate();
@@ -33,6 +59,7 @@ export const Register = () => {
     register,
     handleSubmit,
     watch,
+    setValue,
     formState: { errors },
   } = useForm({
     defaultValues: {
@@ -66,19 +93,74 @@ export const Register = () => {
 
   const strength = getPasswordStrength(watchPassword);
 
+  const handleGenderChange = (e) => {
+    const val = e.target.value;
+    setGender(val);
+    if (avatarMode === 'preset') {
+      if (val === 'FEMALE') {
+        setSelectedAvatar(PRESET_AVATARS.FEMALE[0].url);
+      } else if (val === 'MALE') {
+        setSelectedAvatar(PRESET_AVATARS.MALE[0].url);
+      } else {
+        setSelectedAvatar(PRESET_AVATARS.NEUTRAL[0].url);
+      }
+    }
+  };
+
+  const handleFileUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        alert('File size must be under 5MB');
+        return;
+      }
+      setUploadedFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setUploadedPreview(reader.result);
+        setAvatarMode('upload');
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const clearUploadedFile = () => {
+    setUploadedFile(null);
+    setUploadedPreview(null);
+    setAvatarMode('preset');
+  };
+
   const onSubmit = (data) => {
     setIsLoading(true);
+    const finalAvatar = avatarMode === 'upload' && uploadedPreview 
+      ? uploadedPreview 
+      : selectedAvatar;
+
+    const payload = {
+      ...data,
+      gender,
+      avatarPreset: avatarMode === 'preset' ? selectedAvatar : null,
+      profileImagePreview: finalAvatar,
+      profileFile: uploadedFile,
+    };
+
     setTimeout(() => {
       setIsLoading(false);
-      authRegister(data);
+      authRegister(payload);
       navigate('/dashboard');
     }, 1200);
   };
 
+  const activePresets = gender === 'FEMALE' 
+    ? [...PRESET_AVATARS.FEMALE, ...PRESET_AVATARS.NEUTRAL]
+    : gender === 'MALE'
+    ? [...PRESET_AVATARS.MALE, ...PRESET_AVATARS.NEUTRAL]
+    : [...PRESET_AVATARS.MALE, ...PRESET_AVATARS.FEMALE, ...PRESET_AVATARS.NEUTRAL];
+
   return (
     <div className="min-h-screen w-full bg-[#020617] text-[#F8FAFC] flex flex-col lg:flex-row overflow-hidden font-sans">
       {/* LEFT PANEL: Branding */}
-      <div className="hidden lg:flex lg:w-[45%] relative bg-[#020617] bg-radial-navy bg-grid-blueprint p-12 flex-col justify-between overflow-hidden border-r border-[#334155]/60">
+      <div className="hidden lg:flex lg:w-[42%] relative bg-[#020617] bg-radial-navy bg-grid-blueprint p-12 flex-col justify-between overflow-hidden border-r border-[#334155]/60">
         <div className="relative z-10 flex items-center gap-3">
           <div className="w-11 h-11 rounded-[14px] bg-gradient-to-tr from-[#2563EB] to-[#38BDF8] flex items-center justify-center text-white font-black text-2xl shadow-lg shadow-[#2563EB]/40">
             A
@@ -103,7 +185,7 @@ export const Register = () => {
           </p>
 
           <div className="space-y-2 pt-4">
-            {['Zero configuration webhooks', 'SonarQube static analysis sync', 'Automated PDF/CSV executive reports', 'Enterprise role-based access controls'].map((item, i) => (
+            {['Zero configuration webhooks', 'SonarQube static analysis sync', 'Automated PDF/CSV executive reports', 'Custom profile avatar & photo customization'].map((item, i) => (
               <div key={i} className="flex items-center gap-2.5 text-xs text-[#F8FAFC]">
                 <CheckCircle2 className="w-4 h-4 text-[#10B981]" />
                 <span>{item}</span>
@@ -118,19 +200,152 @@ export const Register = () => {
       </div>
 
       {/* RIGHT PANEL: Form */}
-      <div className="w-full lg:w-[55%] bg-[#0F172A] p-6 sm:p-12 overflow-y-auto flex items-center justify-center">
+      <div className="w-full lg:w-[58%] bg-[#0F172A] p-6 sm:p-12 overflow-y-auto flex items-center justify-center">
         <motion.div
           initial={{ opacity: 0, scale: 0.98 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.3 }}
-          className="w-full max-w-xl glass-panel p-8 rounded-[18px] shadow-2xl border border-[#334155] my-6"
+          className="w-full max-w-2xl glass-panel p-8 rounded-[18px] shadow-2xl border border-[#334155] my-6"
         >
           <div className="mb-6">
             <h3 className="text-2xl font-extrabold text-[#F8FAFC] tracking-tight">Create Your Aureon Account</h3>
             <p className="text-xs text-[#94A3B8] mt-1">Start collaborating with your engineering team.</p>
           </div>
 
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+            {/* AVATAR & PHOTO SELECTION SECTION */}
+            <div className="p-4 bg-[#111827]/90 rounded-[16px] border border-[#334155] space-y-3">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold uppercase tracking-wider text-[#38BDF8] flex items-center gap-2">
+                  <Camera className="w-4 h-4" /> Profile Avatar / Photo
+                </label>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setAvatarMode('preset')}
+                    className={`px-2.5 py-1 text-[11px] font-semibold rounded-lg transition-all ${
+                      avatarMode === 'preset'
+                        ? 'bg-[#2563EB] text-white'
+                        : 'bg-[#1E293B] text-[#94A3B8] hover:text-white'
+                    }`}
+                  >
+                    Preset Avatars
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAvatarMode('upload')}
+                    className={`px-2.5 py-1 text-[11px] font-semibold rounded-lg transition-all ${
+                      avatarMode === 'upload'
+                        ? 'bg-[#2563EB] text-white'
+                        : 'bg-[#1E293B] text-[#94A3B8] hover:text-white'
+                    }`}
+                  >
+                    Upload Photo
+                  </button>
+                </div>
+              </div>
+
+              {/* GENDER & PRESET SELECTOR */}
+              {avatarMode === 'preset' ? (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-4 text-xs">
+                    <span className="text-[#94A3B8] font-medium">Gender Option:</span>
+                    <label className="flex items-center gap-1.5 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="gender"
+                        value="PREFER_NOT_TO_SAY"
+                        checked={gender === 'PREFER_NOT_TO_SAY'}
+                        onChange={handleGenderChange}
+                        className="text-[#2563EB]"
+                      />
+                      <span>Any</span>
+                    </label>
+                    <label className="flex items-center gap-1.5 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="gender"
+                        value="MALE"
+                        checked={gender === 'MALE'}
+                        onChange={handleGenderChange}
+                        className="text-[#2563EB]"
+                      />
+                      <span>Male</span>
+                    </label>
+                    <label className="flex items-center gap-1.5 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="gender"
+                        value="FEMALE"
+                        checked={gender === 'FEMALE'}
+                        onChange={handleGenderChange}
+                        className="text-[#2563EB]"
+                      />
+                      <span>Female</span>
+                    </label>
+                  </div>
+
+                  {/* Preset Grid */}
+                  <div className="flex items-center gap-3 overflow-x-auto py-1">
+                    {activePresets.map((av) => (
+                      <button
+                        key={av.id}
+                        type="button"
+                        onClick={() => setSelectedAvatar(av.url)}
+                        className={`relative rounded-full p-0.5 border-2 transition-all flex-shrink-0 ${
+                          selectedAvatar === av.url
+                            ? 'border-[#2563EB] scale-105 shadow-md shadow-[#2563EB]/40'
+                            : 'border-transparent opacity-70 hover:opacity-100'
+                        }`}
+                      >
+                        <img src={av.url} alt={av.label} className="w-11 h-11 rounded-full object-cover" />
+                        {selectedAvatar === av.url && (
+                          <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-[#10B981] rounded-full flex items-center justify-center text-white">
+                            <UserCheck className="w-2.5 h-2.5" />
+                          </div>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                /* UPLOAD PHOTO SECTION */
+                <div className="flex items-center gap-4">
+                  {uploadedPreview ? (
+                    <div className="relative w-14 h-14 rounded-full overflow-hidden border-2 border-[#2563EB]">
+                      <img src={uploadedPreview} alt="Uploaded Avatar" className="w-full h-full object-cover" />
+                      <button
+                        type="button"
+                        onClick={clearUploadedFile}
+                        className="absolute top-0 right-0 bg-red-600/80 hover:bg-red-600 text-white p-0.5"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="w-14 h-14 rounded-full bg-[#1E293B] border-2 border-dashed border-[#475569] flex items-center justify-center text-[#94A3B8]">
+                      <Camera className="w-6 h-6" />
+                    </div>
+                  )}
+
+                  <div className="flex-1">
+                    <label className="inline-flex items-center gap-2 px-3.5 py-2 bg-[#1E293B] hover:bg-[#334155] border border-[#475569] text-xs font-semibold rounded-xl cursor-pointer text-[#F8FAFC] transition-all">
+                      <Upload className="w-3.5 h-3.5 text-[#38BDF8]" />
+                      <span>{uploadedPreview ? 'Change Photo' : 'Select Photo from Computer'}</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleFileUpload}
+                        className="hidden"
+                      />
+                    </label>
+                    <p className="text-[10px] text-[#64748B] mt-1">PNG, JPG, or GIF (Max 5MB)</p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* FORM INPUTS */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {/* Full Name */}
               <Input
@@ -194,6 +409,7 @@ export const Register = () => {
                     <option value="Project Manager">Project Manager</option>
                     <option value="Team Lead">Team Lead</option>
                     <option value="Developer">Developer</option>
+                    <option value="QA Engineer">QA Engineer</option>
                   </select>
                 </div>
               </div>
@@ -247,7 +463,7 @@ export const Register = () => {
             )}
 
             {/* Terms Checkbox */}
-            <div className="pt-2">
+            <div className="pt-1">
               <label className="flex items-start gap-2.5 cursor-pointer text-xs text-[#CBD5E1]">
                 <input
                   type="checkbox"

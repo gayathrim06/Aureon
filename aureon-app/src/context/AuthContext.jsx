@@ -159,7 +159,8 @@ export const AuthProvider = ({ children }) => {
       email: data.email,
       role: data.role || 'Developer',
       department: data.organization || 'Platform Engineering',
-      avatar: data.fullName ? data.fullName.split(' ').map(n=>n[0]).join('') : 'NE',
+      gender: data.gender || 'PREFER_NOT_TO_SAY',
+      avatar: data.profileImagePreview || data.avatarPreset || (data.fullName ? data.fullName.split(' ').map(n=>n[0]).join('') : 'NE'),
     };
     setUser(newUser);
     showToast(`Account created successfully for ${data.fullName}!`, 'success');

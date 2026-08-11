@@ -44,6 +44,13 @@ class User(AbstractBaseUser, PermissionsMixin):
         ('LOCKED', 'Locked'),
     )
 
+    GENDER_CHOICES = (
+        ('MALE', 'Male'),
+        ('FEMALE', 'Female'),
+        ('OTHER', 'Other'),
+        ('PREFER_NOT_TO_SAY', 'Prefer not to say'),
+    )
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     employee_id = models.CharField(max_length=50, unique=True, db_index=True, blank=True, null=True)
     full_name = models.CharField(max_length=255)
@@ -54,7 +61,9 @@ class User(AbstractBaseUser, PermissionsMixin):
     department = models.CharField(max_length=100, blank=True, null=True)
     designation = models.CharField(max_length=100, blank=True, null=True)
     role = models.ForeignKey(Role, on_delete=models.SET_NULL, null=True, blank=True, related_name='users')
+    gender = models.CharField(max_length=20, choices=GENDER_CHOICES, default='PREFER_NOT_TO_SAY', blank=True, null=True)
     profile_image = models.ImageField(upload_to='profiles/', blank=True, null=True)
+    avatar_preset = models.CharField(max_length=255, blank=True, null=True)
     
     first_login = models.BooleanField(default=True, help_text="Force password change on initial login.")
     must_change_password = models.BooleanField(default=True)
@@ -89,3 +98,19 @@ class User(AbstractBaseUser, PermissionsMixin):
     @property
     def role_code(self):
         return self.role.code if self.role else None
+
+    @property
+    def avatar_url(self):
+        if self.profile_image:
+            try:
+                return self.profile_image.url
+            except Exception:
+                pass
+        if self.avatar_preset:
+            return self.avatar_preset
+        if self.gender == 'MALE':
+            return 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150'
+        elif self.gender == 'FEMALE':
+            return 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150'
+        return 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150'
+

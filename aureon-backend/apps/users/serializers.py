@@ -5,13 +5,15 @@ from roles.models import Role
 class UserSerializer(serializers.ModelSerializer):
     role_code = serializers.CharField(source='role.code', read_only=True, default=None)
     role_name = serializers.CharField(source='role.name', read_only=True, default=None)
+    avatar_url = serializers.ReadOnlyField()
 
     class Meta:
         model = User
         fields = [
             'id', 'email', 'username', 'full_name', 'phone', 'employee_id',
             'role', 'role_code', 'role_name', 'department', 'designation',
-            'profile_image', 'must_change_password', 'is_active', 'date_joined'
+            'gender', 'avatar_preset', 'avatar_url', 'profile_image',
+            'must_change_password', 'is_active', 'date_joined'
         ]
         read_only_fields = ['id', 'date_joined']
 
@@ -23,7 +25,8 @@ class CreateUserSerializer(serializers.ModelSerializer):
         model = User
         fields = [
             'id', 'email', 'username', 'full_name', 'phone', 'employee_id',
-            'role_id', 'department', 'designation', 'password'
+            'role_id', 'department', 'designation', 'gender', 'avatar_preset',
+            'profile_image', 'password'
         ]
         extra_kwargs = {'password': {'write_only': True}}
 
@@ -40,3 +43,4 @@ class CreateUserSerializer(serializers.ModelSerializer):
                 pass
         user.save()
         return user
+

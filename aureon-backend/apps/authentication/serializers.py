@@ -41,7 +41,8 @@ class RegisterSerializer(serializers.ModelSerializer):
         model = User
         fields = [
             'id', 'email', 'username', 'full_name', 'phone', 'employee_id',
-            'role_code', 'department', 'designation', 'password'
+            'role_code', 'department', 'designation', 'gender', 'avatar_preset',
+            'profile_image', 'password'
         ]
 
     def create(self, validated_data):
@@ -62,6 +63,7 @@ class RegisterSerializer(serializers.ModelSerializer):
 
         user.save()
         return user
+
 
 
 class LogoutSerializer(serializers.Serializer):
