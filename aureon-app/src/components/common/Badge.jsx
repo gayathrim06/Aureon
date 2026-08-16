@@ -8,21 +8,21 @@ export const Badge = ({
   className = '',
 }) => {
   const variants = {
-    success: 'bg-[#10B981]/15 text-[#10B981] border-[#10B981]/30',
-    warning: 'bg-[#F59E0B]/15 text-[#F59E0B] border-[#F59E0B]/30',
-    error: 'bg-[#EF4444]/15 text-[#EF4444] border-[#EF4444]/30',
-    info: 'bg-[#38BDF8]/15 text-[#38BDF8] border-[#38BDF8]/30',
-    brand: 'bg-[#2563EB]/15 text-[#3B82F6] border-[#2563EB]/30',
-    neutral: 'bg-[#334155]/50 text-[#CBD5E1] border-[#334155]',
+    success: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30',
+    warning: 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30',
+    error: 'bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/30',
+    info: 'bg-purple-500/15 text-purple-700 dark:text-fuchsia-300 border-purple-500/30',
+    brand: 'bg-gradient-to-r from-purple-500/20 to-pink-500/20 text-purple-800 dark:text-fuchsia-300 border-purple-500/40 font-semibold',
+    neutral: 'bg-purple-100/60 dark:bg-purple-950/60 text-purple-900 dark:text-purple-200 border-purple-200 dark:border-purple-900/60',
   };
 
   const dotColors = {
-    success: 'bg-[#10B981]',
-    warning: 'bg-[#F59E0B]',
-    error: 'bg-[#EF4444]',
-    info: 'bg-[#38BDF8]',
-    brand: 'bg-[#2563EB]',
-    neutral: 'bg-[#94A3B8]',
+    success: 'bg-emerald-500',
+    warning: 'bg-amber-500',
+    error: 'bg-rose-500',
+    info: 'bg-purple-500',
+    brand: 'bg-fuchsia-500',
+    neutral: 'bg-purple-400',
   };
 
   const sizes = {

@@ -36,7 +36,7 @@ export const AppLayout = () => {
   ].filter(item => item.title.toLowerCase().includes(searchQuery.toLowerCase()));
 
   return (
-    <div className="min-h-screen bg-[#0F172A] text-[#F8FAFC] flex">
+    <div className="min-h-screen bg-[#f8f5fc] dark:bg-[#0b0712] text-purple-950 dark:text-purple-100 flex transition-colors duration-300">
       {/* Sidebar Navigation */}
       <Sidebar
         isMobileOpen={isMobileSidebarOpen}
@@ -75,7 +75,7 @@ export const AppLayout = () => {
             onChange={(e) => setSearchQuery(e.target.value)}
           />
 
-          <div className="divide-y divide-[#334155]/60 max-h-80 overflow-y-auto">
+          <div className="divide-y divide-purple-100 dark:divide-purple-950/60 max-h-80 overflow-y-auto">
             {searchResults.length > 0 ? (
               searchResults.map((res, idx) => {
                 const Icon = res.icon;
@@ -86,23 +86,23 @@ export const AppLayout = () => {
                       setIsSearchOpen(false);
                       navigate(res.path);
                     }}
-                    className="flex items-center justify-between p-3 hover:bg-[#273549] rounded-[12px] cursor-pointer transition-colors"
+                    className="flex items-center justify-between p-3 hover:bg-purple-50 dark:hover:bg-purple-950/40 rounded-[12px] cursor-pointer transition-colors"
                   >
                     <div className="flex items-center gap-3">
-                      <div className="p-2 bg-[#111827] text-[#2563EB] rounded-[8px] border border-[#334155]">
+                      <div className="p-2 bg-purple-50 dark:bg-purple-950/60 text-purple-600 dark:text-fuchsia-400 rounded-[8px] border border-purple-200 dark:border-purple-900/60">
                         <Icon className="w-4 h-4" />
                       </div>
                       <div>
-                        <h4 className="text-sm font-semibold text-[#F8FAFC]">{res.title}</h4>
-                        <span className="text-[10px] font-semibold uppercase text-[#38BDF8]">{res.category}</span>
+                        <h4 className="text-sm font-semibold text-purple-950 dark:text-purple-100">{res.title}</h4>
+                        <span className="text-[10px] font-semibold uppercase text-purple-600 dark:text-fuchsia-400">{res.category}</span>
                       </div>
                     </div>
-                    <ArrowRight className="w-4 h-4 text-[#94A3B8]" />
+                    <ArrowRight className="w-4 h-4 text-purple-400 dark:text-purple-400" />
                   </div>
                 );
               })
             ) : (
-              <div className="py-8 text-center text-xs text-[#94A3B8]">
+              <div className="py-8 text-center text-xs text-purple-400 dark:text-purple-400">
                 No engineering records found for "{searchQuery}"
               </div>
             )}

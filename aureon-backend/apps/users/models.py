@@ -63,7 +63,12 @@ class User(AbstractBaseUser, PermissionsMixin):
     role = models.ForeignKey(Role, on_delete=models.SET_NULL, null=True, blank=True, related_name='users')
     gender = models.CharField(max_length=20, choices=GENDER_CHOICES, default='PREFER_NOT_TO_SAY', blank=True, null=True)
     profile_image = models.ImageField(upload_to='profiles/', blank=True, null=True)
-    avatar_preset = models.CharField(max_length=255, blank=True, null=True)
+    avatar_preset = models.TextField(blank=True, null=True)
+    
+    # Security & Recovery Questions
+    date_of_birth = models.DateField(blank=True, null=True)
+    pet_name = models.CharField(max_length=150, blank=True, null=True)
+    school_friend_name = models.CharField(max_length=150, blank=True, null=True)
     
     first_login = models.BooleanField(default=True, help_text="Force password change on initial login.")
     must_change_password = models.BooleanField(default=True)

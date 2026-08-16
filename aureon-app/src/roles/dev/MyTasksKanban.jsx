@@ -12,12 +12,52 @@ export const MyTasksKanban = ({ onShowToast }) => {
   const [activeTask, setActiveTask] = useState(null);
   const [commentInput, setCommentInput] = useState('');
 
+  // New task card modal state
+  const [isNewTaskModalOpen, setIsNewTaskModalOpen] = useState(false);
+  const [newTaskTitle, setNewTaskTitle] = useState('');
+  const [newTaskPriority, setNewTaskPriority] = useState('HIGH');
+  const [newTaskColumn, setNewTaskColumn] = useState('TODO');
+
   const columns = [
     { key: 'TODO', label: 'To Do', color: 'border-t-slate-500 bg-slate-500/5' },
     { key: 'IN_PROGRESS', label: 'In Progress', color: 'border-t-blue-500 bg-blue-500/5' },
     { key: 'REVIEW', label: 'Code Review', color: 'border-t-amber-500 bg-amber-500/5' },
     { key: 'DONE', label: 'Completed', color: 'border-t-emerald-500 bg-emerald-500/5' }
   ];
+
+  const handleCreateTaskCard = (e) => {
+    e.preventDefault();
+    if (!newTaskTitle.trim()) return;
+
+    const newTask = {
+      id: `TSK-${String(tasks.length + 101).padStart(3, '0')}`,
+      title: newTaskTitle.trim(),
+      status: newTaskColumn,
+      priority: newTaskPriority,
+      assignee: user?.name || user?.full_name || user?.email?.split('@')[0] || 'Engineer',
+      dueDate: 'Today',
+      comments: [],
+      attachments: []
+    };
+
+    setTasks(prev => [newTask, ...prev]);
+    logAuditEvent({
+      user,
+      role: user?.role,
+      action: 'TASK_CREATE',
+      resource: `Created task card ${newTask.id}: ${newTask.title}`,
+      status: 'SUCCESS'
+    });
+
+    onShowToast && onShowToast({
+      type: 'success',
+      title: 'Task Created',
+      message: `Task ${newTask.id} added to ${newTaskColumn.replace('_', ' ')}`
+    });
+
+    setIsNewTaskModalOpen(false);
+    setNewTaskTitle('');
+  };
 
   const moveTaskStatus = (taskId, newStatus) => {
     setTasks(prev => prev.map(t => {
@@ -69,9 +109,17 @@ export const MyTasksKanban = ({ onShowToast }) => {
     <div className="space-y-6">
       <Breadcrumb activeTab="My Tasks" />
 
-      <div>
-        <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">Interactive Sprint Kanban Board</h1>
-        <p className="text-xs text-gray-500">Drag or click to shift cards between columns, post comments, and upload code assets.</p>
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">Interactive Sprint Kanban Board</h1>
+          <p className="text-xs text-gray-500">Drag or click to shift cards between columns, post comments, and track sprint deliverables.</p>
+        </div>
+        <button
+          onClick={() => setIsNewTaskModalOpen(true)}
+          className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold shadow-md transition-all shrink-0"
+        >
+          <Plus className="w-4 h-4" /> Add New Task Card
+        </button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -182,6 +230,74 @@ export const MyTasksKanban = ({ onShowToast }) => {
             </div>
           </div>
         )}
+      </Modal>
+
+      {/* CREATE NEW TASK CARD MODAL */}
+      <Modal
+        isOpen={isNewTaskModalOpen}
+        onClose={() => setIsNewTaskModalOpen(false)}
+        title="Add New Task Card"
+        subtitle="Create a task card and add it to your Kanban board column"
+      >
+        <form onSubmit={handleCreateTaskCard} className="space-y-4 text-xs">
+          <div>
+            <label className="block font-bold text-gray-800 dark:text-gray-200 mb-1">Task Title *</label>
+            <input
+              type="text"
+              required
+              placeholder="e.g. Implement JWT authentication endpoint"
+              value={newTaskTitle}
+              onChange={(e) => setNewTaskTitle(e.target.value)}
+              className="w-full p-2.5 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block font-bold text-gray-800 dark:text-gray-200 mb-1">Kanban Column</label>
+              <select
+                value={newTaskColumn}
+                onChange={(e) => setNewTaskColumn(e.target.value)}
+                className="w-full p-2 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none"
+              >
+                <option value="TODO">To Do</option>
+                <option value="IN_PROGRESS">In Progress</option>
+                <option value="REVIEW">Code Review</option>
+                <option value="DONE">Completed</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block font-bold text-gray-800 dark:text-gray-200 mb-1">Priority</label>
+              <select
+                value={newTaskPriority}
+                onChange={(e) => setNewTaskPriority(e.target.value)}
+                className="w-full p-2 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none"
+              >
+                <option value="CRITICAL">Critical</option>
+                <option value="HIGH">High</option>
+                <option value="MEDIUM">Medium</option>
+                <option value="LOW">Low</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="flex gap-2 justify-end pt-3 border-t border-gray-200 dark:border-gray-700">
+            <button
+              type="button"
+              onClick={() => setIsNewTaskModalOpen(false)}
+              className="px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 font-semibold"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="px-4 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-semibold shadow-sm"
+            >
+              Create Task Card
+            </button>
+          </div>
+        </form>
       </Modal>
     </div>
   );

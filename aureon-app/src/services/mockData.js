@@ -58,12 +58,12 @@ export const initialRoles = [
 export const initialUsers = [
   {
     id: 'usr_1',
-    name: 'Alex Vance',
+    name: 'Gayathri',
     email: 'admin@aureon.io',
     role: 'ROLE_ADMIN',
     status: 'ACTIVE',
-    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-    title: 'Chief Technology Officer',
+    avatar: null,
+    title: 'System Administrator & CTO',
     department: 'Executive Office',
     lastActive: 'Just now',
     online: true,
@@ -76,7 +76,7 @@ export const initialUsers = [
     email: 'pm@aureon.io',
     role: 'ROLE_PM',
     status: 'ACTIVE',
-    avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80',
+    avatar: null,
     title: 'Senior Product Manager',
     department: 'Product Delivery',
     lastActive: '5 mins ago',
@@ -90,7 +90,7 @@ export const initialUsers = [
     email: 'lead@aureon.io',
     role: 'ROLE_LEAD',
     status: 'ACTIVE',
-    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
+    avatar: null,
     title: 'Tech Lead - Core Backend',
     department: 'Engineering',
     lastActive: '12 mins ago',
@@ -104,13 +104,13 @@ export const initialUsers = [
     email: 'dev@aureon.io',
     role: 'ROLE_DEV',
     status: 'ACTIVE',
-    avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80',
+    avatar: null,
     title: 'Full Stack Engineer',
     department: 'Engineering',
     lastActive: '1 min ago',
     online: true,
     failedLogins: 0,
-    mfaEnabled: false
+    mfaEnabled: true
   },
   {
     id: 'usr_5',
@@ -118,13 +118,13 @@ export const initialUsers = [
     email: 'qa@aureon.io',
     role: 'ROLE_QA',
     status: 'ACTIVE',
-    avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150&auto=format&fit=crop&q=80',
-    title: 'Lead QA Automation Engineer',
+    avatar: null,
+    title: 'Senior QA Automation Engineer',
     department: 'Quality Assurance',
-    lastActive: '18 mins ago',
+    lastActive: '4 mins ago',
     online: true,
     failedLogins: 0,
-    mfaEnabled: true
+    mfaEnabled: false
   },
   {
     id: 'usr_6',

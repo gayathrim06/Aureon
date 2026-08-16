@@ -3,7 +3,7 @@ import { useAuth } from '../../context/AuthContext';
 import { 
   LayoutDashboard, Building, Users, Shield, Users2, FolderKanban, GitBranch, 
   Activity, FileText, Server, Bell, Settings, Calendar, Award, Code2, 
-  CheckSquare, GitPullRequest, AlertCircle, User, Cpu, Bug, FileCheck, Layers
+  CheckSquare, GitPullRequest, AlertCircle, User, Cpu, Bug, FileCheck, Layers, Sparkles
 } from 'lucide-react';
 
 export const Sidebar = ({ activeTab, onSelectTab }) => {
@@ -25,6 +25,7 @@ export const Sidebar = ({ activeTab, onSelectTab }) => {
       { id: 'SystemLogs', label: 'System Logs', icon: Server },
       { id: 'Reports', label: 'Reports', icon: Activity },
       { id: 'Notifications', label: 'Notifications', icon: Bell },
+      { id: 'Profile', label: 'My Profile', icon: User },
       { id: 'Settings', label: 'Settings', icon: Settings },
     ],
 
@@ -40,6 +41,7 @@ export const Sidebar = ({ activeTab, onSelectTab }) => {
       { id: 'Reports', label: 'Reports', icon: FileText },
       { id: 'Calendar', label: 'Calendar', icon: Calendar },
       { id: 'Notifications', label: 'Notifications', icon: Bell },
+      { id: 'Profile', label: 'My Profile', icon: User },
     ],
 
     ROLE_LEAD: [
@@ -52,6 +54,7 @@ export const Sidebar = ({ activeTab, onSelectTab }) => {
       { id: 'CodeQuality', label: 'Code Quality', icon: Cpu },
       { id: 'ProjectHealth', label: 'Project Health', icon: Activity },
       { id: 'Reports', label: 'Reports', icon: FileText },
+      { id: 'Profile', label: 'My Profile', icon: User },
     ],
 
     ROLE_DEV: [
@@ -60,15 +63,15 @@ export const Sidebar = ({ activeTab, onSelectTab }) => {
       { id: 'Sprint', label: 'Sprint', icon: Layers },
       { id: 'Repository', label: 'Repository', icon: GitBranch },
       { id: 'PullRequests', label: 'Pull Requests', icon: GitPullRequest },
-      { id: 'Issues', label: 'Issues', icon: AlertCircle },
+      { id: 'CodeIssues', label: 'Code Issues', icon: AlertCircle },
       { id: 'Profile', label: 'Profile', icon: User },
       { id: 'Notifications', label: 'Notifications', icon: Bell },
     ],
 
     ROLE_QA: [
       { id: 'Dashboard', label: 'Dashboard', icon: LayoutDashboard },
-      { id: 'AssignedTesting', label: 'Assigned Testing', icon: FileCheck },
       { id: 'BugTracker', label: 'Bug Tracker', icon: Bug },
+      { id: 'TestSuites', label: 'Test Suites', icon: Layers },
       { id: 'TestCases', label: 'Test Cases', icon: CheckSquare },
       { id: 'Projects', label: 'Projects', icon: FolderKanban },
       { id: 'Repository', label: 'Repository', icon: GitBranch },
@@ -88,19 +91,19 @@ export const Sidebar = ({ activeTab, onSelectTab }) => {
   };
 
   return (
-    <aside className="w-64 border-r border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 flex flex-col justify-between h-screen sticky top-0 transition-colors z-20">
+    <aside className="w-64 border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0b0f17] flex flex-col justify-between h-screen sticky top-0 transition-colors z-20 shadow-xs">
       <div>
         {/* Brand Header */}
-        <div className="h-16 flex items-center px-6 border-b border-gray-200 dark:border-gray-800">
+        <div className="h-16 flex items-center px-6 border-b border-slate-200 dark:border-slate-800">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white font-black text-lg shadow-md shadow-blue-500/20">
+            <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white font-bold text-base shadow-sm">
               A
             </div>
             <div>
-              <h1 className="text-base font-bold text-gray-900 dark:text-gray-100 tracking-tight leading-none">
-                Aureon <span className="text-blue-600 text-xs font-semibold">SaaS</span>
+              <h1 className="text-base font-bold text-slate-900 dark:text-white tracking-tight leading-none">
+                Aureon <span className="text-indigo-600 text-xs font-semibold">SaaS</span>
               </h1>
-              <p className="text-[10px] font-medium text-gray-500 dark:text-gray-400 mt-0.5">
+              <p className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 mt-0.5 uppercase tracking-wider">
                 {roleTitleMap[role]}
               </p>
             </div>
@@ -109,8 +112,8 @@ export const Sidebar = ({ activeTab, onSelectTab }) => {
 
         {/* Sidebar Nav Items */}
         <div className="p-3 space-y-1 overflow-y-auto max-h-[calc(100vh-8rem)]">
-          <div className="px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-gray-400">
-            Navigation ({navItems.length} pages)
+          <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+            Navigation ({navItems.length} modules)
           </div>
 
           {navItems.map((item) => {
@@ -120,13 +123,13 @@ export const Sidebar = ({ activeTab, onSelectTab }) => {
               <button
                 key={item.id}
                 onClick={() => onSelectTab(item.id)}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-medium transition-all ${
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-semibold transition-all ${
                   isActive
-                    ? 'bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 font-semibold border-l-4 border-blue-600 dark:border-blue-500'
-                    : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800/60 hover:text-gray-900 dark:hover:text-gray-200'
+                    ? 'bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 font-bold border-l-4 border-indigo-600 dark:border-indigo-500 shadow-xs'
+                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-slate-200'
                 }`}
               >
-                <Icon className={`w-4 h-4 ${isActive ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400'}`} />
+                <Icon className={`w-4 h-4 ${isActive ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-400'}`} />
                 <span>{item.label}</span>
               </button>
             );
@@ -135,14 +138,16 @@ export const Sidebar = ({ activeTab, onSelectTab }) => {
       </div>
 
       {/* Role Footer */}
-      <div className="p-4 border-t border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-950/40">
+      <div className="p-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/40">
         <div className="flex items-center gap-2">
           <span className="w-2 h-2 rounded-full bg-emerald-500 status-pulse" />
-          <span className="text-[11px] font-medium text-gray-600 dark:text-gray-400">
-            RBAC Enforcement: ACTIVE
+          <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">
+            RBAC Governance: ACTIVE
           </span>
         </div>
       </div>
     </aside>
   );
 };
+
+

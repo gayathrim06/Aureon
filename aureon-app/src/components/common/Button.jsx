@@ -1,5 +1,4 @@
 import React from 'react';
-import { motion } from 'framer-motion';
 
 export const Button = ({
   children,
@@ -14,14 +13,14 @@ export const Button = ({
   type = 'button',
   ...props
 }) => {
-  const baseStyles = 'inline-flex items-center justify-center font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[#0F172A] disabled:opacity-50 disabled:cursor-not-allowed select-none rounded-[12px]';
+  const baseStyles = 'inline-flex items-center justify-center font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed select-none rounded-[12px]';
 
   const variants = {
-    primary: 'bg-[#2563EB] hover:bg-[#1D4ED8] active:bg-[#1E40AF] text-white focus:ring-[#2563EB] shadow-md shadow-[#2563EB]/20',
-    secondary: 'bg-[#1F2937] hover:bg-[#273549] active:bg-[#111827] text-[#F8FAFC] border border-[#334155] focus:ring-[#334155]',
-    outline: 'bg-transparent border border-[#334155] hover:bg-[#1F2937] text-[#CBD5E1] hover:text-white focus:ring-[#334155]',
-    danger: 'bg-[#EF4444] hover:bg-red-600 text-white focus:ring-[#EF4444]',
-    ghost: 'bg-transparent hover:bg-[#1F2937] text-[#94A3B8] hover:text-[#F8FAFC] focus:ring-[#334155]',
+    primary: 'aureon-glow-btn text-white focus:ring-purple-500 font-semibold',
+    secondary: 'bg-purple-100 dark:bg-[#191128] hover:bg-purple-200 dark:hover:bg-[#231838] text-purple-950 dark:text-purple-100 border border-purple-200 dark:border-purple-900/60 focus:ring-purple-500',
+    outline: 'bg-transparent border border-purple-300 dark:border-purple-800 hover:bg-purple-50 dark:hover:bg-purple-950/60 text-purple-900 dark:text-purple-200 focus:ring-purple-500',
+    danger: 'bg-rose-600 hover:bg-rose-700 text-white focus:ring-rose-500 shadow-md shadow-rose-500/20',
+    ghost: 'bg-transparent hover:bg-purple-50 dark:hover:bg-purple-950/60 text-purple-700 dark:text-purple-300 focus:ring-purple-500',
   };
 
   const sizes = {
@@ -31,8 +30,7 @@ export const Button = ({
   };
 
   return (
-    <motion.button
-      whileTap={{ scale: disabled || isLoading ? 1 : 0.98 }}
+    <button
       type={type}
       onClick={onClick}
       disabled={disabled || isLoading}
@@ -48,6 +46,7 @@ export const Button = ({
         <Icon className="w-4 h-4 shrink-0" />
       ) : null}
       <span>{children}</span>
-    </motion.button>
+    </button>
   );
 };
+

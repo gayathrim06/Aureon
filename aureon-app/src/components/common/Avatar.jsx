@@ -38,8 +38,8 @@ export const Avatar = ({
       ) : (
         <div
           className={`
-            ${sizes[size]} rounded-full bg-gradient-to-br from-[#2563EB] to-[#1E40AF]
-            text-white font-semibold flex items-center justify-center border border-[#334155]
+            ${sizes[size]} rounded-full bg-gradient-to-br from-purple-600 to-pink-500
+            text-white font-semibold flex items-center justify-center border border-purple-300 dark:border-purple-700
             shadow-inner
           `}
         >
@@ -49,7 +49,7 @@ export const Avatar = ({
       {status && (
         <span
           className={`
-            absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-[#0F172A]
+            absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-white dark:border-purple-950
             ${statusColors[status]}
           `}
         />

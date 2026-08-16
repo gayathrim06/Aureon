@@ -22,7 +22,13 @@ class UserViewSet(viewsets.ModelViewSet):
         return super().get_permissions()
 
     @extend_schema(summary="Current User Profile")
-    @action(detail=False, methods=['get'])
+    @action(detail=False, methods=['get', 'put', 'patch'])
     def me(self, request):
+        if request.method in ['PUT', 'PATCH']:
+            serializer = self.get_serializer(request.user, data=request.data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            return Response({"success": True, "message": "Profile updated successfully", "data": serializer.data})
         serializer = self.get_serializer(request.user)
         return Response({"success": True, "data": serializer.data})
+

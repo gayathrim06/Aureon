@@ -11,7 +11,7 @@ from authentication.models import UserSession
 from authentication.serializers import (
     CustomTokenObtainPairSerializer, RegisterSerializer, LogoutSerializer,
     ChangePasswordSerializer, ForgotPasswordSerializer, ResetPasswordSerializer,
-    UserSessionSerializer
+    ResetPasswordWithSecuritySerializer, UserSessionSerializer
 )
 from users.serializers import UserSerializer
 from users.models import User
@@ -306,3 +306,57 @@ class VerifyEmailView(APIView):
     @extend_schema(summary="Email Verification Placeholder")
     def post(self, request):
         return Response({"success": True, "message": "Email verification confirmed."}, status=status.HTTP_200_OK)
+
+
+class ResetPasswordWithSecurityView(APIView):
+    """POST /api/v1/auth/reset-password-security/"""
+    permission_classes = [permissions.AllowAny]
+
+    @extend_schema(summary="Reset Password via Security Answers", request=ResetPasswordWithSecuritySerializer)
+    def post(self, request):
+        serializer = ResetPasswordWithSecuritySerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response({"success": False, "errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+
+        email = serializer.validated_data['email'].strip().lower()
+        dob = serializer.validated_data.get('date_of_birth')
+        pet_name = (serializer.validated_data.get('pet_name') or '').strip().lower()
+        school_friend = (serializer.validated_data.get('school_friend_name') or '').strip().lower()
+        new_password = serializer.validated_data['new_password']
+
+        user = User.objects.filter(email__iexact=email).first()
+        if not user:
+            return Response({"success": False, "message": "No account found with this email address."}, status=status.HTTP_404_NOT_FOUND)
+
+        # Verification logic: match DOB, pet_name, or school_friend_name
+        verified = False
+        if dob and user.date_of_birth and str(user.date_of_birth) == str(dob):
+            verified = True
+        if pet_name and user.pet_name and user.pet_name.strip().lower() == pet_name:
+            verified = True
+        if school_friend and user.school_friend_name and user.school_friend_name.strip().lower() == school_friend:
+            verified = True
+
+        if not verified:
+            return Response({
+                "success": False,
+                "message": "Security verification failed. The provided Date of Birth, Pet Name, or Friend Name does not match our records."
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        user.set_password(new_password)
+        user.failed_login_attempts = 0
+        user.lockout_until = None
+        user.must_change_password = False
+        user.save()
+
+        AuditLog.objects.create(
+            user=user,
+            user_email=user.email,
+            role_name=user.role_name,
+            action='PASSWORD_RESET_SECURITY_SUCCESS',
+            status='SUCCESS',
+            details="Password reset via security question verification"
+        )
+
+        return Response({"success": True, "message": "Password updated successfully! You can now log in with your new password."}, status=status.HTTP_200_OK)
+

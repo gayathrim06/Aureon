@@ -64,12 +64,22 @@ import { TestCaseLibrary } from '../roles/qa/TestCaseLibrary';
 import { QaProjectQuality } from '../roles/qa/QaProjectQuality';
 import { QaRepositoryStatus } from '../roles/qa/QaRepositoryStatus';
 import { QaTestReports } from '../roles/qa/QaTestReports';
+import { UserProfile } from '../components/common/UserProfile';
 import { QaProfile } from '../roles/qa/QaProfile';
 
 export const AppRouter = () => {
   const { user } = useAuth();
   const [viewState, setViewState] = useState('landing'); // 'landing', 'login'
-  const [activeTab, setActiveTab] = useState('Dashboard');
+  
+  // Extract initial active tab from URL hash if present
+  const getTabFromHash = () => {
+    const hash = window.location.hash.replace('#', '').trim();
+    if (!hash) return 'Dashboard';
+    // Capitalize first letter to match tab IDs (e.g. #projects -> 'Projects')
+    return hash.split('-').map(part => part.charAt(0).toUpperCase() + part.slice(1)).join('');
+  };
+
+  const [activeTab, setActiveTab] = useState(() => getTabFromHash() || 'Dashboard');
   const [toast, setToast] = useState(null);
 
   const showToast = (toastObj) => {
@@ -77,12 +87,63 @@ export const AppRouter = () => {
     setTimeout(() => setToast(null), 4000);
   };
 
+  // Push state to browser history whenever tab or view changes
+  const navigateTab = (newTab) => {
+    if (!newTab) return;
+    setActiveTab(newTab);
+    const hash = `#${newTab.toLowerCase()}`;
+    if (window.location.hash !== hash) {
+      window.history.pushState({ isAureonApp: true, viewState, activeTab: newTab }, '', hash);
+    }
+  };
+
+  const navigateViewState = (newViewState) => {
+    if (newViewState === viewState) return;
+    setViewState(newViewState);
+    const targetUrl = newViewState === 'landing' ? window.location.pathname : '#login';
+    window.history.pushState({ isAureonApp: true, viewState: newViewState, activeTab }, '', targetUrl);
+  };
+
+  // Sync with browser history back/forward buttons & Hash changes
+  React.useEffect(() => {
+    // Initial entry push to lock history state
+    const currentHash = window.location.hash || `#${activeTab.toLowerCase()}`;
+    if (!window.history.state || !window.history.state.isAureonApp) {
+      window.history.replaceState({ isAureonApp: true, viewState, activeTab }, '', currentHash);
+    }
+
+    const handlePopState = (event) => {
+      if (event.state && event.state.isAureonApp) {
+        if (event.state.viewState) setViewState(event.state.viewState);
+        if (event.state.activeTab) setActiveTab(event.state.activeTab);
+      } else {
+        // Evaluate hash fallback when navigating history
+        const hash = window.location.hash.replace('#', '').trim();
+        if (hash) {
+          const tabName = hash.split('-').map(part => part.charAt(0).toUpperCase() + part.slice(1)).join('');
+          setActiveTab(tabName);
+        } else if (user) {
+          setActiveTab('Dashboard');
+        } else {
+          setViewState('landing');
+        }
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    window.addEventListener('hashchange', handlePopState);
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+      window.removeEventListener('hashchange', handlePopState);
+    };
+  }, [user]);
+
   // 1. Unauthenticated: Show Public Home Page if on landing
   if (!user && viewState === 'landing') {
     return (
       <HomePage
-        onNavigateLogin={() => setViewState('login')}
-        onNavigateRegister={() => setViewState('login')}
+        onNavigateLogin={() => navigateViewState('login')}
+        onNavigateRegister={() => navigateViewState('login')}
       />
     );
   }
@@ -91,7 +152,7 @@ export const AppRouter = () => {
   if (!user) {
     return (
       <Login
-        onNavigateHome={() => setViewState('landing')}
+        onNavigateHome={() => navigateViewState('landing')}
       />
     );
   }
@@ -103,7 +164,7 @@ export const AppRouter = () => {
     // ━━━ SYSTEM ADMIN ━━━
     if (role === 'ROLE_ADMIN') {
       switch (activeTab) {
-        case 'Dashboard': return <AdminDashboard onNavigate={setActiveTab} />;
+        case 'Dashboard': return <AdminDashboard onNavigate={navigateTab} />;
         case 'Users': return <UserManagement onShowToast={showToast} />;
         case 'AuditLogs': return <AuditLogsView />;
         case 'RolesPermissions': return <RolesPermissions />;
@@ -115,15 +176,16 @@ export const AppRouter = () => {
         case 'SystemLogs': return <SystemLogsView />;
         case 'Reports': return <ComplianceReports />;
         case 'Notifications': return <NotificationsView />;
+        case 'Profile': return <UserProfile />;
         case 'Settings': return <PlatformSettings onShowToast={showToast} />;
-        default: return <AdminDashboard onNavigate={setActiveTab} />;
+        default: return <AdminDashboard onNavigate={navigateTab} />;
       }
     }
 
     // ━━━ PROJECT MANAGER ━━━
     if (role === 'ROLE_PM') {
       switch (activeTab) {
-        case 'Dashboard': return <PmDashboard onNavigate={setActiveTab} />;
+        case 'Dashboard': return <PmDashboard onNavigate={navigateTab} />;
         case 'Projects': return <ProjectManagement onShowToast={showToast} />;
         case 'Sprints': return <SprintPlanner onShowToast={showToast} />;
         case 'Tasks': return <TaskBreakdown />;
@@ -134,14 +196,15 @@ export const AppRouter = () => {
         case 'Reports': return <DeliveryReports />;
         case 'Calendar': return <ReleaseCalendar />;
         case 'Notifications': return <PmNotifications />;
-        default: return <PmDashboard onNavigate={setActiveTab} />;
+        case 'Profile': return <UserProfile />;
+        default: return <PmDashboard onNavigate={navigateTab} />;
       }
     }
 
     // ━━━ TEAM LEAD ━━━
     if (role === 'ROLE_LEAD') {
       switch (activeTab) {
-        case 'Dashboard': return <LeadDashboard onNavigate={setActiveTab} />;
+        case 'Dashboard': return <LeadDashboard onNavigate={navigateTab} />;
         case 'AssignedProjects': return <LeadAssignedProjects />;
         case 'SprintBoard': return <LeadSprintBoard onShowToast={showToast} />;
         case 'Tasks': return <LeadTaskAllocation />;
@@ -150,48 +213,49 @@ export const AppRouter = () => {
         case 'CodeQuality': return <CodeQualityHub />;
         case 'ProjectHealth': return <LeadProjectHealth />;
         case 'Reports': return <LeadReports />;
-        default: return <LeadDashboard onNavigate={setActiveTab} />;
+        case 'Profile': return <UserProfile />;
+        default: return <LeadDashboard onNavigate={navigateTab} />;
       }
     }
 
     // ━━━ DEVELOPER ━━━
     if (role === 'ROLE_DEV') {
       switch (activeTab) {
-        case 'Dashboard': return <DevDashboard onNavigate={setActiveTab} />;
+        case 'Dashboard': return <DevDashboard onNavigate={navigateTab} />;
         case 'MyTasks': return <MyTasksKanban onShowToast={showToast} />;
         case 'Sprint': return <DevSprintView />;
         case 'Repository': return <DevRepositoryView />;
         case 'PullRequests': return <DevPullRequests />;
         case 'CodeIssues': return <DevCodeIssues />;
-        case 'Profile': return <DevProfile />;
+        case 'Profile': return <UserProfile />;
         case 'Notifications': return <DevNotifications />;
-        default: return <DevDashboard onNavigate={setActiveTab} />;
+        default: return <DevDashboard onNavigate={navigateTab} />;
       }
     }
 
     // ━━━ QA ENGINEER ━━━
     if (role === 'ROLE_QA') {
       switch (activeTab) {
-        case 'Dashboard': return <QaDashboard onNavigate={setActiveTab} />;
+        case 'Dashboard': return <QaDashboard onNavigate={navigateTab} />;
         case 'BugTracker': return <BugTracker onShowToast={showToast} />;
         case 'TestSuites': return <QaTestSuites />;
         case 'TestCases': return <TestCaseLibrary onShowToast={showToast} />;
         case 'Projects': return <QaProjectQuality />;
         case 'Repository': return <QaRepositoryStatus />;
         case 'Reports': return <QaTestReports />;
-        case 'Profile': return <QaProfile />;
-        default: return <QaDashboard onNavigate={setActiveTab} />;
+        case 'Profile': return <UserProfile />;
+        default: return <QaDashboard onNavigate={navigateTab} />;
       }
     }
 
-    return <Unauthorized403 onBack={() => setActiveTab('Dashboard')} />;
+    return <Unauthorized403 onBack={() => navigateTab('Dashboard')} />;
   };
 
   return (
-    <div className="flex min-h-screen bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100 font-sans">
-      <Sidebar activeTab={activeTab} onSelectTab={setActiveTab} />
+    <div className="flex min-h-screen bg-slate-50 dark:bg-[#090d16] text-slate-900 dark:text-slate-100 font-sans transition-colors duration-200">
+      <Sidebar activeTab={activeTab} onSelectTab={navigateTab} />
       <div className="flex-1 flex flex-col min-w-0">
-        <Header currentTab={activeTab} onSelectTab={setActiveTab} onNavigateHome={() => setViewState('landing')} />
+        <Header currentTab={activeTab} onSelectTab={navigateTab} onNavigateHome={() => navigateViewState('landing')} />
         <main className="flex-1 p-6 overflow-y-auto">
           {renderRoleContent()}
         </main>
@@ -200,3 +264,5 @@ export const AppRouter = () => {
     </div>
   );
 };
+
+

@@ -42,7 +42,7 @@ class RegisterSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'email', 'username', 'full_name', 'phone', 'employee_id',
             'role_code', 'department', 'designation', 'gender', 'avatar_preset',
-            'profile_image', 'password'
+            'profile_image', 'date_of_birth', 'pet_name', 'school_friend_name', 'password'
         ]
 
     def create(self, validated_data):
@@ -83,3 +83,12 @@ class ResetPasswordSerializer(serializers.Serializer):
     email = serializers.EmailField(required=True)
     reset_token = serializers.CharField(required=True)
     new_password = serializers.CharField(required=True, min_length=8)
+
+
+class ResetPasswordWithSecuritySerializer(serializers.Serializer):
+    email = serializers.EmailField(required=True)
+    date_of_birth = serializers.DateField(required=False, allow_null=True)
+    pet_name = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    school_friend_name = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    new_password = serializers.CharField(required=True, min_length=8)
+

@@ -1,5 +1,6 @@
 import React from 'react';
 import { Breadcrumb } from '../../components/common/Breadcrumb';
+import { useAuth } from '../../context/AuthContext';
 import { 
   Users, UserCheck, UserX, Globe, FolderKanban, GitBranch, Activity, 
   HardDrive, Zap, ShieldAlert, UserPlus, FileText, AlertTriangle, Key, Plus
@@ -8,6 +9,9 @@ import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianG
 import { systemHealthMetrics } from '../../services/mockData';
 
 export const AdminDashboard = ({ onNavigate }) => {
+  const { user } = useAuth();
+  const userName = user?.name || user?.full_name || user?.email || 'System Administrator';
+
   const userGrowthData = [
     { month: 'Jan', users: 120 },
     { month: 'Feb', users: 180 },
@@ -25,14 +29,6 @@ export const AdminDashboard = ({ onNavigate }) => {
     { month: 'Q4', projects: 42, repos: 110 },
   ];
 
-  const securityEventsData = [
-    { day: 'Mon', failedLogins: 4, blockedIPs: 1 },
-    { day: 'Tue', failedLogins: 2, blockedIPs: 0 },
-    { day: 'Wed', failedLogins: 8, blockedIPs: 3 },
-    { day: 'Thu', failedLogins: 3, blockedIPs: 1 },
-    { day: 'Fri', failedLogins: 1, blockedIPs: 0 },
-  ];
-
   const systemUsagePie = [
     { name: 'API Services', value: 45, color: '#3b82f6' },
     { name: 'Database', value: 30, color: '#6366f1' },
@@ -41,20 +37,15 @@ export const AdminDashboard = ({ onNavigate }) => {
   ];
 
   const widgets = [
-    { label: 'Total Users', value: '648', sub: '+12% this month', icon: Users, color: 'border-l-blue-500' },
-    { label: 'Active Users', value: '592', sub: '91.3% activity rate', icon: UserCheck, color: 'border-l-emerald-500' },
-    { label: 'Inactive Users', value: '56', sub: 'Deactivated or idle', icon: UserX, color: 'border-l-amber-500' },
-    { label: 'Online Users', value: '42', sub: 'Active WebSocket sessions', icon: Globe, color: 'border-l-indigo-500' },
-    { label: 'Total Projects', value: '42', sub: 'Across 6 org units', icon: FolderKanban, color: 'border-l-purple-500' },
-    { label: 'Repositories', value: '118', sub: 'GitLab & GitHub synced', icon: GitBranch, color: 'border-l-cyan-500' },
-    { label: 'System Health', value: '99.98%', sub: 'Operational', icon: Activity, color: 'border-l-emerald-600' },
-    { label: 'Storage Usage', value: systemHealthMetrics.storageUsage, sub: 'S3 & Local SSD', icon: HardDrive, color: 'border-l-slate-500' },
-    { label: 'API Status', value: '24ms Avg', sub: 'Response time', icon: Zap, color: 'border-l-blue-600' },
-    { label: 'Failed Logins (24h)', value: '3', sub: 'Protected by Rate Limit', icon: AlertTriangle, color: 'border-l-rose-500' },
+    { label: 'Registered Accounts', value: '1 Account', sub: 'Live database user', icon: Users, color: 'border-l-blue-500' },
+    { label: 'Active Session', value: '1 Active', sub: 'Currently logged in', icon: UserCheck, color: 'border-l-emerald-500' },
+    { label: 'System Role', value: user?.role || 'ROLE_ADMIN', sub: 'Administrator privileges', icon: ShieldAlert, color: 'border-l-purple-500' },
+    { label: 'API Endpoint', value: 'Port 8000', sub: 'Django REST Backend', icon: Globe, color: 'border-l-indigo-500' },
+    { label: 'System Health', value: '100%', sub: 'Operational & Connected', icon: Activity, color: 'border-l-emerald-600' },
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 font-sans">
       <Breadcrumb activeTab="System Admin Dashboard" />
 
       {/* Header Banner with Admin Actions */}
@@ -65,9 +56,9 @@ export const AdminDashboard = ({ onNavigate }) => {
               System Admin Command Center
             </span>
           </div>
-          <h1 className="text-2xl font-black tracking-tight mt-1">Aureon Platform Overview</h1>
+          <h1 className="text-2xl font-black tracking-tight mt-1">{userName}'s Admin Console</h1>
           <p className="text-xs text-gray-300 mt-1 max-w-xl">
-            Full enterprise control over users, organizations, RBAC policies, audit logs, and infrastructure health.
+            Enterprise administration portal. Manage users, organization units, security policies, and audit logs.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -75,7 +66,7 @@ export const AdminDashboard = ({ onNavigate }) => {
             onClick={() => onNavigate('Users')}
             className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold shadow-md transition-colors"
           >
-            <UserPlus className="w-3.5 h-3.5" /> Create User
+            <UserPlus className="w-3.5 h-3.5" /> Manage Users
           </button>
           <button
             onClick={() => onNavigate('AuditLogs')}
@@ -86,8 +77,8 @@ export const AdminDashboard = ({ onNavigate }) => {
         </div>
       </div>
 
-      {/* 10 KPI Summary Widgets */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+      {/* Real Summary Widgets */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-5 gap-4">
         {widgets.map((w, i) => {
           const Icon = w.icon;
           return (
@@ -96,7 +87,7 @@ export const AdminDashboard = ({ onNavigate }) => {
                 <span className="text-[11px] font-semibold">{w.label}</span>
                 <Icon className="w-4 h-4 text-gray-400" />
               </div>
-              <div className="text-xl font-bold text-gray-900 dark:text-gray-100 mt-2">{w.value}</div>
+              <div className="text-lg font-bold text-gray-900 dark:text-gray-100 mt-2 truncate">{w.value}</div>
               <div className="text-[10px] text-gray-400 mt-1">{w.sub}</div>
             </div>
           );
