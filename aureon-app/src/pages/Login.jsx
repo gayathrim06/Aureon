@@ -273,36 +273,6 @@ export const Login = ({ onNavigateHome }) => {
               </button>
             </form>
           )}
-
-          {/* 1-Click Role Direct Login Buttons */}
-          {activeTab === 'login' && (
-            <div className="pt-4 border-t border-gray-800">
-              <span className="text-[10px] uppercase font-bold tracking-wider text-gray-400 block mb-2 text-center">
-                1-Click Direct Demo Role Logins
-              </span>
-              <div className="space-y-2">
-                {demoAccounts.map((acc) => {
-                  const Icon = acc.icon;
-                  return (
-                    <button
-                      key={acc.role}
-                      onClick={() => switchRole(acc.role)}
-                      className="w-full flex items-center justify-between p-2.5 rounded-xl bg-gray-800/80 hover:bg-gray-800 border border-gray-700/60 text-xs text-gray-200 transition-all hover:border-blue-500/50 group"
-                    >
-                      <div className="flex items-center gap-3">
-                        <span className={`p-1.5 rounded-lg ${acc.color} text-white`}><Icon className="w-4 h-4" /></span>
-                        <div className="text-left">
-                          <div className="font-bold text-white group-hover:text-blue-400 transition-colors">{acc.label}</div>
-                          <div className="text-[10px] text-gray-400 font-mono">{acc.email}</div>
-                        </div>
-                      </div>
-                      <ArrowRight className="w-4 h-4 text-gray-500 group-hover:text-blue-400 group-hover:translate-x-0.5 transition-all" />
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
         </div>
       </div>
     </div>
