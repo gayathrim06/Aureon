@@ -3,6 +3,8 @@ from users.models import User
 from roles.models import Role
 
 class UserSerializer(serializers.ModelSerializer):
+    name = serializers.CharField(source='full_name', read_only=True)
+    role = serializers.CharField(source='role.code', read_only=True, default='ROLE_DEV')
     role_code = serializers.CharField(source='role.code', read_only=True, default=None)
     role_name = serializers.CharField(source='role.name', read_only=True, default=None)
     avatar_url = serializers.ReadOnlyField()
@@ -10,7 +12,7 @@ class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = [
-            'id', 'email', 'username', 'full_name', 'phone', 'employee_id',
+            'id', 'email', 'username', 'name', 'full_name', 'phone', 'employee_id',
             'role', 'role_code', 'role_name', 'department', 'designation',
             'gender', 'avatar_preset', 'avatar_url', 'profile_image',
             'must_change_password', 'is_active', 'date_joined'
