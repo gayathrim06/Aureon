@@ -10,10 +10,10 @@ auth_bp = Blueprint('auth', __name__, url_prefix='/api/v1/auth')
 @auth_bp.route('/login/', methods=['POST'])
 def login():
     data = request.get_json() or {}
-    email = data.get('email', '').strip().lower()
+    identifier = (data.get('email') or data.get('username') or '').strip().lower()
     password = data.get('password', '')
 
-    user = User.query.filter_by(email=email).first()
+    user = User.query.filter((User.email == identifier) | (User.username == identifier)).first()
     if not user or not user.check_password(password):
         if user:
             user.failed_login_attempts = (user.failed_login_attempts or 0) + 1
