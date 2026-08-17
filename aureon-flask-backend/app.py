@@ -16,6 +16,8 @@ from routes.risk_routes import risk_bp
 from routes.dashboard_routes import dashboard_bp
 from routes.report_routes import report_bp
 from routes.audit_routes import audit_bp
+from routes.sprint_routes import sprint_bp
+from routes.notification_routes import notification_bp
 
 def create_app():
     app = Flask(__name__)
@@ -54,6 +56,8 @@ def create_app():
     app.register_blueprint(team_lead_bp)
     app.register_blueprint(task_bp)
     app.register_blueprint(developer_bp)
+    app.register_blueprint(sprint_bp)
+    app.register_blueprint(notification_bp)
     app.register_blueprint(repository_bp)
     app.register_blueprint(code_analysis_bp)
     app.register_blueprint(risk_bp)

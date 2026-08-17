@@ -113,6 +113,7 @@ class Project(db.Model):
     target_deadline = db.Column(db.Date, nullable=True)
     manager_id = db.Column(UUID(as_uuid=True), db.ForeignKey('tbl_user.id'), nullable=True)
     lead_id = db.Column(UUID(as_uuid=True), db.ForeignKey('tbl_user.id'), nullable=True)
+    health_score = db.Column(db.Integer, default=90)
     is_active = db.Column(db.Boolean, default=True)
     is_deleted = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -130,6 +131,7 @@ class Project(db.Model):
             'description': self.description or '',
             'status': self.status or 'IN_PROGRESS',
             'priority': self.priority or 'HIGH',
+            'health_score': self.health_score if self.health_score is not None else 90,
             'start_date': self.start_date.isoformat() if self.start_date else None,
             'target_deadline': self.target_deadline.isoformat() if self.target_deadline else None,
             'project_manager_id': str(self.manager_id) if self.manager_id else None,
@@ -184,6 +186,8 @@ class TeamMember(db.Model):
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     team_id = db.Column(UUID(as_uuid=True), db.ForeignKey('tbl_team.id'), nullable=False)
     user_id = db.Column(UUID(as_uuid=True), db.ForeignKey('tbl_user.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     user = db.relationship('User', foreign_keys=[user_id])
 
@@ -287,7 +291,23 @@ class TaskStatusHistory(db.Model):
 class Risk(db.Model):
     __tablename__ = 'tbl_risk'
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    project_id = db.Column(UUID(as_uuid=True), db.ForeignKey('tbl_project.id'), nullable=True)
+    title = db.Column(db.String(150), nullable=True)
+    description = db.Column(db.Text, nullable=True)
+    severity = db.Column(db.String(30), default='MEDIUM')
     status = db.Column(db.String(30), default='OPEN')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            'id': str(self.id),
+            'project_id': str(self.project_id) if self.project_id else None,
+            'title': self.title or 'Risk Alert',
+            'description': self.description or '',
+            'severity': self.severity or 'MEDIUM',
+            'status': self.status or 'OPEN',
+            'created_at': self.created_at.isoformat() if self.created_at else ''
+        }
 
 class AuditLog(db.Model):
     __tablename__ = 'tbl_audit_log'
@@ -318,12 +338,95 @@ class AuditLog(db.Model):
 class Commit(db.Model):
     __tablename__ = 'tbl_commit'
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    repository_id = db.Column(UUID(as_uuid=True), db.ForeignKey('tbl_repository.id'), nullable=True)
     user_id = db.Column(UUID(as_uuid=True), db.ForeignKey('tbl_user.id'), nullable=True)
+    commit_hash = db.Column(db.String(100), nullable=True)
+    author_name = db.Column(db.String(100), nullable=True)
+    commit_message = db.Column(db.Text, nullable=True)
+    commit_date = db.Column(db.DateTime, default=datetime.utcnow)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    files_changed = db.Column(db.Integer, default=1)
+    additions = db.Column(db.Integer, default=0)
+    deletions = db.Column(db.Integer, default=0)
+
+    def to_dict(self):
+        return {
+            'id': str(self.id),
+            'repository_id': str(self.repository_id) if self.repository_id else None,
+            'user_id': str(self.user_id) if self.user_id else None,
+            'commit_hash': self.commit_hash or '',
+            'author_name': self.author_name or 'Developer',
+            'commit_message': self.commit_message or '',
+            'commit_date': self.commit_date.isoformat() if self.commit_date else '',
+            'files_changed': self.files_changed or 1,
+            'additions': self.additions or 0,
+            'deletions': self.deletions or 0
+        }
 
 class Repository(db.Model):
     __tablename__ = 'tbl_repository'
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    repository_name = db.Column(db.String(100), nullable=False)
+    project_id = db.Column(UUID(as_uuid=True), db.ForeignKey('tbl_project.id'), nullable=True)
+    repository_name = db.Column(db.String(100), nullable=True)
+    name = db.Column(db.String(100), nullable=True)
+    repository_url = db.Column(db.String(255), nullable=True)
+    url = db.Column(db.String(255), nullable=True)
+    provider = db.Column(db.String(50), default='GitHub')
+    default_branch = db.Column(db.String(50), default='main')
+    status = db.Column(db.String(30), default='CONNECTED')
+    connection_status = db.Column(db.String(30), default='CONNECTED')
+    last_synced = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    @property
+    def display_name(self):
+        return self.repository_name or self.name or 'Repo'
+
+    def to_dict(self):
+        return {
+            'id': str(self.id),
+            'project_id': str(self.project_id) if self.project_id else None,
+            'repository_name': self.display_name,
+            'name': self.display_name,
+            'repository_url': self.repository_url or self.url or '',
+            'url': self.repository_url or self.url or '',
+            'provider': self.provider or 'GitHub',
+            'default_branch': self.default_branch or 'main',
+            'status': self.status or self.connection_status or 'CONNECTED',
+            'last_synced': self.last_synced.isoformat() if self.last_synced else None
+        }
+
+class CodeQualityReport(db.Model):
+    __tablename__ = 'code_quality_reports'
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    repository_id = db.Column(UUID(as_uuid=True), db.ForeignKey('tbl_repository.id'), nullable=True)
+    project_id = db.Column(UUID(as_uuid=True), db.ForeignKey('tbl_project.id'), nullable=True)
+    analysis_date = db.Column(db.DateTime, default=datetime.utcnow)
+    total_files = db.Column(db.Integer, default=1)
+    total_lines = db.Column(db.Integer, default=100)
+    complexity_score = db.Column(db.Float, default=2.5)
+    maintainability_score = db.Column(db.Float, default=85.0)
+    pylint_errors = db.Column(db.Integer, default=0)
+    pylint_warnings = db.Column(db.Integer, default=0)
+    quality_score = db.Column(db.Float, default=90.0)
+    risk_level = db.Column(db.String(30), default='LOW')
+
+    def to_dict(self):
+        return {
+            'id': str(self.id),
+            'repository_id': str(self.repository_id) if self.repository_id else None,
+            'project_id': str(self.project_id) if self.project_id else None,
+            'analysis_date': self.analysis_date.isoformat() if self.analysis_date else '',
+            'total_files': self.total_files or 1,
+            'total_lines': self.total_lines or 0,
+            'complexity_score': self.complexity_score or 0.0,
+            'maintainability_score': self.maintainability_score or 100.0,
+            'pylint_errors': self.pylint_errors or 0,
+            'pylint_warnings': self.pylint_warnings or 0,
+            'quality_score': self.quality_score or 90.0,
+            'risk_level': self.risk_level or 'LOW'
+        }
 
 class Report(db.Model):
     __tablename__ = 'tbl_report'
