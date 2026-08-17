@@ -7,9 +7,9 @@ from flask_cors import CORS
 # Import Blueprints
 from routes.auth_routes import auth_bp
 from routes.user_routes import user_bp
-from routes.project_routes import project_bp
-from routes.team_routes import team_bp
-from routes.task_routes import task_bp
+from routes.project_routes import project_bp, pm_bp
+from routes.team_routes import team_bp, team_lead_bp
+from routes.task_routes import task_bp, developer_bp
 from routes.repository_routes import repository_bp
 from routes.code_analysis_routes import code_analysis_bp
 from routes.risk_routes import risk_bp
@@ -49,8 +49,11 @@ def create_app():
     app.register_blueprint(auth_bp)
     app.register_blueprint(user_bp)
     app.register_blueprint(project_bp)
+    app.register_blueprint(pm_bp)
     app.register_blueprint(team_bp)
+    app.register_blueprint(team_lead_bp)
     app.register_blueprint(task_bp)
+    app.register_blueprint(developer_bp)
     app.register_blueprint(repository_bp)
     app.register_blueprint(code_analysis_bp)
     app.register_blueprint(risk_bp)
@@ -64,7 +67,7 @@ def create_app():
             'status': 'ONLINE',
             'platform': 'Aureon - Software Engineering Intelligence Platform Backend',
             'api_version': 'v1',
-            'engine': 'Python Flask + SQLAlchemy ORM (Non-AI Rule Engine)'
+            'engine': 'Python Flask + SQLAlchemy ORM'
         })
 
     return app

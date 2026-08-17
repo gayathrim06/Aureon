@@ -105,23 +105,36 @@ class User(db.Model):
 class Project(db.Model):
     __tablename__ = 'tbl_project'
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    project_name = db.Column(db.String(100), nullable=False)
-    project_description = db.Column(db.Text)
-    project_status = db.Column(db.String(30), default='IN_PROGRESS')
-    project_manager_id = db.Column(UUID(as_uuid=True), db.ForeignKey('tbl_user.id'), nullable=True)
+    name = db.Column(db.String(100), nullable=True)
+    description = db.Column(db.Text, nullable=True)
+    status = db.Column(db.String(30), default='IN_PROGRESS')
+    priority = db.Column(db.String(30), default='HIGH')
+    start_date = db.Column(db.Date, nullable=True)
+    target_deadline = db.Column(db.Date, nullable=True)
+    manager_id = db.Column(UUID(as_uuid=True), db.ForeignKey('tbl_user.id'), nullable=True)
+    lead_id = db.Column(UUID(as_uuid=True), db.ForeignKey('tbl_user.id'), nullable=True)
     is_active = db.Column(db.Boolean, default=True)
+    is_deleted = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     @property
-    def name(self):
-        return self.project_name
+    def display_name(self):
+        return self.name or 'Untitled Project'
 
-    @property
-    def status(self):
-        return self.project_status
-
-    @property
-    def health_score(self):
-        return 100
+    def to_dict(self):
+        return {
+            'id': str(self.id),
+            'name': self.display_name,
+            'project_name': self.display_name,
+            'description': self.description or '',
+            'status': self.status or 'IN_PROGRESS',
+            'priority': self.priority or 'HIGH',
+            'start_date': self.start_date.isoformat() if self.start_date else None,
+            'target_deadline': self.target_deadline.isoformat() if self.target_deadline else None,
+            'project_manager_id': str(self.manager_id) if self.manager_id else None,
+            'manager_id': str(self.manager_id) if self.manager_id else None
+        }
 
 class ProjectMember(db.Model):
     __tablename__ = 'tbl_project_member'
@@ -132,8 +145,39 @@ class ProjectMember(db.Model):
 class Team(db.Model):
     __tablename__ = 'tbl_team'
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    team_name = db.Column(db.String(100), nullable=False)
-    team_lead_id = db.Column(UUID(as_uuid=True), db.ForeignKey('tbl_user.id'), nullable=True)
+    name = db.Column(db.String(100), nullable=True)
+    team_code = db.Column(db.String(50), nullable=True)
+    description = db.Column(db.Text, nullable=True)
+    availability_status = db.Column(db.String(30), default='AVAILABLE')
+    status = db.Column(db.String(30), default='ACTIVE')
+    is_active = db.Column(db.Boolean, default=True)
+    is_deleted = db.Column(db.Boolean, default=False)
+    project_id = db.Column(UUID(as_uuid=True), db.ForeignKey('tbl_project.id'), nullable=True)
+    team_leader_id = db.Column(UUID(as_uuid=True), db.ForeignKey('tbl_user.id'), nullable=True)
+    lead_id = db.Column(UUID(as_uuid=True), db.ForeignKey('tbl_user.id'), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    leader = db.relationship('User', foreign_keys=[team_leader_id])
+    project = db.relationship('Project', foreign_keys=[project_id])
+
+    @property
+    def display_name(self):
+        return self.name or 'Team'
+
+    def to_dict(self):
+        return {
+            'id': str(self.id),
+            'name': self.display_name,
+            'team_name': self.display_name,
+            'team_code': self.team_code or '',
+            'description': self.description or '',
+            'availability_status': self.availability_status or 'AVAILABLE',
+            'status': self.status or 'ACTIVE',
+            'project_id': str(self.project_id) if self.project_id else None,
+            'team_leader_id': str(self.team_leader_id or self.lead_id) if (self.team_leader_id or self.lead_id) else None,
+            'leader_name': self.leader.full_name if self.leader else None
+        }
 
 class TeamMember(db.Model):
     __tablename__ = 'tbl_team_member'
@@ -141,16 +185,99 @@ class TeamMember(db.Model):
     team_id = db.Column(UUID(as_uuid=True), db.ForeignKey('tbl_team.id'), nullable=False)
     user_id = db.Column(UUID(as_uuid=True), db.ForeignKey('tbl_user.id'), nullable=False)
 
+    user = db.relationship('User', foreign_keys=[user_id])
+
+class Sprint(db.Model):
+    __tablename__ = 'tbl_sprint'
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name = db.Column(db.String(100), nullable=False)
+    goal = db.Column(db.Text)
+    status = db.Column(db.String(30), default='PLANNED')
+    start_date = db.Column(db.Date)
+    end_date = db.Column(db.Date)
+    project_id = db.Column(UUID(as_uuid=True), db.ForeignKey('tbl_project.id'), nullable=True)
+    team_id = db.Column(UUID(as_uuid=True), db.ForeignKey('tbl_team.id'), nullable=True)
+    created_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey('tbl_user.id'), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            'id': str(self.id),
+            'name': self.name,
+            'goal': self.goal or '',
+            'status': self.status or 'PLANNED',
+            'start_date': self.start_date.isoformat() if self.start_date else None,
+            'end_date': self.end_date.isoformat() if self.end_date else None,
+            'project_id': str(self.project_id) if self.project_id else None,
+            'team_id': str(self.team_id) if self.team_id else None
+        }
+
 class Task(db.Model):
     __tablename__ = 'tbl_task'
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    task_title = db.Column(db.String(150), nullable=False)
-    task_status = db.Column(db.String(30), default='TODO')
-    assigned_to = db.Column(UUID(as_uuid=True), db.ForeignKey('tbl_user.id'), nullable=True)
+    title = db.Column(db.String(150), nullable=True)
+    description = db.Column(db.Text)
+    priority = db.Column(db.String(30), default='MEDIUM')
+    status = db.Column(db.String(30), default='TODO')
+    due_date = db.Column(db.Date)
+    estimated_hours = db.Column(db.Float, default=0.0)
+    actual_hours = db.Column(db.Float, default=0.0)
+    assigned_to_id = db.Column(UUID(as_uuid=True), db.ForeignKey('tbl_user.id'), nullable=True)
+    assigned_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey('tbl_user.id'), nullable=True)
+    created_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey('tbl_user.id'), nullable=True)
+    project_id = db.Column(UUID(as_uuid=True), db.ForeignKey('tbl_project.id'), nullable=True)
+    team_id = db.Column(UUID(as_uuid=True), db.ForeignKey('tbl_team.id'), nullable=True)
+    sprint_id = db.Column(UUID(as_uuid=True), db.ForeignKey('tbl_sprint.id'), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    assigned_user = db.relationship('User', foreign_keys=[assigned_to_id])
 
     @property
-    def status(self):
-        return self.task_status
+    def display_title(self):
+        return self.title or 'Untitled Task'
+
+    @property
+    def display_status(self):
+        return self.status or 'TODO'
+
+    def to_dict(self):
+        return {
+            'id': str(self.id),
+            'title': self.display_title,
+            'description': self.description or '',
+            'priority': self.priority or 'MEDIUM',
+            'status': self.display_status,
+            'due_date': self.due_date.isoformat() if self.due_date else None,
+            'estimated_hours': self.estimated_hours or 0.0,
+            'actual_hours': self.actual_hours or 0.0,
+            'assigned_to_id': str(self.assigned_to_id) if self.assigned_to_id else None,
+            'assignee_name': self.assigned_user.full_name if self.assigned_user else None,
+            'project_id': str(self.project_id) if self.project_id else None,
+            'team_id': str(self.team_id) if self.team_id else None,
+            'sprint_id': str(self.sprint_id) if self.sprint_id else None
+        }
+
+class Notification(db.Model):
+    __tablename__ = 'tbl_notification'
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    recipient_id = db.Column(UUID(as_uuid=True), db.ForeignKey('tbl_user.id'), nullable=True)
+    title = db.Column(db.String(150), nullable=False)
+    message = db.Column(db.Text)
+    notification_type = db.Column(db.String(50), default='INFO')
+    read = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            'id': str(self.id),
+            'recipient_id': str(self.recipient_id) if self.recipient_id else None,
+            'title': self.title,
+            'message': self.message or '',
+            'notification_type': self.notification_type,
+            'read': self.read,
+            'created_at': self.created_at.isoformat() if self.created_at else ''
+        }
 
 class TaskStatusHistory(db.Model):
     __tablename__ = 'tbl_task_history'

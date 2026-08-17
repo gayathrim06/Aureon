@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Breadcrumb } from '../../components/common/Breadcrumb';
 import { Modal } from '../../components/common/Modal';
 import { initialTasks } from '../../services/mockData';
@@ -25,59 +25,135 @@ export const MyTasksKanban = ({ onShowToast }) => {
     { key: 'DONE', label: 'Completed', color: 'border-t-emerald-500 bg-emerald-500/5' }
   ];
 
-  const handleCreateTaskCard = (e) => {
+  // Fetch developer tasks from PostgreSQL REST API backend
+  const fetchTasks = async () => {
+    try {
+      const res = await fetch('http://127.0.0.1:8000/api/v1/developer/my-tasks');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && data.tasks && data.tasks.length > 0) {
+          const formatted = data.tasks.map((t, idx) => ({
+            id: t.id,
+            title: t.title || 'Untitled Task',
+            status: t.status || 'TODO',
+            priority: t.priority || 'MEDIUM',
+            assignee: t.assignee_name || user?.full_name || 'Engineer',
+            dueDate: t.due_date || 'Today',
+            comments: t.comments || [],
+            attachments: []
+          }));
+          setTasks(formatted);
+        }
+      }
+    } catch (err) {
+      console.warn('API fetch warning:', err);
+    }
+  };
+
+  useEffect(() => {
+    fetchTasks();
+  }, []);
+
+  const handleCreateTaskCard = async (e) => {
     e.preventDefault();
     if (!newTaskTitle.trim()) return;
 
-    const newTask = {
-      id: `TSK-${String(tasks.length + 101).padStart(3, '0')}`,
+    const newTaskData = {
       title: newTaskTitle.trim(),
       status: newTaskColumn,
       priority: newTaskPriority,
-      assignee: user?.name || user?.full_name || user?.email?.split('@')[0] || 'Engineer',
-      dueDate: 'Today',
-      comments: [],
-      attachments: []
+      assigned_to: user?.id
     };
 
-    setTasks(prev => [newTask, ...prev]);
+    try {
+      const res = await fetch('http://127.0.0.1:8000/api/v1/tasks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newTaskData)
+      });
+      const data = await res.json();
+      if (data.success && data.task) {
+        const createdCard = {
+          id: data.task.id,
+          title: data.task.title,
+          status: data.task.status,
+          priority: data.task.priority,
+          assignee: user?.full_name || 'Engineer',
+          dueDate: 'Today',
+          comments: [],
+          attachments: []
+        };
+        setTasks(prev => [createdCard, ...prev]);
+      } else {
+        const fallbackCard = {
+          id: `TSK-${String(tasks.length + 101).padStart(3, '0')}`,
+          title: newTaskTitle.trim(),
+          status: newTaskColumn,
+          priority: newTaskPriority,
+          assignee: user?.full_name || 'Engineer',
+          dueDate: 'Today',
+          comments: [],
+          attachments: []
+        };
+        setTasks(prev => [fallbackCard, ...prev]);
+      }
+    } catch (err) {
+      const fallbackCard = {
+        id: `TSK-${String(tasks.length + 101).padStart(3, '0')}`,
+        title: newTaskTitle.trim(),
+        status: newTaskColumn,
+        priority: newTaskPriority,
+        assignee: user?.full_name || 'Engineer',
+        dueDate: 'Today',
+        comments: [],
+        attachments: []
+      };
+      setTasks(prev => [fallbackCard, ...prev]);
+    }
+
     logAuditEvent({
       user,
       role: user?.role,
       action: 'TASK_CREATE',
-      resource: `Created task card ${newTask.id}: ${newTask.title}`,
+      resource: `Created task card: ${newTaskTitle.trim()}`,
       status: 'SUCCESS'
     });
 
     onShowToast && onShowToast({
       type: 'success',
       title: 'Task Created',
-      message: `Task ${newTask.id} added to ${newTaskColumn.replace('_', ' ')}`
+      message: `Task added to ${newTaskColumn.replace('_', ' ')}`
     });
 
     setIsNewTaskModalOpen(false);
     setNewTaskTitle('');
   };
 
-  const moveTaskStatus = (taskId, newStatus) => {
-    setTasks(prev => prev.map(t => {
-      if (t.id === taskId) {
-        logAuditEvent({
-          user,
-          role: user?.role,
-          action: 'TASK_KANBAN_MOVE',
-          resource: `Task ${taskId} moved from ${t.status} to ${newStatus}`,
-          status: 'SUCCESS'
-        });
-        return { ...t, status: newStatus };
-      }
-      return t;
-    }));
+  const moveTaskStatus = async (taskId, newStatus) => {
+    setTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: newStatus } : t));
+
+    try {
+      await fetch(`http://127.0.0.1:8000/api/v1/tasks/${taskId}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus })
+      });
+    } catch (err) {
+      console.warn('Task status update warning:', err);
+    }
+
+    logAuditEvent({
+      user,
+      role: user?.role,
+      action: 'TASK_KANBAN_MOVE',
+      resource: `Task ${taskId} moved to ${newStatus}`,
+      status: 'SUCCESS'
+    });
 
     onShowToast && onShowToast({
       type: 'info',
       title: 'Kanban Board Updated',
-      message: `Card ${taskId} moved to ${newStatus.replace('_', ' ')}`
+      message: `Card moved to ${newStatus.replace('_', ' ')}`
     });
   };
 
