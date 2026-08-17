@@ -3,12 +3,18 @@ import { Breadcrumb } from '../../components/common/Breadcrumb';
 import { useAuth } from '../../context/AuthContext';
 import { 
   FolderKanban, Layers, CheckSquare, Clock, Calendar, Activity, 
-  GitBranch, Bug, Users, Plus, FileText, AlertCircle, TrendingUp, Cpu
+  GitBranch, Bug, Users, Plus, FileText, AlertCircle, TrendingUp, Cpu, BarChart2
 } from 'lucide-react';
+import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, BarChart, Bar } from 'recharts';
 
 export const PmDashboard = ({ onNavigate }) => {
   const { user } = useAuth();
   const userName = user?.name || user?.full_name || user?.email?.split('@')[0] || 'Project Manager';
+
+  // Dynamic state defaults to empty arrays for clean workspace initialization
+  const sprintBurndown = [];
+  const milestoneProgress = [];
+  const bugTrends = [];
 
   const widgets = [
     { label: 'Projects', value: '0 Active', sub: 'Dataset empty', icon: FolderKanban, color: 'border-l-blue-500' },
@@ -72,58 +78,83 @@ export const PmDashboard = ({ onNavigate }) => {
       {/* Sprint Burndown & Milestone Progress Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Sprint Burndown Chart */}
-        <div className="p-5 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm">
-          <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100 mb-4">Sprint 24 Burndown Velocity</h3>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={sprintBurndown}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.2} />
-                <XAxis dataKey="day" stroke="#9ca3af" fontSize={11} />
-                <YAxis stroke="#9ca3af" fontSize={11} />
-                <Tooltip contentStyle={{ backgroundColor: '#1f2937', borderRadius: '8px', border: 'none', color: '#fff' }} />
-                <Line type="monotone" dataKey="remaining" stroke="#3b82f6" strokeWidth={3} name="Actual Remaining" />
-                <Line type="monotone" dataKey="target" stroke="#9ca3af" strokeDasharray="5 5" strokeWidth={2} name="Target Guideline" />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
+        <div className="p-5 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col justify-between">
+          <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100 mb-4">Sprint Burndown Velocity</h3>
+          {sprintBurndown.length === 0 ? (
+            <div className="py-16 text-center text-gray-400 dark:text-gray-500 flex flex-col items-center justify-center space-y-2">
+              <BarChart2 className="w-8 h-8 opacity-40 text-blue-400" />
+              <p className="text-xs font-medium">No active sprint burndown telemetry recorded yet.</p>
+              <p className="text-[10px] text-gray-500">Create or assign tasks to a sprint to display velocity telemetry.</p>
+            </div>
+          ) : (
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={sprintBurndown}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.2} />
+                  <XAxis dataKey="day" stroke="#9ca3af" fontSize={11} />
+                  <YAxis stroke="#9ca3af" fontSize={11} />
+                  <Tooltip contentStyle={{ backgroundColor: '#1f2937', borderRadius: '8px', border: 'none', color: '#fff' }} />
+                  <Line type="monotone" dataKey="remaining" stroke="#3b82f6" strokeWidth={3} name="Actual Remaining" />
+                  <Line type="monotone" dataKey="target" stroke="#9ca3af" strokeDasharray="5 5" strokeWidth={2} name="Target Guideline" />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          )}
         </div>
 
         {/* Milestone Completion */}
-        <div className="p-5 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm">
-          <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100 mb-4">Milestone Delivery Progress</h3>
-          <div className="space-y-4">
-            {milestoneProgress.map((m, idx) => (
-              <div key={idx} className="space-y-1.5">
-                <div className="flex justify-between text-xs">
-                  <span className="font-semibold text-gray-800 dark:text-gray-200">{m.name}</span>
-                  <span className="font-mono text-blue-600 dark:text-blue-400 font-bold">{m.completed}%</span>
-                </div>
-                <div className="w-full h-2.5 rounded-full bg-gray-100 dark:bg-gray-700 overflow-hidden">
-                  <div
-                    className="h-full bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full transition-all duration-500"
-                    style={{ width: `${m.completed}%` }}
-                  />
-                </div>
+        <div className="p-5 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col justify-between">
+          <div>
+            <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100 mb-4">Milestone Delivery Progress</h3>
+            {milestoneProgress.length === 0 ? (
+              <div className="py-8 text-center text-gray-400 dark:text-gray-500 flex flex-col items-center justify-center space-y-2">
+                <Layers className="w-6 h-6 opacity-40 text-indigo-400" />
+                <p className="text-xs font-medium">No milestone delivery progress established yet.</p>
               </div>
-            ))}
+            ) : (
+              <div className="space-y-4">
+                {milestoneProgress.map((m, idx) => (
+                  <div key={idx} className="space-y-1.5">
+                    <div className="flex justify-between text-xs">
+                      <span className="font-semibold text-gray-800 dark:text-gray-200">{m.name}</span>
+                      <span className="font-mono text-blue-600 dark:text-blue-400 font-bold">{m.completed}%</span>
+                    </div>
+                    <div className="w-full h-2.5 rounded-full bg-gray-100 dark:bg-gray-700 overflow-hidden">
+                      <div
+                        className="h-full bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full transition-all duration-500"
+                        style={{ width: `${m.completed}%` }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="mt-6 pt-4 border-t border-gray-100 dark:border-gray-700">
             <h4 className="text-xs font-bold text-gray-900 dark:text-gray-100 mb-2">Bug Resolution Trends</h4>
-            <div className="h-32">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={bugTrends}>
-                  <XAxis dataKey="week" stroke="#9ca3af" fontSize={10} />
-                  <YAxis stroke="#9ca3af" fontSize={10} />
-                  <Tooltip />
-                  <Bar dataKey="open" fill="#ef4444" radius={[3, 3, 0, 0]} name="New Bugs" />
-                  <Bar dataKey="resolved" fill="#10b981" radius={[3, 3, 0, 0]} name="Resolved Bugs" />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
+            {bugTrends.length === 0 ? (
+              <div className="py-6 text-center text-gray-400 dark:text-gray-500 flex flex-col items-center justify-center space-y-1">
+                <Bug className="w-5 h-5 opacity-40 text-rose-400" />
+                <p className="text-[11px] font-medium">No bug resolution trends logged yet.</p>
+              </div>
+            ) : (
+              <div className="h-32">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={bugTrends}>
+                    <XAxis dataKey="week" stroke="#9ca3af" fontSize={10} />
+                    <YAxis stroke="#9ca3af" fontSize={10} />
+                    <Tooltip />
+                    <Bar dataKey="open" fill="#ef4444" radius={[3, 3, 0, 0]} name="New Bugs" />
+                    <Bar dataKey="resolved" fill="#10b981" radius={[3, 3, 0, 0]} name="Resolved Bugs" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            )}
           </div>
         </div>
       </div>
     </div>
   );
 };
+export default PmDashboard;

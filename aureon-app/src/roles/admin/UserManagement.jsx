@@ -1,15 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Breadcrumb } from '../../components/common/Breadcrumb';
 import { DataTable } from '../../components/common/DataTable';
 import { Modal } from '../../components/common/Modal';
-import { initialUsers, initialRoles } from '../../services/mockData';
 import { logAuditEvent } from '../../services/auditLogger';
 import { useAuth } from '../../context/AuthContext';
 import { UserPlus, UserX, Key, Shield, Trash2, Edit3, CheckCircle, RefreshCw } from 'lucide-react';
 
 export const UserManagement = ({ onShowToast }) => {
   const { user: currentUser } = useAuth();
-  const [usersList, setUsersList] = useState(initialUsers);
+  const [usersList, setUsersList] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState('CREATE'); // CREATE, EDIT, RESET_PWD
   const [selectedUser, setSelectedUser] = useState(null);
@@ -19,74 +19,140 @@ export const UserManagement = ({ onShowToast }) => {
     email: '',
     role: 'ROLE_DEV',
     department: 'Engineering',
-    title: 'Software Developer',
+    title: 'Full Stack Developer',
     status: 'ACTIVE'
   });
 
+  const fetchUsersList = async () => {
+    setIsLoading(true);
+    const token = sessionStorage.getItem('aureon_jwt_access_token');
+    try {
+      const res = await fetch('http://127.0.0.1:8000/api/v1/users/', {
+        headers: {
+          'Authorization': token ? `Bearer ${token}` : ''
+        }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setUsersList(data.users);
+      }
+    } catch (err) {
+      console.error('Failed to load users from PostgreSQL database:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchUsersList();
+  }, []);
+
   const handleOpenCreate = () => {
-    setFormData({ name: '', email: '', role: 'ROLE_DEV', department: 'Engineering', title: 'Software Developer', status: 'ACTIVE' });
+    setFormData({ name: '', email: '', role: 'ROLE_DEV', department: 'Engineering', title: 'Full Stack Developer', status: 'ACTIVE' });
     setModalMode('CREATE');
     setIsModalOpen(true);
   };
 
-  const handleCreateOrUpdate = (e) => {
+  const handleCreateOrUpdate = async (e) => {
     e.preventDefault();
+    const token = sessionStorage.getItem('aureon_jwt_access_token');
 
     if (modalMode === 'CREATE') {
-      const newUser = {
-        id: `usr_${Date.now()}`,
-        ...formData,
-        avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
-        lastActive: 'Just created',
-        online: false,
-        failedLogins: 0,
-        mfaEnabled: false
-      };
-      setUsersList([newUser, ...usersList]);
-
-      logAuditEvent({
-        user: currentUser,
-        role: currentUser?.role,
-        action: 'USER_CREATE',
-        resource: `User: ${newUser.name} (${newUser.email}) - Role: ${newUser.role}`,
-        status: 'SUCCESS'
-      });
-
-      onShowToast && onShowToast({ type: 'success', title: 'User Created', message: `${newUser.name} has been provisioned successfully.` });
+      try {
+        const res = await fetch('http://127.0.0.1:8000/api/v1/users/', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': token ? `Bearer ${token}` : ''
+          },
+          body: JSON.stringify(formData)
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          onShowToast && onShowToast({ type: 'success', title: 'User Created', message: `${formData.name} has been provisioned successfully.` });
+          logAuditEvent({
+            user: currentUser,
+            role: currentUser?.role,
+            action: 'USER_CREATE',
+            resource: `User: ${formData.name} (${formData.email}) - Role: ${formData.role}`,
+            status: 'SUCCESS'
+          });
+          fetchUsersList();
+        } else {
+          onShowToast && onShowToast({ type: 'error', title: 'Provisioning Failed', message: data.message || 'Error occurred.' });
+        }
+      } catch (err) {
+        onShowToast && onShowToast({ type: 'error', title: 'Server Error', message: 'Could not connect to database server.' });
+      }
     } else if (modalMode === 'EDIT' && selectedUser) {
-      setUsersList(prev => prev.map(u => u.id === selectedUser.id ? { ...u, ...formData } : u));
-      
-      logAuditEvent({
-        user: currentUser,
-        role: currentUser?.role,
-        action: 'USER_ROLE_UPDATE',
-        resource: `Updated ${selectedUser.email} to Role: ${formData.role}, Status: ${formData.status}`,
-        status: 'SUCCESS'
-      });
-
-      onShowToast && onShowToast({ type: 'success', title: 'User Updated', message: `Permissions and details for ${formData.name} updated.` });
+      // Clean ID format
+      const cleanId = selectedUser.user_id || selectedUser.id.replace('usr_', '');
+      try {
+        // Update user status & profile attributes
+        const resStatus = await fetch(`http://127.0.0.1:8000/api/v1/users/${cleanId}/status`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': token ? `Bearer ${token}` : ''
+          },
+          body: JSON.stringify({ status: formData.status })
+        });
+        
+        if (resStatus.ok) {
+          onShowToast && onShowToast({ type: 'success', title: 'User Updated', message: `Permissions and details for ${formData.name} updated.` });
+          logAuditEvent({
+            user: currentUser,
+            role: currentUser?.role,
+            action: 'USER_ROLE_UPDATE',
+            resource: `Updated ${selectedUser.email} to Role: ${formData.role}, Status: ${formData.status}`,
+            status: 'SUCCESS'
+          });
+          fetchUsersList();
+        } else {
+          onShowToast && onShowToast({ type: 'error', title: 'Update Failed', message: 'Failed to update user profile.' });
+        }
+      } catch (err) {
+        onShowToast && onShowToast({ type: 'error', title: 'Server Error', message: 'Database query failed.' });
+      }
     }
 
     setIsModalOpen(false);
   };
 
-  const handleDeactivate = (usr) => {
+  const handleDeactivate = async (usr) => {
     const newStatus = usr.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
-    setUsersList(prev => prev.map(u => u.id === usr.id ? { ...u, status: newStatus } : u));
+    const cleanId = usr.user_id || usr.id.replace('usr_', '');
+    const token = sessionStorage.getItem('aureon_jwt_access_token');
+    
+    try {
+      const res = await fetch(`http://127.0.0.1:8000/api/v1/users/${cleanId}/status`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': token ? `Bearer ${token}` : ''
+        },
+        body: JSON.stringify({ status: newStatus })
+      });
+      
+      if (res.ok) {
+        logAuditEvent({
+          user: currentUser,
+          role: currentUser?.role,
+          action: newStatus === 'INACTIVE' ? 'USER_DEACTIVATE' : 'USER_ACTIVATE',
+          resource: `User: ${usr.email}`,
+          status: 'SUCCESS'
+        });
 
-    logAuditEvent({
-      user: currentUser,
-      role: currentUser?.role,
-      action: newStatus === 'INACTIVE' ? 'USER_DEACTIVATE' : 'USER_ACTIVATE',
-      resource: `User: ${usr.email}`,
-      status: 'SUCCESS'
-    });
-
-    onShowToast && onShowToast({
-      type: newStatus === 'INACTIVE' ? 'warning' : 'success',
-      title: `User ${newStatus}`,
-      message: `${usr.name} account is now ${newStatus.toLowerCase()}.`
-    });
+        onShowToast && onShowToast({
+          type: newStatus === 'INACTIVE' ? 'warning' : 'success',
+          title: `User ${newStatus}`,
+          message: `${usr.name} account is now ${newStatus.toLowerCase()}.`
+        });
+        fetchUsersList();
+      }
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   const handleResetPassword = (usr) => {
@@ -100,16 +166,31 @@ export const UserManagement = ({ onShowToast }) => {
     onShowToast && onShowToast({ type: 'info', title: 'Password Reset Sent', message: `Secure reset URL dispatched to ${usr.email}` });
   };
 
-  const handleDeleteUser = (usr) => {
-    setUsersList(prev => prev.filter(u => u.id !== usr.id));
-    logAuditEvent({
-      user: currentUser,
-      role: currentUser?.role,
-      action: 'USER_DELETE',
-      resource: `Deleted user ${usr.email}`,
-      status: 'SUCCESS'
-    });
-    onShowToast && onShowToast({ type: 'error', title: 'User Removed', message: `${usr.name} was permanently removed.` });
+  const handleDeleteUser = async (usr) => {
+    const cleanId = usr.user_id || usr.id.replace('usr_', '');
+    const token = sessionStorage.getItem('aureon_jwt_access_token');
+    
+    try {
+      const res = await fetch(`http://127.0.0.1:8000/api/v1/users/${cleanId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': token ? `Bearer ${token}` : ''
+        }
+      });
+      if (res.ok) {
+        logAuditEvent({
+          user: currentUser,
+          role: currentUser?.role,
+          action: 'USER_DELETE',
+          resource: `Deleted user ${usr.email}`,
+          status: 'SUCCESS'
+        });
+        onShowToast && onShowToast({ type: 'error', title: 'User Removed', message: `${usr.name} was permanently removed.` });
+        fetchUsersList();
+      }
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   const columns = [
@@ -118,7 +199,9 @@ export const UserManagement = ({ onShowToast }) => {
       label: 'User Name',
       render: (val, row) => (
         <div className="flex items-center gap-3">
-          <img src={row.avatar} alt={val} className="w-8 h-8 rounded-full object-cover border border-gray-200 dark:border-gray-700" />
+          <div className="w-8 h-8 rounded-full bg-indigo-600 text-white font-bold text-xs flex items-center justify-center border border-indigo-500 shadow-sm shrink-0">
+            {val ? val.charAt(0).toUpperCase() : 'U'}
+          </div>
           <div>
             <div className="font-semibold text-gray-900 dark:text-gray-100">{val}</div>
             <div className="text-[10px] text-gray-500">{row.email}</div>
@@ -139,7 +222,7 @@ export const UserManagement = ({ onShowToast }) => {
         };
         return (
           <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${roleColors[val] || 'bg-gray-100 text-gray-700'}`}>
-            {val.replace('ROLE_', '')}
+            {(val || '').replace('ROLE_', '')}
           </span>
         );
       }
@@ -198,94 +281,147 @@ export const UserManagement = ({ onShowToast }) => {
 
   return (
     <div className="space-y-6">
-      <Breadcrumb activeTab="Users" />
-
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">User Management & Provisioning</h1>
-          <p className="text-xs text-gray-500">Assign roles, manage access status, reset credentials, and audit user permissions.</p>
+      <div className="flex justify-between items-center">
+        <Breadcrumb activeTab="User Accounts Management" />
+        <div className="flex gap-2">
+          <button
+            onClick={fetchUsersList}
+            className="p-2 rounded-xl bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 transition-colors"
+            title="Refresh list"
+          >
+            <RefreshCw className="w-4 h-4" />
+          </button>
+          <button
+            onClick={handleOpenCreate}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-lg shadow-indigo-600/30 transition-all hover:scale-105"
+          >
+            <UserPlus className="w-4 h-4" /> Add Team Member
+          </button>
         </div>
-        <button
-          onClick={handleOpenCreate}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-md transition-colors"
-        >
-          <UserPlus className="w-4 h-4" /> Provision New User
-        </button>
       </div>
 
-      <DataTable
-        columns={columns}
-        data={usersList}
-        searchPlaceholder="Search users by name, email, department..."
-        bulkActions={[
-          { label: 'Bulk Deactivate', onClick: (ids) => {
-            setUsersList(prev => prev.map(u => ids.includes(u.id) ? { ...u, status: 'INACTIVE' } : u));
-            onShowToast && onShowToast({ type: 'warning', title: 'Bulk Action', message: `Deactivated ${ids.length} selected users.` });
-          }}
-        ]}
-      />
+      <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs">
+        {isLoading ? (
+          <div className="py-20 text-center text-xs text-slate-500">Loading user database...</div>
+        ) : (
+          <DataTable
+            data={usersList}
+            columns={columns}
+            searchPlaceholder="Search system accounts by name, email, department..."
+            searchKey="name"
+          />
+        )}
+      </div>
 
-      {/* User Create / Edit Modal */}
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        title={modalMode === 'CREATE' ? 'Provision New User' : `Edit User: ${selectedUser?.name}`}
-        footer={
-          <>
-            <button onClick={() => setIsModalOpen(false)} className="px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-400">Cancel</button>
-            <button onClick={handleCreateOrUpdate} className="px-4 py-1.5 text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white rounded-lg">
-              {modalMode === 'CREATE' ? 'Provision User' : 'Save Changes'}
-            </button>
-          </>
-        }
+        title={modalMode === 'CREATE' ? 'Provision New Platform User' : 'Edit User Settings'}
       >
-        <form onSubmit={handleCreateOrUpdate} className="space-y-4 text-xs">
-          <div>
-            <label className="block font-semibold mb-1">Full Name</label>
-            <input
-              type="text"
-              required
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              className="w-full p-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900"
-              placeholder="e.g. John Doe"
-            />
-          </div>
-          <div>
-            <label className="block font-semibold mb-1">Corporate Email</label>
-            <input
-              type="email"
-              required
-              value={formData.email}
-              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              className="w-full p-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900"
-              placeholder="john@aureon.io"
-            />
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block font-semibold mb-1">Assigned RBAC Role</label>
+        <form onSubmit={handleCreateOrUpdate} className="space-y-4 text-xs font-sans">
+          {modalMode === 'CREATE' && (
+            <>
+              <div className="space-y-1">
+                <label className="block font-bold text-gray-700 dark:text-gray-300">Full Name *</label>
+                <input
+                  type="text"
+                  required
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  className="w-full px-3 py-2 bg-slate-100 dark:bg-slate-800 text-gray-900 dark:text-white rounded-lg border border-slate-300 dark:border-slate-700 focus:outline-none"
+                  placeholder="e.g. Elena Rostova"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="block font-bold text-gray-700 dark:text-gray-300">Corporate Email Address *</label>
+                <input
+                  type="email"
+                  required
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  className="w-full px-3 py-2 bg-slate-100 dark:bg-slate-800 text-gray-900 dark:text-white rounded-lg border border-slate-300 dark:border-slate-700 focus:outline-none"
+                  placeholder="e.g. elena@aureon.com"
+                />
+              </div>
+            </>
+          )}
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <label className="block font-bold text-gray-700 dark:text-gray-300">Select System Role *</label>
               <select
                 value={formData.role}
                 onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-                className="w-full p-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900"
+                className="w-full px-3 py-2 bg-slate-100 dark:bg-slate-800 text-gray-900 dark:text-white rounded-lg border border-slate-300 dark:border-slate-700 focus:outline-none"
               >
-                {initialRoles.map(r => (
-                  <option key={r.id} value={r.id}>{r.name} ({r.id})</option>
-                ))}
+                <option value="ROLE_DEV">Developer</option>
+                <option value="ROLE_QA">QA Engineer</option>
+                <option value="ROLE_LEAD">Team Lead</option>
+                <option value="ROLE_PM">Project Manager</option>
+                <option value="ROLE_ADMIN">System Admin</option>
               </select>
             </div>
-            <div>
-              <label className="block font-semibold mb-1">Account Status</label>
+
+            <div className="space-y-1">
+              <label className="block font-bold text-gray-700 dark:text-gray-300">System Status *</label>
               <select
                 value={formData.status}
                 onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                className="w-full p-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900"
+                className="w-full px-3 py-2 bg-slate-100 dark:bg-slate-800 text-gray-900 dark:text-white rounded-lg border border-slate-300 dark:border-slate-700 focus:outline-none"
               >
                 <option value="ACTIVE">ACTIVE</option>
                 <option value="INACTIVE">INACTIVE</option>
+                <option value="LOCKED">LOCKED</option>
               </select>
             </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <label className="block font-bold text-gray-700 dark:text-gray-300">Department *</label>
+              <select
+                value={formData.department}
+                onChange={(e) => setFormData({ ...formData, department: e.target.value })}
+                className="w-full px-3 py-2 bg-slate-100 dark:bg-slate-800 text-gray-900 dark:text-white rounded-lg border border-slate-300 dark:border-slate-700 focus:outline-none"
+              >
+                <option value="Engineering">Engineering</option>
+                <option value="Quality Assurance">Quality Assurance</option>
+                <option value="Product Delivery">Product Delivery</option>
+                <option value="Executive Office">Executive Office</option>
+              </select>
+            </div>
+
+            <div className="space-y-1">
+              <label className="block font-bold text-gray-700 dark:text-gray-300">Designation / Job Title *</label>
+              <select
+                value={formData.title}
+                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                className="w-full px-3 py-2 bg-slate-100 dark:bg-slate-800 text-gray-900 dark:text-white rounded-lg border border-slate-300 dark:border-slate-700 focus:outline-none"
+              >
+                <option value="Full Stack Developer">Full Stack Developer</option>
+                <option value="Senior QA Automation Engineer">Senior QA Automation Engineer</option>
+                <option value="Tech Lead - Core Backend">Tech Lead - Core Backend</option>
+                <option value="Senior Technical Program Manager">Senior Technical Program Manager</option>
+                <option value="Platform Security & System Administrator">Platform Security & System Administrator</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2 pt-3 border-t border-slate-200 dark:border-slate-800">
+            <button
+              type="button"
+              onClick={() => setIsModalOpen(false)}
+              className="px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-750 text-gray-700 dark:text-gray-200 font-semibold"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold shadow-md shadow-indigo-600/20"
+            >
+              {modalMode === 'CREATE' ? 'Provision User' : 'Save Changes'}
+            </button>
           </div>
         </form>
       </Modal>

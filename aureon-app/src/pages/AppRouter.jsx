@@ -159,7 +159,7 @@ export const AppRouter = () => {
 
   // 3. Authenticated: Render user's specific role workspace
   const renderRoleContent = () => {
-    const role = user.role;
+    const role = user?.role || user?.role_name || user?.role_code || 'ROLE_DEV';
 
     // ━━━ SYSTEM ADMIN ━━━
     if (role === 'ROLE_ADMIN') {

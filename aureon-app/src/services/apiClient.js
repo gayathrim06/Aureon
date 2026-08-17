@@ -1,10 +1,10 @@
 // Aureon REST API Client Service
 // Integrates React Frontend with Node/Express REST Backend API on port 5000
 
-const API_BASE_URL = 'http://localhost:5000/api/v1';
+const API_BASE_URL = 'http://127.0.0.1:8000/api/v1';
 
 export const apiClient = async (endpoint, options = {}) => {
-  const token = localStorage.getItem('aureon_jwt_access_token');
+  const token = sessionStorage.getItem('aureon_jwt_access_token');
   const headers = {
     'Content-Type': 'application/json',
     ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
@@ -38,7 +38,7 @@ export const apiClient = async (endpoint, options = {}) => {
 };
 
 export const refreshJwtToken = async () => {
-  const refreshToken = localStorage.getItem('aureon_jwt_refresh_token');
+  const refreshToken = sessionStorage.getItem('aureon_jwt_refresh_token');
   if (!refreshToken) return false;
 
   try {
@@ -50,8 +50,8 @@ export const refreshJwtToken = async () => {
 
     if (res.ok) {
       const data = await res.json();
-      localStorage.setItem('aureon_jwt_access_token', data.accessToken);
-      localStorage.setItem('aureon_jwt_refresh_token', data.refreshToken);
+      sessionStorage.setItem('aureon_jwt_access_token', data.accessToken);
+      sessionStorage.setItem('aureon_jwt_refresh_token', data.refreshToken);
       return true;
     }
   } catch (e) {

@@ -23,14 +23,19 @@ export const AuthProvider = ({ children }) => {
   const [activeSessions, setActiveSessions] = useState([]);
   const [toastMessage, setToastMessage] = useState(null);
 
-  // Restore user from localStorage on mount or set default
+  // Restore user from sessionStorage on mount or set default
   useEffect(() => {
-    const savedUser = localStorage.getItem(AUTH_USER_KEY);
+    const savedUser = sessionStorage.getItem(AUTH_USER_KEY);
     if (savedUser) {
       try {
-        setUser(JSON.parse(savedUser));
+        const parsed = JSON.parse(savedUser);
+        if (parsed) {
+          parsed.role = parsed.role || parsed.role_name || parsed.role_code || 'ROLE_DEV';
+          parsed.name = parsed.name || parsed.full_name || parsed.username || parsed.email;
+        }
+        setUser(parsed);
       } catch (e) {
-        localStorage.removeItem(AUTH_USER_KEY);
+        sessionStorage.removeItem(AUTH_USER_KEY);
       }
     }
   }, []);
@@ -101,8 +106,8 @@ export const AuthProvider = ({ children }) => {
         const rawUser = drfData.user;
         const loggedUser = {
           ...rawUser,
-          role: rawUser.role_code || rawUser.role,
-          name: rawUser.full_name || rawUser.name,
+          role: rawUser.role || rawUser.role_name || rawUser.role_code || 'ROLE_DEV',
+          name: rawUser.name || rawUser.full_name || rawUser.username || rawUser.email,
           avatar: rawUser.avatar_url || rawUser.avatar_preset || rawUser.profile_image || rawUser.avatar
         };
         const newSessionToken = drfData.session_token || `sess_${loggedUser.id}_${Date.now()}`;
@@ -113,10 +118,10 @@ export const AuthProvider = ({ children }) => {
         setSessionToken(newSessionToken);
         setFailedLoginsCount(0);
 
-        localStorage.setItem(AUTH_USER_KEY, JSON.stringify(loggedUser));
-        localStorage.setItem(TOKEN_KEY, drfData.access);
-        localStorage.setItem(REFRESH_TOKEN_KEY, drfData.refresh);
-        localStorage.setItem(SESSION_TOKEN_KEY, newSessionToken);
+        sessionStorage.setItem(AUTH_USER_KEY, JSON.stringify(loggedUser));
+        sessionStorage.setItem(TOKEN_KEY, drfData.access);
+        sessionStorage.setItem(REFRESH_TOKEN_KEY, drfData.refresh);
+        sessionStorage.setItem(SESSION_TOKEN_KEY, newSessionToken);
 
         logAuditEvent({
           user: loggedUser,
@@ -128,6 +133,9 @@ export const AuthProvider = ({ children }) => {
 
         showToast(`Welcome back, ${loggedUser.name}! Authenticated via REST API.`, 'success');
         return { success: true, user: loggedUser };
+      } else {
+        const drfData = await drfRes.json().catch(() => ({}));
+        return { success: false, message: drfData.message || 'Invalid email or password.' };
       }
     } catch (err) {
       // Offline fallback
@@ -161,10 +169,10 @@ export const AuthProvider = ({ children }) => {
     setSessionToken(newSessToken);
     setFailedLoginsCount(0);
 
-    localStorage.setItem(AUTH_USER_KEY, JSON.stringify(foundUser));
-    localStorage.setItem(TOKEN_KEY, newAccess);
-    localStorage.setItem(REFRESH_TOKEN_KEY, newRefresh);
-    localStorage.setItem(SESSION_TOKEN_KEY, newSessToken);
+    sessionStorage.setItem(AUTH_USER_KEY, JSON.stringify(foundUser));
+    sessionStorage.setItem(TOKEN_KEY, newAccess);
+    sessionStorage.setItem(REFRESH_TOKEN_KEY, newRefresh);
+    sessionStorage.setItem(SESSION_TOKEN_KEY, newSessToken);
 
     logAuditEvent({
       user: foundUser,
@@ -189,7 +197,7 @@ export const AuthProvider = ({ children }) => {
       avatar: data.fullName ? data.fullName.split(' ').map(n=>n[0]).join('') : 'NE',
     };
     setUser(newUser);
-    localStorage.setItem(AUTH_USER_KEY, JSON.stringify(newUser));
+    sessionStorage.setItem(AUTH_USER_KEY, JSON.stringify(newUser));
     showToast(`Account created successfully for ${data.fullName}!`, 'success');
   };
 
@@ -202,7 +210,7 @@ export const AuthProvider = ({ children }) => {
         resource: 'User Session Terminated',
         status: 'SUCCESS'
       });
-      const storedRefresh = localStorage.getItem(REFRESH_TOKEN_KEY);
+      const storedRefresh = sessionStorage.getItem(REFRESH_TOKEN_KEY);
       try {
         await fetch('http://127.0.0.1:8000/api/v1/auth/logout/', {
           method: 'POST',
@@ -221,10 +229,10 @@ export const AuthProvider = ({ children }) => {
     setRefreshToken(null);
     setSessionToken(null);
     setActiveSessions([]);
-    localStorage.removeItem(AUTH_USER_KEY);
-    localStorage.removeItem(TOKEN_KEY);
-    localStorage.removeItem(REFRESH_TOKEN_KEY);
-    localStorage.removeItem(SESSION_TOKEN_KEY);
+    sessionStorage.removeItem(AUTH_USER_KEY);
+    sessionStorage.removeItem(TOKEN_KEY);
+    sessionStorage.removeItem(REFRESH_TOKEN_KEY);
+    sessionStorage.removeItem(SESSION_TOKEN_KEY);
     sessionStorage.clear();
     if (window.location.hash) {
       window.history.replaceState(null, '', window.location.pathname);
@@ -242,9 +250,9 @@ export const AuthProvider = ({ children }) => {
     setAccessToken(newAccess);
     setSessionToken(newSessToken);
     setFailedLoginsCount(0);
-    localStorage.setItem(AUTH_USER_KEY, JSON.stringify(targetUser));
-    localStorage.setItem(TOKEN_KEY, newAccess);
-    localStorage.setItem(SESSION_TOKEN_KEY, newSessToken);
+    sessionStorage.setItem(AUTH_USER_KEY, JSON.stringify(targetUser));
+    sessionStorage.setItem(TOKEN_KEY, newAccess);
+    sessionStorage.setItem(SESSION_TOKEN_KEY, newSessToken);
 
     logAuditEvent({
       user: targetUser,
@@ -268,11 +276,11 @@ export const AuthProvider = ({ children }) => {
         department: updatedFields.department || prevUser?.department || 'Engineering',
         skills: updatedFields.skills || prevUser?.skills || ['React.js', 'Django', 'Python', 'Git']
       };
-      localStorage.setItem(AUTH_USER_KEY, JSON.stringify(newUser));
+      sessionStorage.setItem(AUTH_USER_KEY, JSON.stringify(newUser));
       return newUser;
     });
 
-    const token = localStorage.getItem(TOKEN_KEY);
+    const token = sessionStorage.getItem(TOKEN_KEY);
     if (token) {
       try {
         await fetch('http://127.0.0.1:8000/api/v1/users/me/', {

@@ -1,7 +1,8 @@
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 from config import Config
 from extensions import db, jwt, cors
 from seed import seed_database
+from flask_cors import CORS
 
 # Import Blueprints
 from routes.auth_routes import auth_bp
@@ -20,8 +21,8 @@ def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
 
-    # Initialize extensions
-    cors.init_app(app, resources={r"/api/*": {"origins": "*"}})
+    # Enable global CORS for all origins and routes
+    CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True)
     jwt.init_app(app)
 
     # Attempt PostgreSQL database connection; fallback to local SQLite if PostgreSQL server is offline
@@ -35,6 +36,14 @@ def create_app():
         print(f"PostgreSQL connection offline ({str(e)}). Using local SQLite fallback database...")
         app.config['SQLALCHEMY_DATABASE_URI'] = Config.FALLBACK_SQLITE_URI
         db.init_app(app)
+
+    # Ensure CORS headers on every response and preflight OPTIONS request
+    @app.after_request
+    def after_request(response):
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,X-Requested-With')
+        response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS,PATCH')
+        return response
 
     # Register Blueprints
     app.register_blueprint(auth_bp)
@@ -58,14 +67,11 @@ def create_app():
             'engine': 'Python Flask + SQLAlchemy ORM (Non-AI Rule Engine)'
         })
 
-    # Seed Database on startup
-    with app.app_context():
-        seed_database()
-
     return app
 
-app = create_app()
-
 if __name__ == '__main__':
+    app = create_app()
+    with app.app_context():
+        seed_database()
     print("[AUREON BACKEND] Starting Aureon Flask REST API Backend on http://127.0.0.1:8000 ...")
     app.run(host='0.0.0.0', port=8000, debug=True)

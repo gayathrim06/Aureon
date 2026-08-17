@@ -1,12 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Breadcrumb } from './Breadcrumb';
 import { useAuth } from '../../context/AuthContext';
 import { Modal } from './Modal';
 import { Input } from './Input';
 import { Button } from './Button';
-import { initialUsers, developerMetrics } from '../../services/mockData';
 import {
-  User, Mail, Shield, Briefcase, Building, Edit3, Plus, X, Award,
+  User, Mail, Shield, Briefcase, Building, Edit3, Plus, X, Award, Phone, Calendar, Key, Hash,
   Activity, CheckSquare, GitCommit, Code2, Bug, TestTube2, Layers, Server, Sparkles, CheckCircle2
 } from 'lucide-react';
 
@@ -15,41 +14,73 @@ export const UserProfile = () => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   // Fallback defaults if user properties are omitted
-  const role = user?.role || 'ROLE_ADMIN';
-  const name = user?.name || user?.full_name || 'Aureon Engineer';
+  const role = user?.role || user?.role_name || 'ROLE_ADMIN';
+  const name = user?.name || user?.full_name || 'Aureon User';
+  const username = user?.username || (user?.email ? user.email.split('@')[0] : '');
   const email = user?.email || 'user@aureon.io';
-  const department = user?.department || (
-    role === 'ROLE_ADMIN' ? 'System Administration' :
-    role === 'ROLE_PM' ? 'Product & Project Management' :
-    role === 'ROLE_LEAD' ? 'Engineering Lead' :
-    role === 'ROLE_QA' ? 'Quality Assurance' : 'Software Engineering'
-  );
-  const title = user?.designation || user?.title || (
-    role === 'ROLE_ADMIN' ? 'Platform Security & System Administrator' :
-    role === 'ROLE_PM' ? 'Senior Technical Program Manager' :
-    role === 'ROLE_LEAD' ? 'Full Stack Engineering Lead' :
-    role === 'ROLE_QA' ? 'Senior QA Automation Engineer' : 'Full Stack Developer'
-  );
-  const avatar = user?.avatar || user?.avatar_url || user?.profile_image || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150';
+  const phone = user?.phone || '';
+  const employeeId = user?.employee_id || user?.employeeId || '';
+  const department = user?.department || 'Software Engineering';
+  const title = user?.designation || user?.title || 'Software Developer';
   const gender = user?.gender || 'PREFER_NOT_TO_SAY';
-  const skills = user?.skills || ['React.js', 'Django REST Framework', 'Python', 'PostgreSQL', 'Docker', 'Git', 'Agile Methodologies'];
+  const dob = user?.date_of_birth || user?.dob || '2000-01-01';
+  const petName = user?.pet_name || user?.petName || '';
+  const schoolFriendName = user?.school_friend_name || user?.best_friend_name || user?.bestFriendName || '';
+  const skills = user?.skills || ['React.js', 'Python', 'PostgreSQL', 'Docker', 'REST API', 'Git', 'Agile Methodologies'];
 
-  // Form State
+  const [stats, setStats] = useState({
+    commits: 0,
+    tasks_done: 0,
+    pull_requests: 0,
+    code_reviews: 0
+  });
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      const token = sessionStorage.getItem('aureon_jwt_access_token');
+      try {
+        const res = await fetch('http://127.0.0.1:8000/api/v1/users/me/stats', {
+          headers: {
+            'Authorization': token ? `Bearer ${token}` : ''
+          }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setStats(data.stats);
+        }
+      } catch (err) {
+        // Fallback
+      }
+    };
+    fetchStats();
+  }, [user]);
+
+  // Form State for Editing ALL 11 tbl_user Columns
   const [editName, setEditName] = useState(name);
+  const [editUsername, setEditUsername] = useState(username);
+  const [editPhone, setEditPhone] = useState(phone);
+  const [editEmployeeId, setEditEmployeeId] = useState(employeeId);
   const [editTitle, setEditTitle] = useState(title);
   const [editDepartment, setEditDepartment] = useState(department);
   const [editGender, setEditGender] = useState(gender);
+  const [editDob, setEditDob] = useState(dob);
+  const [editPetName, setEditPetName] = useState(petName);
+  const [editSchoolFriendName, setEditSchoolFriendName] = useState(schoolFriendName);
   const [skillsList, setSkillsList] = useState(skills);
   const [newSkillInput, setNewSkillInput] = useState('');
-  const [avatarUrl, setAvatarUrl] = useState(avatar);
 
   const openModal = () => {
     setEditName(name);
+    setEditUsername(username);
+    setEditPhone(phone);
+    setEditEmployeeId(employeeId);
     setEditTitle(title);
     setEditDepartment(department);
     setEditGender(gender);
+    setEditDob(dob);
+    setEditPetName(petName);
+    setEditSchoolFriendName(schoolFriendName);
     setSkillsList(skills);
-    setAvatarUrl(avatar);
     setIsEditModalOpen(true);
   };
 
@@ -66,19 +97,40 @@ export const UserProfile = () => {
     setSkillsList(skillsList.filter(s => s !== skillToRemove));
   };
 
-  const handleSaveProfile = (e) => {
+  const handleSaveProfile = async (e) => {
     e.preventDefault();
-    updateProfile({
+    const updatedData = {
       name: editName,
       full_name: editName,
+      username: editUsername,
+      phone: editPhone,
+      employee_id: editEmployeeId,
       title: editTitle,
       designation: editTitle,
       department: editDepartment,
       gender: editGender,
-      skills: skillsList,
-      avatar: avatarUrl,
-      avatar_url: avatarUrl
-    });
+      date_of_birth: editDob,
+      pet_name: editPetName,
+      school_friend_name: editSchoolFriendName,
+      best_friend_name: editSchoolFriendName,
+      skills: skillsList
+    };
+
+    const token = sessionStorage.getItem('aureon_jwt_access_token');
+    try {
+      await fetch('http://127.0.0.1:8000/api/v1/users/me', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': token ? `Bearer ${token}` : ''
+        },
+        body: JSON.stringify(updatedData)
+      });
+    } catch (err) {
+      console.error("Profile API update error:", err);
+    }
+
+    updateProfile(updatedData);
     setIsEditModalOpen(false);
   };
 
@@ -87,38 +139,38 @@ export const UserProfile = () => {
     switch (role) {
       case 'ROLE_ADMIN':
         return [
-          { label: 'System Uptime', value: '99.98%', icon: Server, color: 'border-l-emerald-500' },
-          { label: 'Active Users', value: '142', icon: User, color: 'border-l-blue-500' },
-          { label: 'Audit Logs', value: '1,280', icon: Activity, color: 'border-l-indigo-500' },
-          { label: 'Security Level', value: 'ENTERPRISE', icon: Shield, color: 'border-l-amber-500' }
+          { label: 'System Health', value: '100%', icon: Server, color: 'border-l-emerald-500' },
+          { label: 'Registered Users', value: '4', icon: User, color: 'border-l-blue-500' },
+          { label: 'Audit Telemetry', value: 'ACTIVE', icon: Activity, color: 'border-l-indigo-500' },
+          { label: 'Security Standard', value: 'BCNF + JWT', icon: Shield, color: 'border-l-amber-500' }
         ];
       case 'ROLE_PM':
         return [
-          { label: 'Active Projects', value: '8', icon: Layers, color: 'border-l-indigo-500' },
-          { label: 'Sprint Progress', value: '84%', icon: Activity, color: 'border-l-emerald-500' },
-          { label: 'Milestones Met', value: '24', icon: Award, color: 'border-l-blue-500' },
-          { label: 'Team Capacity', value: '92%', icon: User, color: 'border-l-purple-500' }
+          { label: 'Active Projects', value: '0', icon: Layers, color: 'border-l-indigo-500' },
+          { label: 'Sprint Velocity', value: '0%', icon: Activity, color: 'border-l-emerald-500' },
+          { label: 'Milestones', value: '0', icon: Award, color: 'border-l-blue-500' },
+          { label: 'Team Allocation', value: 'Optimal', icon: User, color: 'border-l-purple-500' }
         ];
       case 'ROLE_LEAD':
         return [
-          { label: 'Team Velocity', value: '48 pts', icon: Activity, color: 'border-l-emerald-500' },
-          { label: 'Code Quality', value: 'A Grade', icon: Code2, color: 'border-l-blue-500' },
-          { label: 'Code Reviews', value: '34', icon: CheckSquare, color: 'border-l-purple-500' },
-          { label: 'Active Sprints', value: '3', icon: Layers, color: 'border-l-amber-500' }
+          { label: 'Team Velocity', value: '0 pts', icon: Activity, color: 'border-l-emerald-500' },
+          { label: 'Code Quality', value: '100%', icon: Code2, color: 'border-l-blue-500' },
+          { label: 'Code Reviews', value: '0', icon: CheckSquare, color: 'border-l-purple-500' },
+          { label: 'Active Sprints', value: '0', icon: Layers, color: 'border-l-amber-500' }
         ];
       case 'ROLE_QA':
         return [
-          { label: 'Test Cases', value: '240', icon: CheckSquare, color: 'border-l-emerald-500' },
-          { label: 'Bugs Logged', value: '18', icon: Bug, color: 'border-l-rose-500' },
-          { label: 'Test Suites', value: '12', icon: TestTube2, color: 'border-l-blue-500' },
-          { label: 'Pass Rate', value: '94%', icon: Activity, color: 'border-l-purple-500' }
+          { label: 'Test Cases', value: '0', icon: CheckSquare, color: 'border-l-emerald-500' },
+          { label: 'Bugs Logged', value: '0', icon: Bug, color: 'border-l-rose-500' },
+          { label: 'Test Suites', value: '0', icon: TestTube2, color: 'border-l-blue-500' },
+          { label: 'Pass Rate', value: '100%', icon: Activity, color: 'border-l-purple-500' }
         ];
       default:
         return [
-          { label: 'Commits', value: '124', icon: GitCommit, color: 'border-l-blue-500' },
-          { label: 'Tasks Done', value: '38', icon: CheckSquare, color: 'border-l-emerald-500' },
-          { label: 'Pull Requests', value: '19', icon: Code2, color: 'border-l-purple-500' },
-          { label: 'Code Reviews', value: '15', icon: User, color: 'border-l-amber-500' }
+          { label: 'Commits', value: String(stats.commits), icon: GitCommit, color: 'border-l-blue-500' },
+          { label: 'Tasks Completed', value: String(stats.tasks_done), icon: CheckSquare, color: 'border-l-emerald-500' },
+          { label: 'Pull Requests', value: String(stats.pull_requests), icon: Code2, color: 'border-l-purple-500' },
+          { label: 'Code Reviews', value: String(stats.code_reviews), icon: User, color: 'border-l-amber-500' }
         ];
     }
   };
@@ -147,12 +199,22 @@ export const UserProfile = () => {
               <span className="text-slate-500">•</span>
               <Building className="w-3.5 h-3.5 text-indigo-400" /> {department}
             </p>
-            <div className="flex items-center gap-4 mt-2.5 text-[11px] text-slate-300">
+            <div className="flex flex-wrap items-center gap-4 mt-2.5 text-[11px] text-slate-300">
               <span className="flex items-center gap-1.5">
                 <Mail className="w-3.5 h-3.5 text-indigo-400" /> {email}
               </span>
+              {phone && (
+                <span className="flex items-center gap-1.5">
+                  <Phone className="w-3.5 h-3.5 text-indigo-400" /> {phone}
+                </span>
+              )}
+              {employeeId && (
+                <span className="flex items-center gap-1.5">
+                  <Hash className="w-3.5 h-3.5 text-indigo-400" /> ID: {employeeId}
+                </span>
+              )}
               <span className="flex items-center gap-1.5 text-emerald-400 font-semibold">
-                <CheckCircle2 className="w-3.5 h-3.5" /> Account Verified
+                <CheckCircle2 className="w-3.5 h-3.5" /> Account Active & Verified
               </span>
             </div>
           </div>
@@ -162,7 +224,7 @@ export const UserProfile = () => {
           onClick={openModal}
           className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-lg shadow-indigo-600/30 transition-all hover:scale-105 shrink-0"
         >
-          <Edit3 className="w-4 h-4" /> Edit Profile & Preferences
+          <Edit3 className="w-4 h-4" /> Edit Profile Options
         </button>
       </div>
 
@@ -181,6 +243,63 @@ export const UserProfile = () => {
             </div>
           );
         })}
+      </div>
+
+      {/* Detailed Profile Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Personal & Employment Info */}
+        <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs space-y-3">
+          <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+            <User className="w-4 h-4 text-blue-500" /> Personal & Account Details (`tbl_user`)
+          </h3>
+          <div className="space-y-2 text-xs text-slate-600 dark:text-slate-400">
+            <div className="flex justify-between py-1.5 border-b border-slate-100 dark:border-slate-800">
+              <span className="font-semibold text-slate-700 dark:text-slate-300">Username</span>
+              <span className="font-mono text-indigo-400 font-bold">{username || 'N/A'}</span>
+            </div>
+            <div className="flex justify-between py-1.5 border-b border-slate-100 dark:border-slate-800">
+              <span className="font-semibold text-slate-700 dark:text-slate-300">Employee ID / Staff Code</span>
+              <span className="font-mono text-slate-300">{employeeId || 'EMP-UNASSIGNED'}</span>
+            </div>
+            <div className="flex justify-between py-1.5 border-b border-slate-100 dark:border-slate-800">
+              <span className="font-semibold text-slate-700 dark:text-slate-300">Contact Phone</span>
+              <span>{phone || 'Not configured'}</span>
+            </div>
+            <div className="flex justify-between py-1.5 border-b border-slate-100 dark:border-slate-800">
+              <span className="font-semibold text-slate-700 dark:text-slate-300">Gender Preference</span>
+              <span>{gender.replace(/_/g, ' ')}</span>
+            </div>
+            <div className="flex justify-between py-1.5">
+              <span className="font-semibold text-slate-700 dark:text-slate-300">Date of Birth</span>
+              <span className="font-mono">{dob}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Security Recovery Answers */}
+        <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs space-y-3">
+          <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+            <Key className="w-4 h-4 text-amber-500" /> Security Recovery Credentials
+          </h3>
+          <div className="space-y-2 text-xs text-slate-600 dark:text-slate-400">
+            <div className="flex justify-between py-1.5 border-b border-slate-100 dark:border-slate-800">
+              <span className="font-semibold text-slate-700 dark:text-slate-300">Pet Name Answer</span>
+              <span className="font-mono text-amber-400 font-bold">{petName ? '••••••••' : 'Not set'}</span>
+            </div>
+            <div className="flex justify-between py-1.5 border-b border-slate-100 dark:border-slate-800">
+              <span className="font-semibold text-slate-700 dark:text-slate-300">Best Friend Name Answer</span>
+              <span className="font-mono text-amber-400 font-bold">{schoolFriendName ? '••••••••' : 'Not set'}</span>
+            </div>
+            <div className="flex justify-between py-1.5 border-b border-slate-100 dark:border-slate-800">
+              <span className="font-semibold text-slate-700 dark:text-slate-300">MFA Status</span>
+              <span className="text-slate-400 font-semibold">Disabled (Password Auth)</span>
+            </div>
+            <div className="flex justify-between py-1.5">
+              <span className="font-semibold text-slate-700 dark:text-slate-300">Password Reset Verification</span>
+              <span className="text-emerald-400 font-bold">READY</span>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Technical Skills & Competencies Section */}
@@ -209,67 +328,48 @@ export const UserProfile = () => {
         </div>
       </div>
 
-      {/* Security & Access Information */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs space-y-3">
-          <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-            <Shield className="w-4 h-4 text-emerald-500" /> RBAC Security & Authorization
-          </h3>
-          <div className="space-y-2 text-xs text-slate-600 dark:text-slate-400">
-            <div className="flex justify-between py-1.5 border-b border-slate-100 dark:border-slate-800">
-              <span className="font-semibold text-slate-700 dark:text-slate-300">Assigned Role</span>
-              <span className="font-mono text-indigo-600 dark:text-indigo-400 font-bold">{role}</span>
-            </div>
-            <div className="flex justify-between py-1.5 border-b border-slate-100 dark:border-slate-800">
-              <span className="font-semibold text-slate-700 dark:text-slate-300">Authentication Method</span>
-              <span>OAuth2 JWT Session</span>
-            </div>
-            <div className="flex justify-between py-1.5">
-              <span className="font-semibold text-slate-700 dark:text-slate-300">Audit Status</span>
-              <span className="text-emerald-600 dark:text-emerald-400 font-bold">COMPLIANT</span>
-            </div>
-          </div>
-        </div>
-
-        <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs space-y-3">
-          <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-amber-500" /> Active Workspace Configuration
-          </h3>
-          <div className="space-y-2 text-xs text-slate-600 dark:text-slate-400">
-            <div className="flex justify-between py-1.5 border-b border-slate-100 dark:border-slate-800">
-              <span className="font-semibold text-slate-700 dark:text-slate-300">Department</span>
-              <span>{department}</span>
-            </div>
-            <div className="flex justify-between py-1.5 border-b border-slate-100 dark:border-slate-800">
-              <span className="font-semibold text-slate-700 dark:text-slate-300">Gender Preference</span>
-              <span>{gender.replace(/_/g, ' ')}</span>
-            </div>
-            <div className="flex justify-between py-1.5">
-              <span className="font-semibold text-slate-700 dark:text-slate-300">Notification Preferences</span>
-              <span className="text-indigo-600 dark:text-indigo-400 font-bold">ENABLED</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* EDIT PROFILE MODAL */}
+      {/* COMPLETE EDIT PROFILE MODAL (ALL 11 COLUMNS) */}
       <Modal
         isOpen={isEditModalOpen}
         onClose={() => setIsEditModalOpen(false)}
-        title="Edit User Profile Details"
-        subtitle="Update your full name, job title, department, avatar image, and skills"
+        title="Edit User Profile Details (`tbl_user`)"
+        subtitle="Modify full name, username, contact information, employee ID, department, designation, and security recovery answers"
       >
-        <form onSubmit={handleSaveProfile} className="space-y-4">
-          <Input
-            label="Full Name"
-            placeholder="e.g. Sarah Connor"
-            value={editName}
-            onChange={(e) => setEditName(e.target.value)}
-            required
-          />
+        <form onSubmit={handleSaveProfile} className="space-y-4 max-h-[75vh] overflow-y-auto pr-1">
+          
+          <div className="grid grid-cols-2 gap-3">
+            <Input
+              label="Full Name"
+              placeholder="e.g. Sainu Anna Sajan"
+              value={editName}
+              onChange={(e) => setEditName(e.target.value)}
+              required
+            />
+            <Input
+              label="Username"
+              placeholder="e.g. sainu"
+              value={editUsername}
+              onChange={(e) => setEditUsername(e.target.value)}
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <Input
+              label="Phone Number"
+              placeholder="e.g. +91 9876543210"
+              value={editPhone}
+              onChange={(e) => setEditPhone(e.target.value)}
+            />
+            <Input
+              label="Employee ID / Staff Code"
+              placeholder="e.g. EMP-004"
+              value={editEmployeeId}
+              onChange={(e) => setEditEmployeeId(e.target.value)}
+            />
+          </div>
 
           <Input
-            label="Job Title / Designation"
+            label="Job Designation / Title"
             placeholder="e.g. Senior Software Architect"
             value={editTitle}
             onChange={(e) => setEditTitle(e.target.value)}
@@ -286,10 +386,11 @@ export const UserProfile = () => {
                 onChange={(e) => setEditDepartment(e.target.value)}
                 className="w-full px-3.5 py-2.5 bg-[#111827] text-[#F8FAFC] text-sm rounded-[12px] border border-[#334155] focus:outline-none"
               >
+                <option value="Executive Management">Executive Management</option>
                 <option value="System Administration">System Administration</option>
                 <option value="Product & Project Management">Product & Project Management</option>
                 <option value="Engineering Lead">Engineering Lead</option>
-                <option value="Software Engineering">Software Engineering</option>
+                <option value="Engineering">Engineering</option>
                 <option value="Quality Assurance">Quality Assurance</option>
               </select>
             </div>
@@ -308,6 +409,34 @@ export const UserProfile = () => {
                 <option value="NON_BINARY">Non-Binary</option>
                 <option value="PREFER_NOT_TO_SAY">Prefer Not to Say</option>
               </select>
+            </div>
+          </div>
+
+          <Input
+            label="Date of Birth"
+            type="date"
+            value={editDob}
+            onChange={(e) => setEditDob(e.target.value)}
+          />
+
+          {/* Security Recovery Answers Section */}
+          <div className="space-y-3 pt-2 border-t border-slate-700/60">
+            <label className="block text-xs font-semibold uppercase tracking-wider text-amber-400">
+              Security Recovery Answers (used for Password Recovery)
+            </label>
+            <div className="grid grid-cols-2 gap-3">
+              <Input
+                label="Pet Name Answer"
+                placeholder="e.g. Bruno"
+                value={editPetName}
+                onChange={(e) => setEditPetName(e.target.value)}
+              />
+              <Input
+                label="Best Friend Name Answer"
+                placeholder="e.g. Ankit"
+                value={editSchoolFriendName}
+                onChange={(e) => setEditSchoolFriendName(e.target.value)}
+              />
             </div>
           </div>
 
@@ -354,7 +483,7 @@ export const UserProfile = () => {
               Cancel
             </Button>
             <Button type="submit" variant="primary">
-              Save Profile Changes
+              Save All Profile Changes
             </Button>
           </div>
         </form>
@@ -362,3 +491,4 @@ export const UserProfile = () => {
     </div>
   );
 };
+export default UserProfile;

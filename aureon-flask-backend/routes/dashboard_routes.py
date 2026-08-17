@@ -6,14 +6,32 @@ from services.risk_engine_service import RuleEngine
 
 dashboard_bp = Blueprint('dashboards', __name__, url_prefix='/api/v1/dashboards')
 
+from models import User, Project, Team, Task, Risk, Repository, Commit, CodeAnalysis, AuditLog
+
 @dashboard_bp.route('/admin', methods=['GET'])
 @dashboard_bp.route('/admin/', methods=['GET'])
 def get_admin_dashboard():
+    # 1. Total Users
     total_users = User.query.count()
+    # 2. Active Users
     active_users = User.query.filter_by(status='ACTIVE').count()
+    # 3. Total Projects
     total_projects = Project.query.count()
-    total_risks = Risk.query.filter_by(status='OPEN').count()
-    recent_logs = AuditLog.query.order_by(AuditLog.timestamp.desc()).limit(10).all()
+    # 4. Active Projects
+    active_projects = Project.query.filter_by(status='IN_PROGRESS').count()
+    # 5. Completed Projects
+    completed_projects = Project.query.filter_by(status='COMPLETED').count()
+    # 6. Total Teams
+    total_teams = Team.query.count()
+    # 7. Pending Approvals
+    pending_approvals = Task.query.filter_by(status='REVIEW').count()
+    # 8. System Alerts
+    system_alerts = Risk.query.filter_by(status='OPEN').count()
+    # 9. Recent System Activities
+    recent_logs = AuditLog.query.order_by(AuditLog.timestamp.desc()).limit(8).all()
+    # 10. Overall Project Health Summary
+    projects = Project.query.all()
+    avg_health = sum(p.health_score for p in projects) // len(projects) if projects else 100
 
     return jsonify({
         'success': True,
@@ -21,10 +39,14 @@ def get_admin_dashboard():
             'total_users': total_users,
             'active_users': active_users,
             'total_projects': total_projects,
-            'open_risks': total_risks,
-            'system_health': 'OPERATIONAL'
+            'active_projects': active_projects,
+            'completed_projects': completed_projects,
+            'total_teams': total_teams,
+            'pending_approvals': pending_approvals,
+            'system_alerts': system_alerts,
+            'overall_project_health': avg_health
         },
-        'audit_logs': [l.to_dict() for l in recent_logs]
+        'recent_activities': [l.to_dict() for l in recent_logs]
     }), 200
 
 @dashboard_bp.route('/pm', methods=['GET'])
