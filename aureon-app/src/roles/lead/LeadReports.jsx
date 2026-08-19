@@ -5,17 +5,18 @@ import { FileText, TrendingUp, CheckSquare, GitCommit, Users } from 'lucide-reac
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 
 export const LeadReports = () => {
-  const chartData = developerMetrics.map(d => ({ name: d.name.split(' ')[0], velocity: d.velocity, completed: d.tasksCompleted, commits: d.commits }));
+  const safeDevs = Array.isArray(developerMetrics) ? developerMetrics : [];
+  const chartData = safeDevs.map(d => ({ name: (d.name||'Dev').split(' ')[0], velocity: d.velocity||0, completed: d.tasksCompleted||0, commits: d.commits||0 }));
 
   return (
     <div className="space-y-6">
       <Breadcrumb activeTab="Team Reports" />
       <div><h1 className="text-xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2"><FileText className="w-5 h-5 text-blue-500" />Team Performance Reports</h1><p className="text-xs text-gray-500">Team productivity scores, task completion rates, and developer velocity analytics.</p></div>
       <div className="grid grid-cols-4 gap-4">
-        {[{ label: 'Team Avg Velocity', value: Math.round(developerMetrics.reduce((a,d)=>a+d.velocity,0)/developerMetrics.length) + '%', icon: TrendingUp, color: 'border-l-blue-500' },
-          { label: 'Total Tasks Done', value: developerMetrics.reduce((a,d)=>a+d.tasksCompleted,0), icon: CheckSquare, color: 'border-l-emerald-500' },
-          { label: 'Total Commits', value: developerMetrics.reduce((a,d)=>a+d.commits,0), icon: GitCommit, color: 'border-l-purple-500' },
-          { label: 'Team Members', value: developerMetrics.length, icon: Users, color: 'border-l-indigo-500' }
+        {[{ label: 'Team Avg Velocity', value: (safeDevs.length > 0 ? Math.round(safeDevs.reduce((a,d)=>a+(d.velocity||0),0)/safeDevs.length) : 100) + '%', icon: TrendingUp, color: 'border-l-blue-500' },
+          { label: 'Total Tasks Done', value: safeDevs.reduce((a,d)=>a+(d.tasksCompleted||0),0), icon: CheckSquare, color: 'border-l-emerald-500' },
+          { label: 'Total Commits', value: safeDevs.reduce((a,d)=>a+(d.commits||0),0), icon: GitCommit, color: 'border-l-purple-500' },
+          { label: 'Team Members', value: safeDevs.length, icon: Users, color: 'border-l-indigo-500' }
         ].map((w, i) => { const Icon = w.icon; return (
           <div key={i} className={`p-4 rounded-xl bg-white dark:bg-gray-800 border-l-4 ${w.color} border-y border-r border-gray-200 dark:border-gray-700 shadow-sm`}>
             <div className="flex items-center justify-between text-gray-500"><span className="text-[11px] font-semibold">{w.label}</span><Icon className="w-4 h-4 text-gray-400" /></div>

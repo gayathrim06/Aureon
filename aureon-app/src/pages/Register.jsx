@@ -135,6 +135,12 @@ export const Register = () => {
   const onSubmit = async (data) => {
     setIsLoading(true);
     setApiError('');
+
+    if (!data.dateOfBirth && !data.petName && !data.schoolFriendName) {
+      setApiError('Please provide at least one security answer (Date of Birth, Pet Name, or School Friend Name) for account recovery.');
+      setIsLoading(false);
+      return;
+    }
     try {
       const res = await fetch('http://127.0.0.1:8000/api/v1/auth/register/', {
         method: 'POST',
@@ -238,43 +244,37 @@ export const Register = () => {
                 <label className="text-xs font-bold uppercase tracking-wider text-[#38BDF8] flex items-center gap-2">
                   <ShieldCheck className="w-4 h-4 text-[#38BDF8]" /> Security & Password Recovery Details
                 </label>
-                <span className="text-[11px] text-[#94A3B8]">Required for Password Reset</span>
+                <span className="text-[11px] text-[#38BDF8] font-semibold">(Provide at least 1 answer)</span>
               </div>
               
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-[11px] font-semibold text-[#CBD5E1] mb-1">Date of Birth *</label>
+                  <label className="block text-[11px] font-semibold text-[#CBD5E1] mb-1">Date of Birth (Optional)</label>
                   <input
                     type="date"
-                    required
                     className="w-full px-3 py-2 bg-[#0F172A] text-[#F8FAFC] text-xs rounded-xl border border-[#334155] focus:border-[#2563EB] focus:outline-none"
-                    {...register('dateOfBirth', { required: 'Date of birth is required' })}
+                    {...register('dateOfBirth')}
                   />
-                  {errors.dateOfBirth && <p className="text-[10px] text-[#EF4444] mt-0.5">{errors.dateOfBirth.message}</p>}
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-semibold text-[#CBD5E1] mb-1">Pet Name *</label>
+                  <label className="block text-[11px] font-semibold text-[#CBD5E1] mb-1">Pet Name (Optional)</label>
                   <input
                     type="text"
-                    required
                     placeholder="e.g. Bruno"
                     className="w-full px-3 py-2 bg-[#0F172A] text-[#F8FAFC] text-xs rounded-xl border border-[#334155] focus:border-[#2563EB] focus:outline-none"
-                    {...register('petName', { required: 'Pet name is required' })}
+                    {...register('petName')}
                   />
-                  {errors.petName && <p className="text-[10px] text-[#EF4444] mt-0.5">{errors.petName.message}</p>}
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-semibold text-[#CBD5E1] mb-1">School Friend Name *</label>
+                  <label className="block text-[11px] font-semibold text-[#CBD5E1] mb-1">School Friend Name (Optional)</label>
                   <input
                     type="text"
-                    required
                     placeholder="e.g. Ankit"
                     className="w-full px-3 py-2 bg-[#0F172A] text-[#F8FAFC] text-xs rounded-xl border border-[#334155] focus:border-[#2563EB] focus:outline-none"
-                    {...register('schoolFriendName', { required: 'School friend name is required' })}
+                    {...register('schoolFriendName')}
                   />
-                  {errors.schoolFriendName && <p className="text-[10px] text-[#EF4444] mt-0.5">{errors.schoolFriendName.message}</p>}
                 </div>
               </div>
             </div>

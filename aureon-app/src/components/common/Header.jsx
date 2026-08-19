@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { 
-  Sun, Moon, Shield, Bell, Search, User, LogOut, ChevronDown, 
+  Sun, Moon, Coffee, Shield, Bell, Search, User, LogOut, ChevronDown, 
   Key, Activity, Sparkles
 } from 'lucide-react';
 
@@ -35,7 +35,7 @@ export const Header = ({ currentTab, onSelectTab, onNavigateHome }) => {
       <div className="hidden lg:flex items-center gap-2">
         <span className="px-3.5 py-1 rounded-full bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 text-xs font-semibold flex items-center gap-2">
           <span className="w-2 h-2 rounded-full bg-indigo-500 status-pulse" />
-          Workspace: <strong className="text-slate-900 dark:text-white font-bold">{user?.role?.replace('ROLE_', '') || 'User'} Portal</strong>
+          Workspace: <strong className="text-slate-900 dark:text-white font-bold">{(typeof user?.role === 'string' ? user.role : user?.role?.name || user?.role?.code || 'User').replace('ROLE_', '')} Portal</strong>
         </span>
       </div>
 
@@ -47,17 +47,15 @@ export const Header = ({ currentTab, onSelectTab, onNavigateHome }) => {
           <span className="font-mono text-[11px] font-medium">JWT: {formatTimer(sessionExpiry)}</span>
         </div>
 
-        {/* Theme Toggle Button */}
+        {/* Theme Toggle Button (Dark -> Light -> Warm Eye-Care) */}
         <button
           onClick={toggleTheme}
-          className="p-2 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-          title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} Mode`}
+          className="p-2 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all duration-200"
+          title={`Current Theme: ${theme === 'dark' ? 'Dark Obsidian' : theme === 'warm' ? 'Warm Eye-Care Sepia' : 'Clean Light'} (Click to switch)`}
         >
-          {theme === 'dark' ? (
-            <Sun className="w-4 h-4 text-amber-400 hover:rotate-45 transition-transform" />
-          ) : (
-            <Moon className="w-4 h-4 text-slate-700 hover:-rotate-12 transition-transform" />
-          )}
+          {theme === 'dark' && <Sun className="w-4 h-4 text-amber-400 hover:rotate-45 transition-transform" />}
+          {theme === 'light' && <Coffee className="w-4 h-4 text-amber-700 hover:scale-110 transition-transform" />}
+          {theme === 'warm' && <Moon className="w-4 h-4 text-indigo-400 hover:-rotate-12 transition-transform" />}
         </button>
 
         {/* Notifications */}
@@ -79,9 +77,9 @@ export const Header = ({ currentTab, onSelectTab, onNavigateHome }) => {
               {user?.name ? user.name.charAt(0).toUpperCase() : 'U'}
             </div>
             <div className="hidden md:block text-left text-xs">
-              <div className="font-bold text-slate-900 dark:text-white">{user?.name}</div>
+              <div className="font-bold text-slate-900 dark:text-white">{user?.name || user?.full_name || 'User'}</div>
               <div className="text-[10px] text-indigo-600 dark:text-indigo-400 font-semibold">
-                {user?.role?.replace('ROLE_', '')}
+                {(typeof user?.role === 'string' ? user.role : user?.role?.name || user?.role?.code || 'User').replace('ROLE_', '')}
               </div>
             </div>
             <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
@@ -90,10 +88,10 @@ export const Header = ({ currentTab, onSelectTab, onNavigateHome }) => {
           {showProfileMenu && (
             <div className="absolute right-0 mt-2 w-64 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-2 shadow-xl z-50 animate-in fade-in duration-150">
               <div className="px-3 py-2 border-b border-slate-100 dark:border-slate-800">
-                <p className="text-xs font-bold text-slate-900 dark:text-white">{user?.name}</p>
+                <p className="text-xs font-bold text-slate-900 dark:text-white">{user?.name || user?.full_name || 'User'}</p>
                 <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">{user?.email}</p>
                 <span className="inline-block mt-1 text-[10px] bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 px-2 py-0.5 rounded font-mono font-semibold border border-indigo-200 dark:border-indigo-800">
-                  {user?.role}
+                  {typeof user?.role === 'string' ? user.role : user?.role?.code || user?.role?.name || 'User'}
                 </span>
               </div>
               <div className="py-1 space-y-1 mt-1">

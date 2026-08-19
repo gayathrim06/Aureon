@@ -26,7 +26,7 @@ export const QaProjectQuality = () => {
         {[{ label: 'Open Bugs', value: initialBugs.filter(b=>b.status==='OPEN').length, color: 'border-l-rose-500' },
           { label: 'Tests Passed', value: initialTestCases.filter(t=>t.status==='PASSED').length, color: 'border-l-emerald-500' },
           { label: 'Tests Failed', value: initialTestCases.filter(t=>t.status==='FAILED').length, color: 'border-l-red-500' },
-          { label: 'Coverage Avg', value: Math.round(sonarQubePerProject.reduce((a,p)=>a+parseFloat(p.coverage),0)/sonarQubePerProject.length) + '%', color: 'border-l-blue-500' }
+          { label: 'Coverage Avg', value: (Array.isArray(sonarQubePerProject) && sonarQubePerProject.length > 0 ? Math.round(sonarQubePerProject.reduce((a,p)=>a+parseFloat(p.coverage),0)/sonarQubePerProject.length) : 100) + '%', color: 'border-l-blue-500' }
         ].map((w,i) => (
           <div key={i} className={`p-4 rounded-xl bg-white dark:bg-gray-800 border-l-4 ${w.color} border-y border-r border-gray-200 dark:border-gray-700 shadow-sm`}>
             <div className="text-[11px] font-semibold text-gray-500">{w.label}</div>

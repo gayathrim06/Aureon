@@ -8,7 +8,18 @@ import {
 
 export const Sidebar = ({ activeTab, onSelectTab }) => {
   const { user } = useAuth();
-  const role = user?.role || 'ROLE_ADMIN';
+
+  const getNormalizedRole = (u) => {
+    if (!u) return 'ROLE_ADMIN';
+    const r = (typeof u.role === 'string' ? u.role : u.role?.code || u.role_code || u.role_name || '').toUpperCase();
+    if (r.includes('ADMIN')) return 'ROLE_ADMIN';
+    if (r.includes('PM') || r.includes('MANAGER')) return 'ROLE_PM';
+    if (r.includes('LEAD')) return 'ROLE_LEAD';
+    if (r.includes('QA')) return 'ROLE_QA';
+    return 'ROLE_DEV';
+  };
+
+  const role = getNormalizedRole(user);
 
   // Role Navigation Mapping strictly specified by enterprise specification
   const roleNavigations = {

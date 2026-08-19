@@ -6,7 +6,8 @@ import { Cpu, Bug, ShieldAlert, Code2, CheckCircle2 } from 'lucide-react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 
 export const SonarQubeAdmin = () => {
-  const chartData = sonarQubePerProject.map(p => ({ name: p.projectKey, bugs: p.bugs, smells: parseInt(p.codeSmells)||p.codeSmells, coverage: parseFloat(p.coverage) }));
+  const safeProjects = Array.isArray(sonarQubePerProject) ? sonarQubePerProject : [];
+  const chartData = safeProjects.map(p => ({ name: p.projectKey, bugs: p.bugs, smells: parseInt(p.codeSmells)||p.codeSmells, coverage: parseFloat(p.coverage) }));
 
   const columns = [
     { key: 'projectName', label: 'Project', render: (val, row) => (<div><div className="font-bold text-gray-900 dark:text-gray-100">{val}</div><div className="font-mono text-[10px] text-blue-600 dark:text-blue-400">{row.projectKey}</div></div>) },

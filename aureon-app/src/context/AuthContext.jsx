@@ -108,7 +108,8 @@ export const AuthProvider = ({ children }) => {
           ...rawUser,
           role: rawUser.role || rawUser.role_name || rawUser.role_code || 'ROLE_DEV',
           name: rawUser.name || rawUser.full_name || rawUser.username || rawUser.email,
-          avatar: rawUser.avatar_url || rawUser.avatar_preset || rawUser.profile_image || rawUser.avatar
+          avatar: rawUser.avatar_url || rawUser.avatar_preset || rawUser.profile_image || rawUser.avatar,
+          must_change_password: rawUser.must_change_password ?? drfData.must_change_password ?? false
         };
         const newSessionToken = drfData.session_token || `sess_${loggedUser.id}_${Date.now()}`;
 

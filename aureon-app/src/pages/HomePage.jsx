@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { 
   Shield, Layers, UserCheck, Laptop, Bug, ArrowRight, CheckCircle2, 
   Lock, Key, Activity, Cpu, Users, Building, ChevronRight, LogIn,
-  Sun, Moon, Sparkles, Terminal, Code2, ArrowUpRight
+  Sun, Moon, Coffee, Sparkles, Terminal, Code2, ArrowUpRight
 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 
@@ -109,9 +109,11 @@ export const HomePage = ({ onNavigateLogin }) => {
             <button
               onClick={toggleTheme}
               className="p-2 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-              title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} Mode`}
+              title={`Current Theme: ${theme === 'dark' ? 'Dark Obsidian' : theme === 'warm' ? 'Warm Eye-Care Sepia' : 'Clean Light'} (Click to switch)`}
             >
-              {theme === 'dark' ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-700" />}
+              {theme === 'dark' && <Sun className="w-4 h-4 text-amber-400" />}
+              {theme === 'light' && <Coffee className="w-4 h-4 text-amber-700" />}
+              {theme === 'warm' && <Moon className="w-4 h-4 text-indigo-400" />}
             </button>
 
             <button

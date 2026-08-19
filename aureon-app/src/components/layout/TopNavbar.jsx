@@ -5,6 +5,7 @@ import {
   Bell,
   Sun,
   Moon,
+  Coffee,
   Menu,
   Check,
   User,
@@ -66,18 +67,16 @@ export const TopNavbar = ({ onOpenMobileSidebar, onOpenSearchModal }) => {
           <span className="text-purple-950 dark:text-purple-200 font-semibold">{user?.role?.replace('ROLE_', '') || 'Project Manager'}</span>
         </div>
 
-        {/* Theme Toggle Button */}
+        {/* Theme Toggle Button (Dark -> Light -> Warm Eye-Care) */}
         <button
           onClick={toggleTheme}
           className="p-2 rounded-[12px] text-purple-600 dark:text-purple-300 bg-purple-50/80 dark:bg-purple-950/60 border border-purple-200 dark:border-purple-900/60 hover:bg-purple-100 dark:hover:bg-purple-900/60 transition-all duration-200 shadow-xs"
-          title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} Theme`}
+          title={`Current Theme: ${theme === 'dark' ? 'Dark Obsidian' : theme === 'warm' ? 'Warm Eye-Care Sepia' : 'Clean Light'} (Click to switch)`}
           aria-label="Toggle Theme"
         >
-          {theme === 'dark' ? (
-            <Sun className="w-4 h-4 text-amber-400 transition-transform duration-300 hover:rotate-45" />
-          ) : (
-            <Moon className="w-4 h-4 text-purple-600 transition-transform duration-300 hover:-rotate-12" />
-          )}
+          {theme === 'dark' && <Sun className="w-4 h-4 text-amber-400 hover:rotate-45 transition-transform" />}
+          {theme === 'light' && <Coffee className="w-4 h-4 text-amber-700 hover:scale-110 transition-transform" />}
+          {theme === 'warm' && <Moon className="w-4 h-4 text-purple-300 hover:-rotate-12 transition-transform" />}
         </button>
 
         {/* Notification Bell */}

@@ -4,7 +4,6 @@ import { DataTable } from '../../components/common/DataTable';
 import { Modal } from '../../components/common/Modal';
 import { logAuditEvent } from '../../services/auditLogger';
 import { useAuth } from '../../context/AuthContext';
-import { initialUsers } from '../../services/mockData';
 import { UserPlus, UserX, Key, Shield, Trash2, Edit3, CheckCircle, RefreshCw } from 'lucide-react';
 
 export const UserManagement = ({ onShowToast }) => {
@@ -41,8 +40,8 @@ export const UserManagement = ({ onShowToast }) => {
         
         const formattedUsers = usersArray.map(u => ({
           ...u,
-          id: u.id || `usr_${Math.random()}`,
-          name: u.full_name || u.name || u.username || u.email || 'User Account',
+          id: u.id,
+          name: u.full_name || u.username || u.email || 'User Account',
           email: u.email,
           role: u.role_code || u.role_name || (typeof u.role === 'string' ? u.role : u.role?.code) || 'ROLE_DEV',
           department: u.department || 'Engineering',
@@ -50,13 +49,13 @@ export const UserManagement = ({ onShowToast }) => {
           lastActive: u.updated_at ? new Date(u.updated_at).toLocaleDateString() : 'Active Now'
         }));
         
-        setUsersList(formattedUsers.length > 0 ? formattedUsers : initialUsers);
+        setUsersList(formattedUsers);
       } else {
-        setUsersList(initialUsers);
+        setUsersList([]);
       }
     } catch (err) {
-      console.error('Failed to load users:', err);
-      setUsersList(initialUsers);
+      console.error('Failed to load users from database:', err);
+      setUsersList([]);
     } finally {
       setIsLoading(false);
     }
@@ -67,7 +66,7 @@ export const UserManagement = ({ onShowToast }) => {
   }, []);
 
   const handleOpenCreate = () => {
-    setFormData({ name: '', email: '', role: 'ROLE_DEV', department: 'Engineering', title: 'Full Stack Developer', status: 'ACTIVE' });
+    setFormData({ name: '', email: '', role: 'ROLE_DEV', department: 'Engineering', title: 'Full Stack Developer', status: 'ACTIVE', password: 'Aureon@123' });
     setModalMode('CREATE');
     setIsModalOpen(true);
   };
@@ -87,7 +86,7 @@ export const UserManagement = ({ onShowToast }) => {
           body: JSON.stringify(formData)
         });
         const data = await res.json();
-        if (res.ok && data.success) {
+        if (res.ok && data.success !== false) {
           onShowToast && onShowToast({ type: 'success', title: 'User Created', message: `${formData.name} has been provisioned successfully.` });
           logAuditEvent({
             user: currentUser,
@@ -186,11 +185,14 @@ export const UserManagement = ({ onShowToast }) => {
   };
 
   const handleDeleteUser = async (usr) => {
-    const cleanId = usr.user_id || usr.id.replace('usr_', '');
-    const token = sessionStorage.getItem('aureon_jwt_access_token');
+    if (!window.confirm(`Are you sure you want to permanently delete user "${usr.name || usr.email}"?`)) {
+      return;
+    }
+    const cleanId = usr.user_id || (usr.id ? String(usr.id).replace('usr_', '') : '');
+    const token = sessionStorage.getItem('aureon_jwt_access_token') || sessionStorage.getItem('aureon_access_token');
     
     try {
-      const res = await fetch(`http://127.0.0.1:8000/api/v1/users/${cleanId}`, {
+      const res = await fetch(`http://127.0.0.1:8000/api/v1/users/${cleanId}/`, {
         method: 'DELETE',
         headers: {
           'Authorization': token ? `Bearer ${token}` : ''
@@ -204,13 +206,74 @@ export const UserManagement = ({ onShowToast }) => {
           resource: `Deleted user ${usr.email}`,
           status: 'SUCCESS'
         });
-        onShowToast && onShowToast({ type: 'error', title: 'User Removed', message: `${usr.name} was permanently removed.` });
+        onShowToast && onShowToast({ type: 'warning', title: 'User Removed', message: `${usr.name || usr.email} was permanently deleted.` });
         fetchUsersList();
+      } else {
+        const data = await res.json().catch(() => ({}));
+        onShowToast && onShowToast({ type: 'error', title: 'Delete Failed', message: data.message || 'Failed to delete user.' });
       }
     } catch (err) {
-      console.error(err);
+      console.error('Failed to delete user:', err);
+      onShowToast && onShowToast({ type: 'error', title: 'Server Error', message: 'Could not connect to database server.' });
     }
   };
+
+  const bulkActions = [
+    {
+      label: 'Delete Selected Users',
+      onClick: async (selectedIds) => {
+        if (!selectedIds || selectedIds.length === 0) return;
+        const confirmDelete = window.confirm(
+          `Are you sure you want to permanently delete all ${selectedIds.length} selected user account(s)?`
+        );
+        if (!confirmDelete) return;
+
+        const token = sessionStorage.getItem('aureon_jwt_access_token') || sessionStorage.getItem('aureon_access_token');
+        let successCount = 0;
+        let failCount = 0;
+
+        setIsLoading(true);
+        for (const id of selectedIds) {
+          try {
+            const cleanId = String(id).replace('usr_', '');
+            const res = await fetch(`http://127.0.0.1:8000/api/v1/users/${cleanId}/`, {
+              method: 'DELETE',
+              headers: {
+                'Authorization': token ? `Bearer ${token}` : ''
+              }
+            });
+            if (res.ok) {
+              successCount++;
+            } else {
+              failCount++;
+            }
+          } catch (err) {
+            failCount++;
+          }
+        }
+
+        logAuditEvent({
+          user: currentUser,
+          role: currentUser?.role,
+          action: 'USER_BULK_DELETE',
+          resource: `Bulk deleted ${successCount} user accounts`,
+          status: 'SUCCESS'
+        });
+
+        if (successCount > 0) {
+          onShowToast && onShowToast({
+            type: 'warning',
+            title: 'Bulk Delete Complete',
+            message: `Successfully deleted ${successCount} user account(s).${failCount > 0 ? ` (${failCount} failed)` : ''}`
+          });
+        } else {
+          onShowToast && onShowToast({ type: 'error', title: 'Bulk Delete Failed', message: 'Could not delete selected users.' });
+        }
+
+        await fetchUsersList();
+      }
+    }
+  ];
 
   const columns = [
     {
@@ -328,6 +391,7 @@ export const UserManagement = ({ onShowToast }) => {
             columns={columns}
             searchPlaceholder="Search system accounts by name, email, department..."
             searchKey="name"
+            bulkActions={bulkActions}
           />
         )}
       </div>
@@ -362,6 +426,20 @@ export const UserManagement = ({ onShowToast }) => {
                   className="w-full px-3 py-2 bg-slate-100 dark:bg-slate-800 text-gray-900 dark:text-white rounded-lg border border-slate-300 dark:border-slate-700 focus:outline-none"
                   placeholder="e.g. elena@aureon.com"
                 />
+              </div>
+
+              <div className="space-y-1 p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl">
+                <div className="flex items-center justify-between">
+                  <label className="block font-bold text-amber-600 dark:text-amber-400 text-xs">Default Initial Password</label>
+                  <span className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold">(First Login Change Required)</span>
+                </div>
+                <input
+                  type="text"
+                  value={formData.password || 'Aureon@123'}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  className="w-full px-3 py-1.5 bg-slate-100 dark:bg-slate-800 text-gray-900 dark:text-white rounded-lg border border-slate-300 dark:border-slate-700 font-mono text-xs font-bold"
+                />
+                <p className="text-[10px] text-slate-500">The user will log in with this initial password and be forced to set their own password upon first login.</p>
               </div>
             </>
           )}

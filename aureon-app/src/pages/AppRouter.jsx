@@ -66,6 +66,38 @@ import { QaRepositoryStatus } from '../roles/qa/QaRepositoryStatus';
 import { QaTestReports } from '../roles/qa/QaTestReports';
 import { UserProfile } from '../components/common/UserProfile';
 import { QaProfile } from '../roles/qa/QaProfile';
+import { ForceChangePasswordModal } from '../components/common/ForceChangePasswordModal';
+
+class ViewErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+  componentDidCatch(error, errorInfo) {
+    console.error("View Render Error:", error, errorInfo);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="p-8 max-w-xl mx-auto my-12 bg-white dark:bg-slate-900 rounded-2xl border border-rose-200 dark:border-rose-900/50 shadow-xl text-center space-y-4">
+          <div className="w-12 h-12 rounded-full bg-rose-100 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 mx-auto flex items-center justify-center font-bold text-xl">!</div>
+          <h2 className="text-lg font-extrabold text-slate-900 dark:text-white">Workspace Module Render Error</h2>
+          <p className="text-xs text-slate-500 dark:text-slate-400">An unexpected component error occurred while rendering this module view.</p>
+          <button
+            onClick={() => { this.setState({ hasError: false }); this.props.onReset && this.props.onReset(); }}
+            className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-md transition-all"
+          >
+            Return to Main Dashboard
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 export const AppRouter = () => {
   const { user } = useAuth();
@@ -75,7 +107,6 @@ export const AppRouter = () => {
   const getTabFromHash = () => {
     const hash = window.location.hash.replace('#', '').trim();
     if (!hash) return 'Dashboard';
-    // Capitalize first letter to match tab IDs (e.g. #projects -> 'Projects')
     return hash.split('-').map(part => part.charAt(0).toUpperCase() + part.slice(1)).join('');
   };
 
@@ -87,7 +118,6 @@ export const AppRouter = () => {
     setTimeout(() => setToast(null), 4000);
   };
 
-  // Push state to browser history whenever tab or view changes
   const navigateTab = (newTab) => {
     if (!newTab) return;
     setActiveTab(newTab);
@@ -104,9 +134,7 @@ export const AppRouter = () => {
     window.history.pushState({ isAureonApp: true, viewState: newViewState, activeTab }, '', targetUrl);
   };
 
-  // Sync with browser history back/forward buttons & Hash changes
   React.useEffect(() => {
-    // Initial entry push to lock history state
     const currentHash = window.location.hash || `#${activeTab.toLowerCase()}`;
     if (!window.history.state || !window.history.state.isAureonApp) {
       window.history.replaceState({ isAureonApp: true, viewState, activeTab }, '', currentHash);
@@ -117,7 +145,6 @@ export const AppRouter = () => {
         if (event.state.viewState) setViewState(event.state.viewState);
         if (event.state.activeTab) setActiveTab(event.state.activeTab);
       } else {
-        // Evaluate hash fallback when navigating history
         const hash = window.location.hash.replace('#', '').trim();
         if (hash) {
           const tabName = hash.split('-').map(part => part.charAt(0).toUpperCase() + part.slice(1)).join('');
@@ -138,7 +165,6 @@ export const AppRouter = () => {
     };
   }, [user]);
 
-  // 1. Unauthenticated: Show Public Home Page if on landing
   if (!user && viewState === 'landing') {
     return (
       <HomePage
@@ -148,7 +174,6 @@ export const AppRouter = () => {
     );
   }
 
-  // 2. Unauthenticated: Show Login Page if user clicked Sign In or logged out
   if (!user) {
     return (
       <Login
@@ -157,11 +182,19 @@ export const AppRouter = () => {
     );
   }
 
-  // 3. Authenticated: Render user's specific role workspace
-  const renderRoleContent = () => {
-    const role = user?.role || user?.role_name || user?.role_code || 'ROLE_DEV';
+  const getNormalizedRole = (u) => {
+    if (!u) return 'ROLE_DEV';
+    const r = (typeof u.role === 'string' ? u.role : u.role?.code || u.role_code || u.role_name || '').toUpperCase();
+    if (r.includes('ADMIN')) return 'ROLE_ADMIN';
+    if (r.includes('PM') || r.includes('MANAGER')) return 'ROLE_PM';
+    if (r.includes('LEAD')) return 'ROLE_LEAD';
+    if (r.includes('QA')) return 'ROLE_QA';
+    return 'ROLE_DEV';
+  };
 
-    // ━━━ SYSTEM ADMIN ━━━
+  const renderRoleContent = () => {
+    const role = getNormalizedRole(user);
+
     if (role === 'ROLE_ADMIN') {
       switch (activeTab) {
         case 'Dashboard': return <AdminDashboard onNavigate={navigateTab} />;
@@ -182,7 +215,6 @@ export const AppRouter = () => {
       }
     }
 
-    // ━━━ PROJECT MANAGER ━━━
     if (role === 'ROLE_PM') {
       switch (activeTab) {
         case 'Dashboard': return <PmDashboard onNavigate={navigateTab} />;
@@ -201,7 +233,6 @@ export const AppRouter = () => {
       }
     }
 
-    // ━━━ TEAM LEAD ━━━
     if (role === 'ROLE_LEAD') {
       switch (activeTab) {
         case 'Dashboard': return <LeadDashboard onNavigate={navigateTab} />;
@@ -218,7 +249,6 @@ export const AppRouter = () => {
       }
     }
 
-    // ━━━ DEVELOPER ━━━
     if (role === 'ROLE_DEV') {
       switch (activeTab) {
         case 'Dashboard': return <DevDashboard onNavigate={navigateTab} />;
@@ -233,7 +263,6 @@ export const AppRouter = () => {
       }
     }
 
-    // ━━━ QA ENGINEER ━━━
     if (role === 'ROLE_QA') {
       switch (activeTab) {
         case 'Dashboard': return <QaDashboard onNavigate={navigateTab} />;
@@ -257,9 +286,15 @@ export const AppRouter = () => {
       <div className="flex-1 flex flex-col min-w-0">
         <Header currentTab={activeTab} onSelectTab={navigateTab} onNavigateHome={() => navigateViewState('landing')} />
         <main className="flex-1 p-6 overflow-y-auto">
-          {renderRoleContent()}
+          <ViewErrorBoundary onReset={() => navigateTab('Dashboard')}>
+            {renderRoleContent()}
+          </ViewErrorBoundary>
         </main>
       </div>
+      <ForceChangePasswordModal
+        isOpen={Boolean(user && user.must_change_password)}
+        onPasswordChanged={() => {}}
+      />
       <Toast toast={toast} onClose={() => setToast(null)} />
     </div>
   );

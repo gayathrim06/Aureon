@@ -46,7 +46,7 @@ export const AdminDashboard = ({ onNavigate }) => {
           active_projects: metricsData.active_projects ?? prev.active_projects,
           completed_projects: metricsData.completed_projects ?? prev.completed_projects,
           total_teams: metricsData.total_teams ?? prev.total_teams,
-          overall_project_health: metricsData.overall_project_health ?? 94
+          overall_project_health: metricsData.overall_project_health ?? 100
         }));
 
         const acts = data.recent_activities || data.dashboard?.recent_activities || [];
@@ -283,14 +283,14 @@ export const AdminDashboard = ({ onNavigate }) => {
                         <div className="flex justify-between text-indigo-300">
                           <span className="font-bold">{log.action}</span>
                           <span className="text-slate-500 text-[9px]">
-                            {log.timestamp ? log.timestamp.split('T')[0] : ''} {log.timestamp ? log.timestamp.split('T')[1].substring(0, 8) : ''}
+                            {log.timestamp ? String(log.timestamp).replace('T', ' ').substring(0, 19) : ''}
                           </span>
                         </div>
-                        <p className="text-slate-300">{log.details}</p>
+                        <p className="text-slate-300">{log.details || log.resource || 'System Activity'}</p>
                         <div className="text-slate-500 text-[9px] flex gap-2">
-                          <span>User: <strong className="text-slate-400">{log.user_email || 'system'}</strong></span>
+                          <span>User: <strong className="text-slate-400">{log.user_email || log.actor || 'system'}</strong></span>
                           <span>•</span>
-                          <span>Role: <strong className="text-slate-400">{(log.role_name || 'SYSTEM').replace('ROLE_', '')}</strong></span>
+                          <span>Role: <strong className="text-slate-400">{(typeof (log.role_name || log.role) === 'string' ? (log.role_name || log.role) : 'SYSTEM').replace('ROLE_', '')}</strong></span>
                         </div>
                       </div>
                     ))

@@ -10,18 +10,18 @@ export const ThemeProvider = ({ children }) => {
 
   useEffect(() => {
     const root = window.document.documentElement;
-    if (theme === 'dark') {
-      root.classList.add('dark');
-      root.classList.remove('light');
-    } else {
-      root.classList.remove('dark');
-      root.classList.add('light');
-    }
+    root.classList.remove('dark', 'light', 'warm');
+    root.classList.add(theme);
+    root.setAttribute('data-theme', theme);
     localStorage.setItem('aureon_theme', theme);
   }, [theme]);
 
   const toggleTheme = () => {
-    setTheme(prev => (prev === 'dark' ? 'light' : 'dark'));
+    setTheme(prev => {
+      if (prev === 'dark') return 'light';
+      if (prev === 'light') return 'warm';
+      return 'dark';
+    });
   };
 
   return (

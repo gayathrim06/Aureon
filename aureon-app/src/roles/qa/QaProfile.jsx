@@ -6,9 +6,10 @@ import { User, Mail, Shield, Bug, CheckSquare, TestTube2, Activity, FileText } f
 
 export const QaProfile = () => {
   const { user } = useAuth();
-  const userData = initialUsers.find(u => u.role === 'ROLE_QA') || initialUsers[4];
-  const passedCount = initialTestCases.filter(t => t.status === 'PASSED').length;
-  const bugsLogged = initialBugs.length;
+  const userData = user || { name: 'QA Engineer', email: 'qa@aureon.com', title: 'QA Specialist', department: 'Quality Assurance', role: 'ROLE_QA', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150' };
+  const passedCount = (initialTestCases || []).filter(t => t.status === 'PASSED').length;
+  const bugsLogged = (initialBugs || []).length;
+  const passRate = (initialTestCases && initialTestCases.length > 0) ? Math.round((passedCount / initialTestCases.length) * 100) : 100;
 
   const activityTimeline = [
     { time: '30 mins ago', action: 'Executed Test Suite', detail: 'Sprint 24 Security Regression — 10 pass, 1 fail, 1 pending', icon: TestTube2, color: 'text-blue-500' },
@@ -21,21 +22,21 @@ export const QaProfile = () => {
     <div className="space-y-6">
       <Breadcrumb activeTab="My Profile" />
       <div className="p-6 rounded-2xl bg-gradient-to-r from-rose-950 via-pink-950 to-purple-950 text-white shadow-xl flex items-center gap-6">
-        <img src={userData.avatar} alt={userData.name} className="w-20 h-20 rounded-full object-cover border-4 border-white/20" />
+        <img src={userData.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150'} alt={userData.name || 'QA'} className="w-20 h-20 rounded-full object-cover border-4 border-white/20" />
         <div>
-          <h1 className="text-2xl font-black">{userData.name}</h1>
-          <p className="text-xs text-rose-200">{userData.title} • {userData.department}</p>
+          <h1 className="text-2xl font-black">{userData.name || userData.full_name || 'QA Engineer'}</h1>
+          <p className="text-xs text-rose-200">{userData.title || userData.designation || 'QA Specialist'} • {userData.department || 'Quality Assurance'}</p>
           <div className="flex items-center gap-3 mt-2 text-[10px]">
             <span className="flex items-center gap-1"><Mail className="w-3 h-3" />{userData.email}</span>
-            <span className="flex items-center gap-1"><Shield className="w-3 h-3" />{userData.role}</span>
+            <span className="flex items-center gap-1"><Shield className="w-3 h-3" />{userData.role?.code || userData.role || 'ROLE_QA'}</span>
           </div>
         </div>
       </div>
       <div className="grid grid-cols-4 gap-4">
         {[{ label: 'Tests Passed', value: passedCount, icon: CheckSquare, color: 'border-l-emerald-500' },
           { label: 'Bugs Logged', value: bugsLogged, icon: Bug, color: 'border-l-rose-500' },
-          { label: 'Suites Run', value: initialTestSuites.length, icon: TestTube2, color: 'border-l-blue-500' },
-          { label: 'Pass Rate', value: Math.round((passedCount/initialTestCases.length)*100) + '%', icon: Activity, color: 'border-l-purple-500' }
+          { label: 'Suites Run', value: (initialTestSuites || []).length, icon: TestTube2, color: 'border-l-blue-500' },
+          { label: 'Pass Rate', value: passRate + '%', icon: Activity, color: 'border-l-purple-500' }
         ].map((w,i) => { const Icon = w.icon; return (
           <div key={i} className={`p-4 rounded-xl bg-white dark:bg-gray-800 border-l-4 ${w.color} border-y border-r border-gray-200 dark:border-gray-700 shadow-sm`}>
             <Icon className="w-4 h-4 text-gray-400 mb-1" />

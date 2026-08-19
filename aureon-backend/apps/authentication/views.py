@@ -1,3 +1,4 @@
+import uuid
 from datetime import timedelta
 from django.utils import timezone
 from rest_framework import status, permissions
@@ -26,14 +27,14 @@ class CustomTokenObtainPairView(TokenObtainPairView):
 
     @extend_schema(
         summary="JWT Login & Session Creation",
-        description="Authenticates user via corporate email & password. Enforces account lockout (5 failed attempts) and creates active UserSession.",
-        responses={200: OpenApiResponse(description="Login successful with tokens, user details & active session_id")}
+        description="Authenticates user via corporate email & password. Enforces account lockout (5 failed attempts) and creates active UserSession."
     )
     def post(self, request, *args, **kwargs):
-        email = request.data.get('email', '').strip().lower()
+        from django.db.models import Q
+        login_input = (request.data.get('email') or request.data.get('username') or request.data.get('login') or '').strip()
 
         # 1. User Security & Lockout Validation
-        user = User.objects.filter(email=email).first()
+        user = User.objects.filter(Q(email__iexact=login_input) | Q(username__iexact=login_input)).first()
         if user:
             # Check if account is locked out
             if user.lockout_until and user.lockout_until > timezone.now():
@@ -86,7 +87,8 @@ class CustomTokenObtainPairView(TokenObtainPairView):
             ip_address = request.META.get('HTTP_X_FORWARDED_FOR', request.META.get('REMOTE_ADDR', '')).split(',')[0]
             user_agent = request.META.get('HTTP_USER_AGENT', 'Unknown Web Browser')
             
-            session_token = f"sess_{user.id}_{int(timezone.now().timestamp())}"
+            import uuid
+            session_token = f"sess_{user.id}_{int(timezone.now().timestamp())}_{uuid.uuid4().hex[:6]}"
             refresh_token = response.data.get('refresh', '')
 
             session = UserSession.objects.create(
@@ -196,7 +198,7 @@ class RegisterView(APIView):
             # Create session for registered user
             session = UserSession.objects.create(
                 user=user,
-                session_token=f"sess_{user.id}_{int(timezone.now().timestamp())}",
+                session_token=f"sess_{user.id}_{int(timezone.now().timestamp())}_{uuid.uuid4().hex[:6]}",
                 ip_address=request.META.get('REMOTE_ADDR'),
                 user_agent=request.META.get('HTTP_USER_AGENT', '')[:255],
                 expires_at=timezone.now() + timedelta(days=7),
@@ -287,6 +289,8 @@ class ForgotPasswordView(APIView):
     def post(self, request):
         email = (request.data.get('email') or '').strip().lower()
         new_password = request.data.get('newPassword') or request.data.get('new_password')
+        dob = request.data.get('dateOfBirth') or request.data.get('date_of_birth')
+        best_friend = (request.data.get('bestFriendName') or request.data.get('school_friend_name') or request.data.get('pet_name') or '').strip().lower()
 
         if not email:
             return Response({"success": False, "message": "Email address is required."}, status=status.HTTP_400_BAD_REQUEST)
@@ -294,6 +298,23 @@ class ForgotPasswordView(APIView):
         user = User.objects.filter(email__iexact=email).first()
         if not user:
             return Response({"success": False, "message": f"No registered account found with email: '{email}'"}, status=status.HTTP_404_NOT_FOUND)
+
+        # Verification check: If dateOfBirth or bestFriendName provided, check if AT LEAST ONE matches
+        if dob or best_friend:
+            verified = False
+            if dob and user.date_of_birth and str(user.date_of_birth) == str(dob):
+                verified = True
+            if best_friend:
+                if user.school_friend_name and user.school_friend_name.strip().lower() == best_friend:
+                    verified = True
+                if user.pet_name and user.pet_name.strip().lower() == best_friend:
+                    verified = True
+            
+            if not verified:
+                return Response({
+                    "success": False,
+                    "message": "Security verification failed. Provided answer(s) do not match our records."
+                }, status=status.HTTP_400_BAD_REQUEST)
 
         if new_password:
             user.set_password(new_password)

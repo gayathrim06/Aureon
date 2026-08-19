@@ -24,9 +24,9 @@ class DashboardService:
             "active_projects": act_projects,
             "completed_projects": comp_projects,
             "total_teams": tot_teams,
-            "pending_approvals": 2,
+            "pending_approvals": 0,
             "system_alerts": 0,
-            "overall_project_health": 94
+            "overall_project_health": 100 if tot_projects == 0 else 94
         }
 
         recent_activities = []

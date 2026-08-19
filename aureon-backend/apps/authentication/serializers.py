@@ -5,18 +5,27 @@ from users.serializers import UserSerializer
 from roles.models import Role
 from authentication.models import UserSession
 
+from django.db.models import Q
+
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     """
     Custom JWT Token Login Serializer.
-    Accepts email as login username and returns user profile & role alongside tokens.
+    Accepts email or username and returns user profile & role alongside tokens.
     """
     username_field = 'email'
 
     def validate(self, attrs):
+        login_input = (attrs.get('email') or attrs.get('username') or attrs.get('login') or '').strip()
+        if login_input:
+            user = User.objects.filter(Q(email__iexact=login_input) | Q(username__iexact=login_input)).first()
+            if user:
+                attrs['email'] = user.email
+                attrs['username'] = user.email
+
         data = super().validate(attrs)
         user_data = UserSerializer(self.user).data
         data['user'] = user_data
-        data['must_change_password'] = self.user.must_change_password
+        data['must_change_password'] = getattr(self.user, 'must_change_password', False)
         return data
 
 
@@ -71,16 +80,21 @@ class RegisterSerializer(serializers.ModelSerializer):
         # Map security question fields
         if 'bestFriendName' in mutable_data:
             val = mutable_data.pop('bestFriendName')
-            if not mutable_data.get('school_friend_name'):
-                mutable_data['school_friend_name'] = val
-            if not mutable_data.get('pet_name'):
-                mutable_data['pet_name'] = val
+            if val:
+                if not mutable_data.get('school_friend_name'):
+                    mutable_data['school_friend_name'] = val
+                if not mutable_data.get('pet_name'):
+                    mutable_data['pet_name'] = val
 
         if 'schoolFriendName' in mutable_data and not mutable_data.get('school_friend_name'):
-            mutable_data['school_friend_name'] = mutable_data.pop('schoolFriendName')
+            val = mutable_data.pop('schoolFriendName')
+            if val:
+                mutable_data['school_friend_name'] = val
 
         if 'petName' in mutable_data and not mutable_data.get('pet_name'):
-            mutable_data['pet_name'] = mutable_data.pop('petName')
+            val = mutable_data.pop('petName')
+            if val:
+                mutable_data['pet_name'] = val
 
         # Map role -> role_code
         if 'role' in mutable_data and not mutable_data.get('role_code'):
@@ -108,6 +122,13 @@ class RegisterSerializer(serializers.ModelSerializer):
             mutable_data['full_name'] = email.split('@')[0].capitalize() if email else 'User'
 
         return super().to_internal_value(mutable_data)
+
+    def validate(self, attrs):
+        dob = attrs.get('date_of_birth')
+        friend = attrs.get('school_friend_name') or attrs.get('pet_name')
+        if not dob and not friend:
+            raise serializers.ValidationError("At least one security question answer (Date of Birth OR Friend/Pet Name) is required for account recovery.")
+        return attrs
 
     def create(self, validated_data):
         role_code = validated_data.pop('role_code', 'ROLE_DEV')

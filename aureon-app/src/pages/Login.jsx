@@ -52,8 +52,13 @@ export const Login = ({ onNavigateHome }) => {
     setErrorMsg('');
     setRegSuccessMsg('');
 
-    if (!regData.fullName || !regData.email || !regData.password || !regData.confirmPassword || !regData.dateOfBirth || !regData.bestFriendName) {
-      setErrorMsg('Please fill in all required fields.');
+    if (!regData.fullName || !regData.email || !regData.password || !regData.confirmPassword) {
+      setErrorMsg('Please fill in all required account fields.');
+      return;
+    }
+
+    if (!regData.dateOfBirth && !regData.bestFriendName) {
+      setErrorMsg('Please answer at least one security question (Date of Birth OR Best Friend Name) for account recovery.');
       return;
     }
 
@@ -109,8 +114,13 @@ export const Login = ({ onNavigateHome }) => {
     setErrorMsg('');
     setRegSuccessMsg('');
 
-    if (!forgotData.email || !forgotData.dateOfBirth || !forgotData.bestFriendName || !forgotData.newPassword || !forgotData.confirmNewPassword) {
-      setErrorMsg('Please fill in all recovery fields.');
+    if (!forgotData.email || !forgotData.newPassword || !forgotData.confirmNewPassword) {
+      setErrorMsg('Please fill in your email and new password.');
+      return;
+    }
+
+    if (!forgotData.dateOfBirth && !forgotData.bestFriendName) {
+      setErrorMsg('Please answer at least one security question (Date of Birth OR Best Friend Name) to verify your identity.');
       return;
     }
 
@@ -447,24 +457,22 @@ export const Login = ({ onNavigateHome }) => {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-gray-300 font-semibold mb-1">Date of Birth *</label>
+                  <label className="block text-gray-300 font-semibold mb-1">Date of Birth (Optional)</label>
                   <input
                     type="date"
-                    required
                     value={forgotData.dateOfBirth}
                     onChange={(e) => setForgotData({ ...forgotData, dateOfBirth: e.target.value })}
                     className="w-full p-2.5 rounded-lg bg-gray-800 border border-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
                   />
                 </div>
                 <div>
-                  <label className="block text-gray-300 font-semibold mb-1">School / Best Friend's Name *</label>
+                  <label className="block text-gray-300 font-semibold mb-1">School / Best Friend's Name (Optional)</label>
                   <input
                     type="text"
-                    required
                     value={forgotData.bestFriendName}
                     onChange={(e) => setForgotData({ ...forgotData, bestFriendName: e.target.value })}
                     className="w-full p-2.5 rounded-lg bg-gray-800 border border-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
-                    placeholder="Enter security answer"
+                    placeholder="Enter answer (Min 1 security answer)"
                   />
                 </div>
               </div>

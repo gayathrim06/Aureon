@@ -7,7 +7,8 @@ import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip, BarChart, Bar, XAxis
 
 export const CodeQualityHub = () => {
   const smellsBySeverity = [ { name: 'MINOR', value: initialCodeSmells.filter(s=>s.severity==='MINOR').length, color: '#3b82f6' }, { name: 'MAJOR', value: initialCodeSmells.filter(s=>s.severity==='MAJOR').length, color: '#f59e0b' }, { name: 'INFO', value: initialCodeSmells.filter(s=>s.severity==='INFO').length, color: '#10b981' } ];
-  const debtData = sonarQubePerProject.map(p => ({ name: p.projectKey, debt: parseFloat(p.technicalDebt) || 0, smells: parseInt(p.codeSmells) || 0 }));
+  const safeProjects = Array.isArray(sonarQubePerProject) ? sonarQubePerProject : [];
+  const debtData = safeProjects.map(p => ({ name: p.projectKey, debt: parseFloat(p.technicalDebt) || 0, smells: parseInt(p.codeSmells) || 0 }));
 
   const smellColumns = [
     { key: 'file', label: 'File', render: (val) => <span className="font-mono text-[10px] text-blue-600 dark:text-blue-400">{val}</span> },

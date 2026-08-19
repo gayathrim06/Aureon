@@ -5,11 +5,13 @@ import { FileText, CheckCircle2, XCircle, Clock, Bug } from 'lucide-react';
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from 'recharts';
 
 export const QaTestReports = () => {
-  const passRate = Math.round((initialTestCases.filter(t=>t.status==='PASSED').length / initialTestCases.length) * 100);
+  const safeTestCases = Array.isArray(initialTestCases) ? initialTestCases : [];
+  const passedCount = safeTestCases.filter(t=>t.status==='PASSED').length;
+  const passRate = safeTestCases.length > 0 ? Math.round((passedCount / safeTestCases.length) * 100) : 100;
   const pieData = [
-    { name: 'Passed', value: initialTestCases.filter(t=>t.status==='PASSED').length, color: '#10b981' },
-    { name: 'Failed', value: initialTestCases.filter(t=>t.status==='FAILED').length, color: '#ef4444' },
-    { name: 'Pending', value: initialTestCases.filter(t=>t.status==='PENDING').length, color: '#f59e0b' }
+    { name: 'Passed', value: passedCount, color: '#10b981' },
+    { name: 'Failed', value: safeTestCases.filter(t=>t.status==='FAILED').length, color: '#ef4444' },
+    { name: 'Pending', value: safeTestCases.filter(t=>t.status==='PENDING').length, color: '#f59e0b' }
   ];
 
   return (
