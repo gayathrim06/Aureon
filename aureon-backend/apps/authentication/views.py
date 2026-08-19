@@ -283,17 +283,34 @@ class ForgotPasswordView(APIView):
     """POST /api/v1/auth/forgot-password/"""
     permission_classes = [permissions.AllowAny]
 
-    @extend_schema(summary="Forgot Password Link Dispatch", request=ForgotPasswordSerializer)
+    @extend_schema(summary="Forgot & Self-Service Password Reset", request=ForgotPasswordSerializer)
     def post(self, request):
-        serializer = ForgotPasswordSerializer(data=request.data)
-        if serializer.is_valid():
-            email = serializer.validated_data['email']
-            user = User.objects.filter(email=email).first()
-            if user:
-                # Placeholder for email dispatch
-                pass
-            return Response({"success": True, "message": "If the email exists, a password reset link has been sent."}, status=status.HTTP_200_OK)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        email = (request.data.get('email') or '').strip().lower()
+        new_password = request.data.get('newPassword') or request.data.get('new_password')
+
+        if not email:
+            return Response({"success": False, "message": "Email address is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        user = User.objects.filter(email__iexact=email).first()
+        if not user:
+            return Response({"success": False, "message": f"No registered account found with email: '{email}'"}, status=status.HTTP_404_NOT_FOUND)
+
+        if new_password:
+            user.set_password(new_password)
+            user.must_change_password = False
+            user.first_login = False
+            user.failed_login_attempts = 0
+            user.lockout_until = None
+            user.save()
+            return Response({
+                "success": True,
+                "message": f"Password for {user.full_name} ({user.email}) has been reset successfully. You can now log in with your new password."
+            }, status=status.HTTP_200_OK)
+
+        return Response({
+            "success": True,
+            "message": "Account verified. Please enter a new password to complete reset."
+        }, status=status.HTTP_200_OK)
 
 
 class ResetPasswordView(APIView):
