@@ -130,8 +130,11 @@ export const Register = () => {
     setAvatarMode('preset');
   };
 
+  const [apiError, setApiError] = useState('');
+
   const onSubmit = async (data) => {
     setIsLoading(true);
+    setApiError('');
     try {
       const res = await fetch('http://127.0.0.1:8000/api/v1/auth/register/', {
         method: 'POST',
@@ -152,9 +155,12 @@ export const Register = () => {
       });
       const resData = await res.json();
       if (res.ok && resData.success) {
+        if (resData.access) {
+          sessionStorage.setItem('aureon_access_token', resData.access);
+        }
         authRegister({ ...data, date_of_birth: data.dateOfBirth, pet_name: data.petName, school_friend_name: data.schoolFriendName });
       } else {
-        authRegister({ ...data, date_of_birth: data.dateOfBirth, pet_name: data.petName, school_friend_name: data.schoolFriendName });
+        setApiError(resData.message || 'Registration failed. Please check your information and try again.');
       }
     } catch {
       authRegister({ ...data, date_of_birth: data.dateOfBirth, pet_name: data.petName, school_friend_name: data.schoolFriendName });
@@ -218,10 +224,12 @@ export const Register = () => {
           transition={{ duration: 0.3 }}
           className="w-full max-w-2xl glass-panel p-8 rounded-[18px] shadow-2xl border border-[#334155] my-6"
         >
-          <div className="mb-6">
-            <h3 className="text-2xl font-extrabold text-[#F8FAFC] tracking-tight">Create Your Aureon Account</h3>
-            <p className="text-xs text-[#94A3B8] mt-1">Start collaborating with your engineering team.</p>
-          </div>
+          {apiError && (
+            <div className="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs font-medium flex items-center justify-between">
+              <span>{apiError}</span>
+              <button type="button" onClick={() => setApiError('')} className="text-red-400 hover:text-red-300 font-bold ml-2">✕</button>
+            </div>
+          )}
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
             {/* SECURITY RECOVERY QUESTIONS SECTION */}

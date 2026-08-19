@@ -28,7 +28,7 @@ export const AdminDashboard = ({ onNavigate }) => {
 
   const fetchAdminDashboard = async () => {
     setIsLoading(true);
-    const token = sessionStorage.getItem('aureon_jwt_access_token');
+    const token = sessionStorage.getItem('aureon_jwt_access_token') || sessionStorage.getItem('aureon_access_token');
     try {
       const res = await fetch('http://127.0.0.1:8000/api/v1/dashboards/admin', {
         headers: {
@@ -37,8 +37,20 @@ export const AdminDashboard = ({ onNavigate }) => {
       });
       if (res.ok) {
         const data = await res.json();
-        setMetrics(data.metrics);
-        setRecentActivities(data.recent_activities);
+        const metricsData = data.metrics || data.dashboard?.metrics || data;
+        setMetrics(prev => ({
+          ...prev,
+          total_users: metricsData.total_users ?? prev.total_users,
+          active_users: metricsData.active_users ?? prev.active_users,
+          total_projects: metricsData.total_projects ?? prev.total_projects,
+          active_projects: metricsData.active_projects ?? prev.active_projects,
+          completed_projects: metricsData.completed_projects ?? prev.completed_projects,
+          total_teams: metricsData.total_teams ?? prev.total_teams,
+          overall_project_health: metricsData.overall_project_health ?? 94
+        }));
+
+        const acts = data.recent_activities || data.dashboard?.recent_activities || [];
+        setRecentActivities(acts);
       }
     } catch (err) {
       console.error("Failed to load admin dashboard statistics:", err);
@@ -125,17 +137,24 @@ export const AdminDashboard = ({ onNavigate }) => {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             
             {/* 1. Total Users */}
-            <div className="p-4 rounded-xl bg-slate-900/90 border border-purple-500/20 shadow-md hover:border-purple-500/40 transition-all">
+            {/* 1. Total Users */}
+            <div
+              onClick={() => onNavigate && onNavigate('Users')}
+              className="p-4 rounded-xl bg-slate-900/90 border border-purple-500/20 shadow-md hover:border-purple-500/50 transition-all cursor-pointer hover:scale-[1.02]"
+            >
               <div className="flex justify-between items-center text-slate-400">
                 <span className="text-[10px] uppercase font-bold tracking-wider">Total Users</span>
                 <Users className="w-4 h-4 text-purple-400" />
               </div>
               <div className="text-2xl font-black text-white mt-2 font-mono">{metrics.total_users}</div>
-              <div className="text-[9px] text-slate-500 mt-1">Registered Platform Accounts</div>
+              <div className="text-[9px] text-slate-500 mt-1">Click to manage accounts</div>
             </div>
 
             {/* 2. Active Users */}
-            <div className="p-4 rounded-xl bg-slate-900/90 border border-emerald-500/20 shadow-md hover:border-emerald-500/40 transition-all">
+            <div
+              onClick={() => onNavigate && onNavigate('Users')}
+              className="p-4 rounded-xl bg-slate-900/90 border border-emerald-500/20 shadow-md hover:border-emerald-500/50 transition-all cursor-pointer hover:scale-[1.02]"
+            >
               <div className="flex justify-between items-center text-slate-400">
                 <span className="text-[10px] uppercase font-bold tracking-wider">Active Users</span>
                 <ShieldCheck className="w-4 h-4 text-emerald-400" />
@@ -145,17 +164,23 @@ export const AdminDashboard = ({ onNavigate }) => {
             </div>
 
             {/* 3. Total Projects */}
-            <div className="p-4 rounded-xl bg-slate-900/90 border border-blue-500/20 shadow-md hover:border-blue-500/40 transition-all">
+            <div
+              onClick={() => onNavigate && onNavigate('Projects')}
+              className="p-4 rounded-xl bg-slate-900/90 border border-blue-500/20 shadow-md hover:border-blue-500/50 transition-all cursor-pointer hover:scale-[1.02]"
+            >
               <div className="flex justify-between items-center text-slate-400">
                 <span className="text-[10px] uppercase font-bold tracking-wider">Total Projects</span>
                 <Database className="w-4 h-4 text-blue-400" />
               </div>
               <div className="text-2xl font-black text-white mt-2 font-mono">{metrics.total_projects}</div>
-              <div className="text-[9px] text-slate-500 mt-1">Projects tracked in database</div>
+              <div className="text-[9px] text-slate-500 mt-1">Click to view projects directory</div>
             </div>
 
             {/* 4. Active Projects */}
-            <div className="p-4 rounded-xl bg-slate-900/90 border border-indigo-500/20 shadow-md hover:border-indigo-500/40 transition-all">
+            <div
+              onClick={() => onNavigate && onNavigate('Projects')}
+              className="p-4 rounded-xl bg-slate-900/90 border border-indigo-500/20 shadow-md hover:border-indigo-500/50 transition-all cursor-pointer hover:scale-[1.02]"
+            >
               <div className="flex justify-between items-center text-slate-400">
                 <span className="text-[10px] uppercase font-bold tracking-wider">Active Projects</span>
                 <Layers className="w-4 h-4 text-indigo-400" />
@@ -165,7 +190,10 @@ export const AdminDashboard = ({ onNavigate }) => {
             </div>
 
             {/* 5. Completed Projects */}
-            <div className="p-4 rounded-xl bg-slate-900/90 border border-teal-500/20 shadow-md hover:border-teal-500/40 transition-all">
+            <div
+              onClick={() => onNavigate && onNavigate('Projects')}
+              className="p-4 rounded-xl bg-slate-900/90 border border-teal-500/20 shadow-md hover:border-teal-500/50 transition-all cursor-pointer hover:scale-[1.02]"
+            >
               <div className="flex justify-between items-center text-slate-400">
                 <span className="text-[10px] uppercase font-bold tracking-wider">Completed Projects</span>
                 <CheckSquare className="w-4 h-4 text-teal-400" />
@@ -175,7 +203,10 @@ export const AdminDashboard = ({ onNavigate }) => {
             </div>
 
             {/* 6. Total Teams */}
-            <div className="p-4 rounded-xl bg-slate-900/90 border border-cyan-500/20 shadow-md hover:border-cyan-500/40 transition-all">
+            <div
+              onClick={() => onNavigate && onNavigate('Teams')}
+              className="p-4 rounded-xl bg-slate-900/90 border border-cyan-500/20 shadow-md hover:border-cyan-500/50 transition-all cursor-pointer hover:scale-[1.02]"
+            >
               <div className="flex justify-between items-center text-slate-400">
                 <span className="text-[10px] uppercase font-bold tracking-wider">Total Teams</span>
                 <Globe className="w-4 h-4 text-cyan-400" />

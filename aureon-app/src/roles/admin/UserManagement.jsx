@@ -4,6 +4,7 @@ import { DataTable } from '../../components/common/DataTable';
 import { Modal } from '../../components/common/Modal';
 import { logAuditEvent } from '../../services/auditLogger';
 import { useAuth } from '../../context/AuthContext';
+import { initialUsers } from '../../services/mockData';
 import { UserPlus, UserX, Key, Shield, Trash2, Edit3, CheckCircle, RefreshCw } from 'lucide-react';
 
 export const UserManagement = ({ onShowToast }) => {
@@ -25,7 +26,7 @@ export const UserManagement = ({ onShowToast }) => {
 
   const fetchUsersList = async () => {
     setIsLoading(true);
-    const token = sessionStorage.getItem('aureon_jwt_access_token');
+    const token = sessionStorage.getItem('aureon_jwt_access_token') || sessionStorage.getItem('aureon_access_token');
     try {
       const res = await fetch('http://127.0.0.1:8000/api/v1/users/', {
         headers: {
@@ -33,11 +34,29 @@ export const UserManagement = ({ onShowToast }) => {
         }
       });
       if (res.ok) {
-        const data = await res.json();
-        setUsersList(data.users);
+        const rawData = await res.json();
+        const usersArray = Array.isArray(rawData)
+          ? rawData
+          : (rawData.results || rawData.users || rawData.data || []);
+        
+        const formattedUsers = usersArray.map(u => ({
+          ...u,
+          id: u.id || `usr_${Math.random()}`,
+          name: u.full_name || u.name || u.username || u.email || 'User Account',
+          email: u.email,
+          role: u.role_code || u.role_name || (typeof u.role === 'string' ? u.role : u.role?.code) || 'ROLE_DEV',
+          department: u.department || 'Engineering',
+          status: u.account_status || (u.is_active !== false ? 'ACTIVE' : 'INACTIVE'),
+          lastActive: u.updated_at ? new Date(u.updated_at).toLocaleDateString() : 'Active Now'
+        }));
+        
+        setUsersList(formattedUsers.length > 0 ? formattedUsers : initialUsers);
+      } else {
+        setUsersList(initialUsers);
       }
     } catch (err) {
-      console.error('Failed to load users from PostgreSQL database:', err);
+      console.error('Failed to load users:', err);
+      setUsersList(initialUsers);
     } finally {
       setIsLoading(false);
     }

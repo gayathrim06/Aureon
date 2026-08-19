@@ -18,7 +18,8 @@ export const DataTable = ({
 
   // Search & Sorting Filter logic
   const filteredData = useMemo(() => {
-    let result = [...data];
+    const safeData = Array.isArray(data) ? data : [];
+    let result = [...safeData];
 
     if (searchTerm) {
       const query = searchTerm.toLowerCase();

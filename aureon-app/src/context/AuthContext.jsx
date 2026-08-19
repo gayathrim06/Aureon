@@ -120,6 +120,7 @@ export const AuthProvider = ({ children }) => {
 
         sessionStorage.setItem(AUTH_USER_KEY, JSON.stringify(loggedUser));
         sessionStorage.setItem(TOKEN_KEY, drfData.access);
+        sessionStorage.setItem('aureon_access_token', drfData.access);
         sessionStorage.setItem(REFRESH_TOKEN_KEY, drfData.refresh);
         sessionStorage.setItem(SESSION_TOKEN_KEY, newSessionToken);
 
@@ -171,6 +172,7 @@ export const AuthProvider = ({ children }) => {
 
     sessionStorage.setItem(AUTH_USER_KEY, JSON.stringify(foundUser));
     sessionStorage.setItem(TOKEN_KEY, newAccess);
+    sessionStorage.setItem('aureon_access_token', newAccess);
     sessionStorage.setItem(REFRESH_TOKEN_KEY, newRefresh);
     sessionStorage.setItem(SESSION_TOKEN_KEY, newSessToken);
 

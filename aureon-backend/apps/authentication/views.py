@@ -211,7 +211,22 @@ class RegisterView(APIView):
                 "refresh": str(refresh),
                 "session_token": session.session_token
             }, status=status.HTTP_201_CREATED)
-        return Response({"success": False, "errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+        err_msg = "Registration failed."
+        if serializer.errors:
+            messages = []
+            for field, errs in serializer.errors.items():
+                if isinstance(errs, list):
+                    clean_errs = [str(e) for e in errs]
+                    messages.append(f"{field.replace('_', ' ').capitalize()}: {' '.join(clean_errs)}")
+                else:
+                    messages.append(f"{field.replace('_', ' ').capitalize()}: {errs}")
+            err_msg = "; ".join(messages)
+
+        return Response({
+            "success": False,
+            "message": err_msg,
+            "errors": serializer.errors
+        }, status=status.HTTP_400_BAD_REQUEST)
 
 
 class LogoutView(APIView):
