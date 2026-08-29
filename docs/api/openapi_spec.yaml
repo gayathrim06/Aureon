@@ -1,0 +1,52 @@
+openapi: 3.0.3
+info:
+  title: Aureon Software Engineering Intelligence Platform API
+  description: REST API specification for Aureon core backend modules including Auth, RBAC, User Management, Projects, Teams, Tasks, Sprints, Code Quality Analysis, Dashboards, Audit Logs, and Notifications.
+  version: 1.0.0
+servers:
+  - url: http://localhost:5000/api/v1
+    description: Local Flask Development Server
+paths:
+  /auth/login:
+    post:
+      summary: Authenticate user with Email or Username
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                password:
+                  type: string
+      responses:
+        '200':
+          description: Successful authentication token returned
+        '401':
+          description: Invalid email/username or password credentials
+  /users:
+    get:
+      summary: Retrieve paginated user directory
+      responses:
+        '200':
+          description: List of active users
+  /projects:
+    get:
+      summary: Retrieve active projects list
+      responses:
+        '200':
+          description: List of projects
+  /teams:
+    get:
+      summary: Retrieve team directory and allocations
+      responses:
+        '200':
+          description: List of teams
+  /tasks:
+    get:
+      summary: Retrieve Kanban task board items
+      responses:
+        '200':
+          description: List of tasks
