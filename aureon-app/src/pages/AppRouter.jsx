@@ -243,7 +243,7 @@ export const AppRouter = () => {
         case 'AssignedProjects': return <LeadAssignedProjects />;
         case 'SprintBoard': return <LeadSprintBoard onShowToast={showToast} />;
         case 'Tasks': return <LeadTaskAllocation onShowToast={showToast} />;
-        case 'Developers': return <DeveloperRoster />;
+        case 'Developers': return <DeveloperRoster onShowToast={showToast} />;
         case 'Repository': return <LeadRepositoryView />;
         case 'CodeQuality': return <CodeQualityHub />;
         case 'ProjectHealth': return <LeadProjectHealth />;
