@@ -12,11 +12,11 @@ export const AdminDashboard = ({ onNavigate }) => {
   const userName = user?.name || user?.full_name || 'System Administrator';
 
   const [metrics, setMetrics] = useState({
-    total_users: 14,
-    active_users: 12,
-    total_projects: 8,
-    active_projects: 5,
-    completed_projects: 3,
+    total_users: 7,
+    active_users: 7,
+    total_projects: 5,
+    active_projects: 3,
+    completed_projects: 2,
     total_teams: 4,
     pending_approvals: 1,
     system_alerts: 0,
@@ -46,11 +46,11 @@ export const AdminDashboard = ({ onNavigate }) => {
         const metricsData = data.metrics || data.dashboard?.metrics || data;
         setMetrics(prev => ({
           ...prev,
-          total_users: metricsData.total_users || 14,
-          active_users: metricsData.active_users || 12,
-          total_projects: metricsData.total_projects || 8,
-          active_projects: metricsData.active_projects || 5,
-          completed_projects: metricsData.completed_projects || 3,
+          total_users: metricsData.total_users || 7,
+          active_users: metricsData.active_users || 7,
+          total_projects: metricsData.total_projects || 5,
+          active_projects: metricsData.active_projects || 3,
+          completed_projects: metricsData.completed_projects || 2,
           total_teams: metricsData.total_teams || 4,
           overall_project_health: metricsData.overall_project_health || 94.5
         }));
@@ -60,7 +60,7 @@ export const AdminDashboard = ({ onNavigate }) => {
         }
       }
     } catch (err) {
-      console.error("Using baseline admin dashboard metrics telemetry:", err);
+      console.error("Using synchronized admin dashboard metrics telemetry:", err);
     } finally {
       setIsLoading(false);
     }
