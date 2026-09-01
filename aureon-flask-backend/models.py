@@ -124,6 +124,22 @@ class Project(db.Model):
         return self.name or 'Untitled Project'
 
     def to_dict(self):
+        lead_user = User.query.get(self.lead_id) if self.lead_id else None
+        manager_user = User.query.get(self.manager_id) if self.manager_id else None
+
+        members_query = ProjectMember.query.filter_by(project_id=self.id).all()
+        member_users = []
+        for m in members_query:
+            u = User.query.get(m.user_id)
+            if u:
+                member_users.append({
+                    'id': str(u.id),
+                    'name': u.display_name,
+                    'email': u.email,
+                    'role': u.role_name,
+                    'designation': u.designation
+                })
+
         return {
             'id': str(self.id),
             'name': self.display_name,
@@ -135,7 +151,12 @@ class Project(db.Model):
             'start_date': self.start_date.isoformat() if self.start_date else None,
             'target_deadline': self.target_deadline.isoformat() if self.target_deadline else None,
             'project_manager_id': str(self.manager_id) if self.manager_id else None,
-            'manager_id': str(self.manager_id) if self.manager_id else None
+            'manager_id': str(self.manager_id) if self.manager_id else None,
+            'manager_name': manager_user.display_name if manager_user else 'Project Manager',
+            'lead_id': str(self.lead_id) if self.lead_id else None,
+            'team_lead_id': str(self.lead_id) if self.lead_id else None,
+            'lead_name': lead_user.display_name if lead_user else 'Unassigned Lead',
+            'team_members': member_users
         }
 
 class ProjectMember(db.Model):
