@@ -441,7 +441,7 @@ export const PmDashboard = ({ onNavigate }) => {
                       {proj.team_members && proj.team_members.length > 0 ? (
                         proj.team_members.map((m, idx) => (
                           <span key={idx} className="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-[10px] font-bold text-slate-700 dark:text-slate-300">
-                            {typeof m === 'string' ? m : m.name}
+                            {typeof m === 'string' ? m : (m?.name || m?.full_name || m?.username || m?.role || 'Team Member')}
                           </span>
                         ))
                       ) : (
