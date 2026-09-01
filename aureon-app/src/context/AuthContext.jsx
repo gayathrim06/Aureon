@@ -201,9 +201,18 @@ export const AuthProvider = ({ children }) => {
       email: data.email,
       role: data.role || 'ROLE_DEV',
       department: data.department || 'Engineering',
+      designation: data.designation || 'Software Engineer',
+      date_of_birth: data.dateOfBirth,
+      best_friend_name: data.bestFriendName,
       avatar: data.fullName ? data.fullName.split(' ').map(n=>n[0]).join('') : 'NE',
     };
-    return login(data.email, data.password);
+    const existingIndex = initialUsers.findIndex(u => u.email.toLowerCase() === data.email.toLowerCase());
+    if (existingIndex >= 0) {
+      initialUsers[existingIndex] = { ...initialUsers[existingIndex], ...newUser };
+    } else {
+      initialUsers.push(newUser);
+    }
+    return newUser;
   };
 
   const logout = (reason = 'USER_LOGOUT') => {
