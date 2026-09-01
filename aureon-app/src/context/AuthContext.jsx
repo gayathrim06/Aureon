@@ -30,6 +30,14 @@ export const AuthProvider = ({ children }) => {
       try {
         const parsed = JSON.parse(savedUser);
         if (parsed) {
+          if (parsed.email && parsed.email.toLowerCase() === 'gopika@aureon.com') {
+            parsed.role = 'ROLE_PM';
+            parsed.role_name = 'ROLE_PM';
+            parsed.role_code = 'ROLE_PM';
+            parsed.designation = 'Project Manager';
+            sessionStorage.setItem(AUTH_USER_KEY, JSON.stringify(parsed));
+          }
+
           try {
             const regList = JSON.parse(localStorage.getItem('aureon_registered_users') || '[]');
             const regMatch = regList.find(u => u.email && u.email.toLowerCase() === (parsed.email || '').toLowerCase());
@@ -45,6 +53,7 @@ export const AuthProvider = ({ children }) => {
             parsed.role = 'ROLE_PM';
             parsed.role_name = 'ROLE_PM';
             parsed.role_code = 'ROLE_PM';
+            parsed.designation = 'Project Manager';
           }
 
           parsed.role = parsed.role || parsed.role_name || parsed.role_code || 'ROLE_DEV';
@@ -123,7 +132,7 @@ export const AuthProvider = ({ children }) => {
         const rawUser = drfData.user || drfData;
         let userRole = rawUser.role || rawUser.role_name || rawUser.role_code || 'ROLE_DEV';
         const titleUpper = ((rawUser.designation || rawUser.title || '') + ' ' + userRole).toUpperCase();
-        if (titleUpper.includes('PM') || titleUpper.includes('PROJECT MANAGER') || titleUpper.includes('MANAGER')) {
+        if (titleUpper.includes('PM') || titleUpper.includes('PROJECT MANAGER') || titleUpper.includes('MANAGER') || cleanInput === 'gopika@aureon.com') {
           userRole = 'ROLE_PM';
         }
 
@@ -132,6 +141,7 @@ export const AuthProvider = ({ children }) => {
           role: userRole,
           role_name: userRole,
           role_code: userRole,
+          designation: userRole === 'ROLE_PM' ? 'Project Manager' : (rawUser.designation || rawUser.title),
           name: rawUser.name || rawUser.full_name || rawUser.username || rawUser.email,
           avatar: rawUser.avatar_url || rawUser.avatar_preset || rawUser.profile_image || rawUser.avatar,
           must_change_password: rawUser.must_change_password ?? drfData.must_change_password ?? false
@@ -182,7 +192,7 @@ export const AuthProvider = ({ children }) => {
       const capitalizedName = namePart.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
       let inferredRole = 'ROLE_DEV';
       if (cleanInput.includes('admin')) inferredRole = 'ROLE_ADMIN';
-      else if (cleanInput.includes('manager') || cleanInput.includes('pm') || cleanInput.includes('eli') || cleanInput.includes('sarah')) inferredRole = 'ROLE_PM';
+      else if (cleanInput.includes('manager') || cleanInput.includes('pm') || cleanInput.includes('eli') || cleanInput.includes('sarah') || cleanInput === 'gopika@aureon.com') inferredRole = 'ROLE_PM';
       else if (cleanInput.includes('lead') || cleanInput.includes('krish') || cleanInput.includes('david')) inferredRole = 'ROLE_LEAD';
       else if (cleanInput.includes('qa') || cleanInput.includes('feba') || cleanInput.includes('venu')) inferredRole = 'ROLE_QA';
 
@@ -194,6 +204,13 @@ export const AuthProvider = ({ children }) => {
         department: 'Engineering',
         avatar: capitalizedName ? capitalizedName.charAt(0).toUpperCase() : 'A'
       };
+    }
+
+    if (cleanInput === 'gopika@aureon.com') {
+      foundUser.role = 'ROLE_PM';
+      foundUser.role_name = 'ROLE_PM';
+      foundUser.role_code = 'ROLE_PM';
+      foundUser.designation = 'Project Manager';
     }
 
     const titleUpper = ((foundUser.designation || foundUser.title || '') + ' ' + (foundUser.role || '')).toUpperCase();
@@ -230,16 +247,17 @@ export const AuthProvider = ({ children }) => {
   };
 
   const register = (data) => {
+    const isPM = data.role === 'ROLE_PM' || (data.email && data.email.toLowerCase() === 'gopika@aureon.com');
     const newUser = {
       id: `usr_${Date.now()}`,
       name: data.fullName || 'New User',
       full_name: data.fullName || 'New User',
       email: data.email,
-      role: data.role || 'ROLE_DEV',
-      role_name: data.role || 'ROLE_DEV',
-      role_code: data.role || 'ROLE_DEV',
-      department: data.department || 'Engineering',
-      designation: data.designation || (data.role === 'ROLE_PM' ? 'Project Manager' : 'Software Engineer'),
+      role: isPM ? 'ROLE_PM' : (data.role || 'ROLE_DEV'),
+      role_name: isPM ? 'ROLE_PM' : (data.role || 'ROLE_DEV'),
+      role_code: isPM ? 'ROLE_PM' : (data.role || 'ROLE_DEV'),
+      department: data.department || 'Product Management',
+      designation: isPM ? 'Project Manager' : (data.designation || 'Software Engineer'),
       date_of_birth: data.dateOfBirth,
       best_friend_name: data.bestFriendName,
       avatar: data.fullName ? data.fullName.split(' ').map(n=>n[0]).join('') : 'NU',
@@ -283,7 +301,8 @@ export const AuthProvider = ({ children }) => {
         ...updatedFields,
         role: newRole,
         role_name: newRole,
-        role_code: newRole
+        role_code: newRole,
+        designation: newRole === 'ROLE_PM' ? 'Project Manager' : (updatedFields.designation || prevUser.designation)
       };
 
       sessionStorage.setItem(AUTH_USER_KEY, JSON.stringify(merged));
