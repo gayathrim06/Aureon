@@ -7,7 +7,7 @@ import { ClipboardList, Plus, UserCheck, CheckCircle2, Clock } from 'lucide-reac
 
 export const LeadTaskAllocation = ({ onShowToast }) => {
   const { user } = useAuth();
-  const [tasks, setTasks] = useState([
+  const defaultTasks = [
     {
       id: 'TCK-1001',
       title: 'sign in and register',
@@ -18,7 +18,9 @@ export const LeadTaskAllocation = ({ onShowToast }) => {
       status: 'TODO',
       due_date: '2026-09-15'
     }
-  ]);
+  ];
+
+  const [tasks, setTasks] = useState(defaultTasks);
   const [loading, setLoading] = useState(true);
 
   const fetchLeadTasks = async () => {
@@ -30,49 +32,16 @@ export const LeadTaskAllocation = ({ onShowToast }) => {
       const res = await fetch('http://127.0.0.1:8000/api/v1/tasks/', { headers });
       if (res.ok) {
         const data = await res.json();
-        if (data.tasks && data.tasks.length > 0) {
+        if (data && Array.isArray(data.tasks) && data.tasks.length > 0) {
           setTasks(data.tasks);
         } else {
-          setTasks([
-            {
-              id: 'TCK-1001',
-              title: 'sign in and register',
-              project_name: 'Verona Organic',
-              assignee_name: 'Sainu Anna Sajan',
-              assignee: 'Sainu Anna Sajan',
-              priority: 'HIGH',
-              status: 'TODO',
-              due_date: '2026-09-15'
-            }
-          ]);
+          setTasks(defaultTasks);
         }
       } else {
-        setTasks([
-          {
-            id: 'TCK-1001',
-            title: 'sign in and register',
-            project_name: 'Verona Organic',
-            assignee_name: 'Sainu Anna Sajan',
-            assignee: 'Sainu Anna Sajan',
-            priority: 'HIGH',
-            status: 'TODO',
-            due_date: '2026-09-15'
-          }
-        ]);
+        setTasks(defaultTasks);
       }
     } catch (err) {
-      setTasks([
-        {
-          id: 'TCK-1001',
-          title: 'sign in and register',
-          project_name: 'Verona Organic',
-          assignee_name: 'Sainu Anna Sajan',
-          assignee: 'Sainu Anna Sajan',
-          priority: 'HIGH',
-          status: 'TODO',
-          due_date: '2026-09-15'
-        }
-      ]);
+      setTasks(defaultTasks);
     } finally {
       setLoading(false);
     }
@@ -83,6 +52,7 @@ export const LeadTaskAllocation = ({ onShowToast }) => {
   }, []);
 
   const handleUpdateStatus = async (taskId, newStatus) => {
+    if (!taskId) return;
     setTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: newStatus } : t));
 
     const token = sessionStorage.getItem('aureon_jwt_access_token');
@@ -97,7 +67,9 @@ export const LeadTaskAllocation = ({ onShowToast }) => {
       });
     } catch (err) {}
 
-    if (onShowToast) onShowToast({ type: 'success', title: 'Task Status Updated', message: `Task status updated to ${newStatus}.` });
+    if (typeof onShowToast === 'function') {
+      onShowToast({ type: 'success', title: 'Task Status Updated', message: `Task status updated to ${newStatus}.` });
+    }
   };
 
   const priorityColors = {
@@ -111,15 +83,15 @@ export const LeadTaskAllocation = ({ onShowToast }) => {
     {
       key: 'id',
       label: 'Ticket ID',
-      render: (val) => <span className="font-mono text-xs font-bold text-indigo-600 dark:text-indigo-400">{val}</span>
+      render: (val) => <span className="font-mono text-xs font-bold text-indigo-600 dark:text-indigo-400">{val || 'TCK-1001'}</span>
     },
     {
       key: 'title',
       label: 'Work Ticket Title & Project',
       render: (val, row) => (
         <div>
-          <span className="font-extrabold text-slate-900 dark:text-white block">{val}</span>
-          <span className="text-[10px] text-slate-500 font-medium">📁 {row.project_name || 'Verona Organic'}</span>
+          <span className="font-extrabold text-slate-900 dark:text-white block">{val || 'Untitled Task'}</span>
+          <span className="text-[10px] text-slate-500 font-medium">📁 {row?.project_name || 'Verona Organic'}</span>
         </div>
       )
     },
@@ -128,7 +100,7 @@ export const LeadTaskAllocation = ({ onShowToast }) => {
       label: 'Assignee Engineer',
       render: (val, row) => (
         <span className="font-bold text-slate-900 dark:text-white flex items-center gap-1">
-          👤 {val || row.assignee || 'Sainu Anna Sajan'}
+          👤 {val || row?.assignee || 'Sainu Anna Sajan'}
         </span>
       )
     },
@@ -143,7 +115,7 @@ export const LeadTaskAllocation = ({ onShowToast }) => {
       render: (val, row) => (
         <select
           value={val || 'TODO'}
-          onChange={(e) => handleUpdateStatus(row.id, e.target.value)}
+          onChange={(e) => handleUpdateStatus(row?.id || 'TCK-1001', e.target.value)}
           className="p-1 px-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-bold text-slate-900 dark:text-white cursor-pointer"
         >
           <option value="TODO">To Do</option>
@@ -156,7 +128,7 @@ export const LeadTaskAllocation = ({ onShowToast }) => {
     {
       key: 'due_date',
       label: 'Target Due Date',
-      render: (val, row) => <span className="font-mono text-xs text-slate-600 dark:text-slate-400 font-bold">{val || row.dueDate || '2026-09-15'}</span>
+      render: (val, row) => <span className="font-mono text-xs text-slate-600 dark:text-slate-400 font-bold">{val || row?.dueDate || '2026-09-15'}</span>
     }
   ];
 
