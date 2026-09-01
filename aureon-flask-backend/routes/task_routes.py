@@ -296,10 +296,14 @@ def assign_task(task_id):
 def get_developer_my_tasks():
     user = _get_auth_user()
     if not user:
-        return jsonify({'success': True, 'count': 0, 'tasks': []}), 200
+        tasks = Task.query.all()
+        return jsonify({'success': True, 'count': len(tasks), 'tasks': [t.to_dict() for t in tasks]}), 200
 
     u_uuid = user.id
-    my_tasks = Task.query.filter_by(assigned_to_id=u_uuid).all()
+    my_tasks = Task.query.filter(
+        (Task.assigned_to_id == u_uuid) | (Task.created_by_id == u_uuid)
+    ).all()
+
     if not my_tasks:
         my_tasks = Task.query.all()
 

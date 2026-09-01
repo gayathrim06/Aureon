@@ -27,11 +27,14 @@ export const MyTasksKanban = ({ onShowToast }) => {
 
   // Fetch developer tasks from PostgreSQL REST API backend
   const fetchTasks = async () => {
+    const token = sessionStorage.getItem('aureon_jwt_access_token');
+    const headers = { 'Authorization': token ? `Bearer ${token}` : '' };
+
     try {
-      const res = await fetch('http://127.0.0.1:8000/api/v1/developer/my-tasks');
+      const res = await fetch('http://127.0.0.1:8000/api/v1/developer/my-tasks', { headers });
       if (res.ok) {
         const data = await res.json();
-        if (data.success && data.tasks && data.tasks.length > 0) {
+        if (data.success && data.tasks) {
           const formatted = data.tasks.map((t, idx) => ({
             id: t.id,
             title: t.title || 'Untitled Task',
