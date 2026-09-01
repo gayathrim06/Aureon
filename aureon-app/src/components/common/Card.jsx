@@ -1,5 +1,4 @@
 import React from 'react';
-import { motion } from 'framer-motion';
 
 export const Card = ({
   children,
@@ -9,20 +8,19 @@ export const Card = ({
   ...props
 }) => {
   return (
-    <motion.div
-      whileHover={hoverEffect ? { y: -2, transition: { duration: 0.2 } } : {}}
+    <div
       onClick={onClick}
       className={`
         bg-white dark:bg-[#120c1e] border border-purple-100 dark:border-purple-950/70 rounded-[16px] p-5
         shadow-xs dark:shadow-2xl transition-all duration-200
-        ${hoverEffect ? 'hover:border-purple-300 dark:hover:border-fuchsia-500/50 hover:shadow-md dark:hover:shadow-purple-950/50' : ''}
+        ${hoverEffect ? 'hover:-translate-y-0.5 hover:border-purple-300 dark:hover:border-fuchsia-500/50 hover:shadow-md dark:hover:shadow-purple-950/50' : ''}
         ${onClick ? 'cursor-pointer' : ''}
         ${className}
       `}
       {...props}
     >
       {children}
-    </motion.div>
+    </div>
   );
 };
 
