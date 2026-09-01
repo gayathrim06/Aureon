@@ -6,6 +6,7 @@ import { Toast } from '../components/common/Toast';
 import { Unauthorized403 } from '../components/common/Unauthorized403';
 import { HomePage } from './HomePage';
 import { Login } from './Login';
+import { Projects } from './Projects';
 
 // ─── Admin Role Pages (13 total) ─────────────────
 import { AdminDashboard } from '../roles/admin/AdminDashboard';
@@ -221,7 +222,7 @@ export const AppRouter = () => {
     if (role === 'ROLE_PM') {
       switch (activeTab) {
         case 'Dashboard': return <PmDashboard onNavigate={navigateTab} />;
-        case 'Projects': return <ProjectManagement onShowToast={showToast} />;
+        case 'Projects': return <Projects />;
         case 'Sprints': return <SprintPlanner onShowToast={showToast} />;
         case 'Tasks': return <TaskBreakdown />;
         case 'Milestones': return <MilestoneTracker />;
