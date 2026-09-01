@@ -71,25 +71,8 @@ def seed_database():
             existing_user.department = u_data['department']
             existing_user.designation = u_data['designation']
 
-    # 3. Seed Baseline Projects
-    default_projects = [
-        { 'name': 'Aureon Core API Gateway', 'status': 'IN_PROGRESS', 'priority': 'HIGH', 'health_score': 96 },
-        { 'name': 'Cloud Telemetry Mesh', 'status': 'IN_PROGRESS', 'priority': 'HIGH', 'health_score': 89 },
-        { 'name': 'Enterprise Auth & OAuth2', 'status': 'COMPLETED', 'priority': 'MEDIUM', 'health_score': 98 },
-        { 'name': 'SonarQube Vulnerability Scanner', 'status': 'IN_PROGRESS', 'priority': 'HIGH', 'health_score': 94 },
-        { 'name': 'Executive PDF/CSV Reports Engine', 'status': 'COMPLETED', 'priority': 'LOW', 'health_score': 95 }
-    ]
-
-    for p_data in default_projects:
-        if not Project.query.filter_by(name=p_data['name']).first():
-            p = Project(
-                name=p_data['name'],
-                status=p_data['status'],
-                priority=p_data['priority'],
-                health_score=p_data['health_score'],
-                is_active=True
-            )
-            db.session.add(p)
+    # 3. Seed Baseline Projects (Empty by default)
+    default_projects = []
 
     # 4. Seed Baseline Teams
     default_teams = [
