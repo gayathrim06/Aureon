@@ -223,31 +223,31 @@ export const SprintPlanner = ({ onShowToast }) => {
 
       {/* Burndown Velocity Chart Banner */}
       {selectedSprint && (
-        <div className="aureon-dark-card p-6 rounded-3xl bg-gradient-to-br from-indigo-950 via-slate-900 to-purple-950 warm:bg-gradient-to-br warm:from-[#78350f] warm:via-[#92400e] warm:to-[#b45309] shadow-xl space-y-4 border border-indigo-700/60 warm:border-amber-700/60">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-indigo-700/50 warm:border-amber-700/50 pb-4">
+        <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 warm:bg-[#f3e8d2] border border-slate-200 dark:border-slate-800 warm:border-[#cbb68e] shadow-sm space-y-4">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-200 dark:border-slate-800 warm:border-[#cbb68e] pb-4">
             <div>
               <div className="flex items-center gap-2">
-                <span className="px-2 py-0.5 rounded-md bg-indigo-500/30 warm:bg-amber-500/30 text-white font-mono text-[10px] font-bold border border-indigo-400/40 warm:border-amber-400/40">
+                <span className="px-2 py-0.5 rounded-md bg-indigo-100 dark:bg-indigo-950 warm:bg-[#e8dbbe] text-indigo-700 dark:text-indigo-300 warm:text-[#342314] font-mono text-[10px] font-bold border border-indigo-200 dark:border-indigo-800 warm:border-[#cbb68e]">
                   {selectedSprint.id}
                 </span>
-                <h3 className="text-lg font-black text-white">{selectedSprint.name}</h3>
-                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-emerald-500/30 text-emerald-300 border border-emerald-400/40">
+                <h3 className="text-lg font-black text-slate-900 dark:text-white warm:text-[#342314]">{selectedSprint.name}</h3>
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
                   ⚡ {selectedSprint.story_points || 40} Story Points Capacity
                 </span>
               </div>
-              <p className="text-xs text-indigo-100 warm:text-amber-100 mt-1 font-medium">
+              <p className="text-xs text-slate-600 dark:text-slate-300 warm:text-[#69523c] mt-1 font-medium">
                 🎯 <strong>Sprint Goal:</strong> {selectedSprint.goal || 'Deliver core milestone features on schedule.'}
               </p>
             </div>
 
             <div className="flex items-center gap-4 text-xs">
               <div className="text-right">
-                <span className="text-[10px] text-indigo-300 warm:text-amber-200 uppercase block font-bold">Target Project</span>
-                <span className="font-extrabold text-white">{selectedSprint.project_name || 'Aureon SaaS'}</span>
+                <span className="text-[10px] text-slate-400 dark:text-slate-500 uppercase block font-bold">Target Project</span>
+                <span className="font-extrabold text-indigo-600 dark:text-indigo-400 warm:text-[#b45309]">{selectedSprint.project_name || 'Aureon SaaS'}</span>
               </div>
-              <div className="text-right border-l border-indigo-700/60 warm:border-amber-700/60 pl-4">
-                <span className="text-[10px] text-indigo-300 warm:text-amber-200 uppercase block font-bold">Assigned Scrum Lead</span>
-                <span className="font-extrabold text-white">{selectedSprint.team_lead || 'Krishna Deepesh'}</span>
+              <div className="text-right border-l border-slate-200 dark:border-slate-800 warm:border-[#cbb68e] pl-4">
+                <span className="text-[10px] text-slate-400 dark:text-slate-500 uppercase block font-bold">Assigned Scrum Lead</span>
+                <span className="font-extrabold text-slate-900 dark:text-white warm:text-[#342314]">{selectedSprint.team_lead || 'Krishna Deepesh'}</span>
               </div>
             </div>
           </div>
@@ -256,12 +256,12 @@ export const SprintPlanner = ({ onShowToast }) => {
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={selectedSprint.burnDownData || []}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#475569" opacity={0.4} />
-                <XAxis dataKey="day" stroke="#ffffff" fontSize={11} tick={{ fill: '#ffffff' }} />
-                <YAxis stroke="#ffffff" fontSize={11} tick={{ fill: '#ffffff' }} />
-                <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderRadius: '12px', border: '1px solid #6366f1', color: '#fff' }} />
-                <Line type="monotone" dataKey="remaining" stroke="#38bdf8" strokeWidth={3} name="Remaining Story Points" />
-                <Line type="monotone" dataKey="target" stroke="#a7f3d0" strokeDasharray="5 5" strokeWidth={2} name="Ideal Velocity Line" />
+                <CartesianGrid strokeDasharray="3 3" stroke="#cbd5e1" opacity={0.5} />
+                <XAxis dataKey="day" stroke="#64748b" fontSize={11} />
+                <YAxis stroke="#64748b" fontSize={11} />
+                <Tooltip contentStyle={{ backgroundColor: '#ffffff', borderRadius: '12px', border: '1px solid #e2e8f0', color: '#0f172a' }} />
+                <Line type="monotone" dataKey="remaining" stroke="#4f46e5" strokeWidth={3} name="Remaining Story Points" />
+                <Line type="monotone" dataKey="target" stroke="#94a3b8" strokeDasharray="5 5" strokeWidth={2} name="Ideal Velocity Line" />
               </LineChart>
             </ResponsiveContainer>
           </div>
