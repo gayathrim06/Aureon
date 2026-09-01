@@ -363,7 +363,6 @@ export const Login = ({ onNavigateHome }) => {
                   <option value="ROLE_LEAD">Team Lead</option>
                   <option value="ROLE_PM">Project Manager</option>
                   <option value="ROLE_QA">QA Engineer</option>
-                  <option value="ROLE_ADMIN">System Admin</option>
                 </select>
               </div>
 
