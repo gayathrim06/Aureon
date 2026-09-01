@@ -278,6 +278,11 @@ class Task(db.Model):
         return self.status or 'TODO'
 
     def to_dict(self):
+        proj = Project.query.get(self.project_id) if self.project_id else None
+        spr = Sprint.query.get(self.sprint_id) if self.sprint_id else None
+        tm = Team.query.get(self.team_id) if self.team_id else None
+        u = self.assigned_user or (User.query.get(self.assigned_to_id) if self.assigned_to_id else None)
+
         return {
             'id': str(self.id),
             'title': self.display_title,
@@ -288,10 +293,14 @@ class Task(db.Model):
             'estimated_hours': self.estimated_hours or 0.0,
             'actual_hours': self.actual_hours or 0.0,
             'assigned_to_id': str(self.assigned_to_id) if self.assigned_to_id else None,
-            'assignee_name': self.assigned_user.full_name if self.assigned_user else None,
+            'assignee_name': u.display_name if u else 'Unassigned',
+            'assignee': u.display_name if u else 'Unassigned',
             'project_id': str(self.project_id) if self.project_id else None,
+            'project_name': proj.display_name if proj else 'General System',
             'team_id': str(self.team_id) if self.team_id else None,
-            'sprint_id': str(self.sprint_id) if self.sprint_id else None
+            'assigned_team': tm.name if tm else 'Frontend Development Team',
+            'sprint_id': str(self.sprint_id) if self.sprint_id else None,
+            'sprint_name': spr.name if spr else 'Sprint Milestone'
         }
 
 class Notification(db.Model):

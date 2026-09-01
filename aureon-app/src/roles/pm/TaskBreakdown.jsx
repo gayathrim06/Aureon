@@ -190,10 +190,10 @@ export const TaskBreakdown = ({ onShowToast }) => {
   };
 
   const filteredTasks = tasks.filter(t => {
-    const matchProj = projectFilter === 'ALL' || t.project_id === projectFilter || t.project_name === projectFilter;
-    const matchTeam = teamFilter === 'ALL' || t.assigned_team === teamFilter;
-    const matchSprint = sprintFilter === 'ALL' || t.sprint_id === sprintFilter;
-    const matchStatus = statusFilter === 'ALL' || t.status === statusFilter;
+    const matchProj = projectFilter === 'ALL' || !projectFilter || t.project_id === projectFilter || t.project_name === projectFilter || !t.project_id;
+    const matchTeam = teamFilter === 'ALL' || !teamFilter || t.assigned_team === teamFilter || !t.assigned_team;
+    const matchSprint = sprintFilter === 'ALL' || !sprintFilter || t.sprint_id === sprintFilter || t.sprint_name === sprintFilter || !t.sprint_id;
+    const matchStatus = statusFilter === 'ALL' || !statusFilter || t.status === statusFilter;
     return matchProj && matchTeam && matchSprint && matchStatus;
   });
 
