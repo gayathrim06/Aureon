@@ -56,6 +56,7 @@ export const UserProfile = () => {
   }, [user]);
 
   // Form State for Editing User Details
+  const [editRole, setEditRole] = useState(role);
   const [editName, setEditName] = useState(name);
   const [editUsername, setEditUsername] = useState(username);
   const [editPhone, setEditPhone] = useState(phone);
@@ -70,6 +71,7 @@ export const UserProfile = () => {
   const [newSkillInput, setNewSkillInput] = useState('');
 
   const openModal = () => {
+    setEditRole(role);
     setEditName(name);
     setEditUsername(username);
     setEditPhone(phone);
@@ -100,15 +102,15 @@ export const UserProfile = () => {
   const handleSaveProfile = async (e) => {
     if (e) e.preventDefault();
 
-    let newRole = role;
-    const titleUpper = (editTitle || '').toUpperCase();
-    if (titleUpper.includes('PM') || titleUpper.includes('MANAGER') || titleUpper.includes('PROJECT MANAGER')) {
+    let newRole = editRole || role;
+    const titleUpper = ((editTitle || '') + ' ' + (newRole || '')).toUpperCase();
+    if (titleUpper.includes('PM') || titleUpper.includes('PROJECT MANAGER') || titleUpper.includes('MANAGER') || newRole === 'ROLE_PM') {
       newRole = 'ROLE_PM';
-    } else if (titleUpper.includes('LEAD')) {
+    } else if (titleUpper.includes('LEAD') || newRole === 'ROLE_LEAD') {
       newRole = 'ROLE_LEAD';
-    } else if (titleUpper.includes('QA')) {
+    } else if (titleUpper.includes('QA') || newRole === 'ROLE_QA') {
       newRole = 'ROLE_QA';
-    } else if (titleUpper.includes('ADMIN')) {
+    } else if (titleUpper.includes('ADMIN') || newRole === 'ROLE_ADMIN') {
       newRole = 'ROLE_ADMIN';
     }
 
@@ -148,7 +150,7 @@ export const UserProfile = () => {
       // Fallback
     }
 
-    if (showToast) showToast('Account profile updated successfully!', 'success');
+    if (showToast) showToast(`Profile updated! Switched role to ${newRole.replace('ROLE_', '')}.`, 'success');
     setIsEditModalOpen(false);
   };
 
@@ -379,6 +381,30 @@ export const UserProfile = () => {
             >
               <Save className="w-3.5 h-3.5" /> Save Changes Now
             </button>
+          </div>
+
+          {/* RBAC ROLE SELECTION */}
+          <div className="p-3.5 rounded-xl bg-indigo-50/70 dark:bg-indigo-950/70 warm:bg-[#f3e8d2] border border-indigo-200 dark:border-indigo-800 warm:border-[#cbb68e] space-y-1.5">
+            <label className="block text-xs font-extrabold text-indigo-900 dark:text-indigo-200 warm:text-[#342314] uppercase tracking-wider">
+              RBAC System Role & Workspace Authorization
+            </label>
+            <select
+              value={editRole}
+              onChange={(e) => {
+                const selected = e.target.value;
+                setEditRole(selected);
+                if (selected === 'ROLE_PM') setEditTitle('Project Manager');
+                else if (selected === 'ROLE_LEAD') setEditTitle('Team Lead');
+                else if (selected === 'ROLE_DEV') setEditTitle('Software Developer');
+                else if (selected === 'ROLE_QA') setEditTitle('QA Engineer');
+              }}
+              className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 warm:border-[#b8a074] bg-white dark:bg-slate-900 warm:bg-[#e8dbbe] text-xs font-extrabold text-slate-900 dark:text-white warm:text-[#342314]"
+            >
+              <option value="ROLE_PM">Project Manager (PM Workstation)</option>
+              <option value="ROLE_LEAD">Team Lead (Lead Workstation)</option>
+              <option value="ROLE_DEV">Developer (Developer Workspace)</option>
+              <option value="ROLE_QA">QA Engineer (QA App)</option>
+            </select>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
