@@ -96,9 +96,9 @@ export const Login = ({ onNavigateHome }) => {
           if (register) {
             register(regData);
           }
-          setRegSuccessMsg(`Registration successful for ${regData.fullName}! Please sign in using your credentials.`);
+          setRegSuccessMsg(`Registration successful for ${regData.fullName}! Account created. Please sign in with your password.`);
           setEmail(regData.email);
-          setPassword(regData.password);
+          setPassword('');
           setRegData({
             fullName: '', email: '', password: '', confirmPassword: '',
             role: 'ROLE_DEV', department: 'Engineering', designation: 'Full Stack Developer',
@@ -119,9 +119,9 @@ export const Login = ({ onNavigateHome }) => {
     if (register) {
       register(regData);
     }
-    setRegSuccessMsg(`Registration successful for ${regData.fullName}! Account created. Please sign in.`);
+    setRegSuccessMsg(`Registration successful for ${regData.fullName}! Account created. Please sign in with your password.`);
     setEmail(regData.email);
-    setPassword(regData.password);
+    setPassword('');
     setRegData({
       fullName: '', email: '', password: '', confirmPassword: '',
       role: 'ROLE_DEV', department: 'Engineering', designation: 'Full Stack Developer',
@@ -169,7 +169,7 @@ export const Login = ({ onNavigateHome }) => {
         if (data.success) {
           setRegSuccessMsg('Password reset successfully! You can now log in with your new password.');
           setEmail(forgotData.email);
-          setPassword(forgotData.newPassword);
+          setPassword('');
           setForgotData({ email: '', dateOfBirth: '', bestFriendName: '', newPassword: '', confirmNewPassword: '' });
           setTimeout(() => {
             setActiveTab('login');
@@ -283,12 +283,13 @@ export const Login = ({ onNavigateHome }) => {
         {/* ━━━ TAB 1: SIGN IN ━━━ */}
         {activeTab === 'login' && (
           <div className="p-6 sm:p-7 rounded-2xl bg-white dark:bg-slate-900 warm:bg-[#e8dbbe] border border-slate-200 dark:border-slate-800 warm:border-[#cbb68e] shadow-xl space-y-4">
-            <form onSubmit={handleLoginSubmit} className="space-y-4">
+            <form onSubmit={handleLoginSubmit} autoComplete="off" className="space-y-4">
               <div>
                 <label className="block text-xs font-bold mb-1.5">Corporate Email</label>
                 <input
                   type="email"
                   required
+                  autoComplete="off"
                   placeholder="admin@aureon.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -302,6 +303,7 @@ export const Login = ({ onNavigateHome }) => {
                   <input
                     type={showPassword ? 'text' : 'password'}
                     required
+                    autoComplete="new-password"
                     placeholder="••••••••"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}

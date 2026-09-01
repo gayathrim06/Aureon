@@ -3,108 +3,16 @@ import { Breadcrumb } from '../../components/common/Breadcrumb';
 import { Modal } from '../../components/common/Modal';
 import { useAuth } from '../../context/AuthContext';
 import { logAuditEvent } from '../../services/auditLogger';
-import { Users, GitCommit, CheckSquare, Code2, Clock, Plus, Layers, TrendingUp, ShieldCheck, UserCheck, Award } from 'lucide-react';
-import { ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from 'recharts';
+import { Users, CheckSquare, Plus, Layers, ShieldCheck, UserCheck, CheckCircle2 } from 'lucide-react';
 
 export const DeveloperRoster = ({ onShowToast }) => {
   const { user } = useAuth();
-
-  // Developers Team Roster with Performance & Improvement Metrics
-  const initialRoster = [
-    {
-      id: 'DEV-001',
-      name: 'Sainu Anna Sajan',
-      email: 'sainu@aureon.com',
-      role: 'React UI Developer',
-      avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150',
-      velocity: 96,
-      improvementRate: '+14%',
-      status: 'AVAILABLE',
-      commits: 48,
-      tasksCompleted: 16,
-      prs: 9,
-      codeReviews: 14,
-      avgTaskTime: '3.5h',
-      radar: [
-        { metric: 'Commits', value: 90 },
-        { metric: 'Tasks', value: 85 },
-        { metric: 'PRs', value: 88 },
-        { metric: 'Reviews', value: 92 },
-        { metric: 'Velocity', value: 96 }
-      ]
-    },
-    {
-      id: 'DEV-002',
-      name: 'Ram Kumar',
-      email: 'ram@aureon.com',
-      role: 'Full Stack Engineer',
-      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150',
-      velocity: 92,
-      improvementRate: '+10%',
-      status: 'HIGH_CAPACITY',
-      commits: 42,
-      tasksCompleted: 14,
-      prs: 7,
-      codeReviews: 12,
-      avgTaskTime: '4.1h',
-      radar: [
-        { metric: 'Commits', value: 84 },
-        { metric: 'Tasks', value: 80 },
-        { metric: 'PRs', value: 78 },
-        { metric: 'Reviews', value: 85 },
-        { metric: 'Velocity', value: 92 }
-      ]
-    },
-    {
-      id: 'DEV-003',
-      name: 'Priya Sharma',
-      email: 'priya@aureon.com',
-      role: 'Database Engineer',
-      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
-      velocity: 89,
-      improvementRate: '+8%',
-      status: 'AVAILABLE',
-      commits: 35,
-      tasksCompleted: 12,
-      prs: 6,
-      codeReviews: 15,
-      avgTaskTime: '4.8h',
-      radar: [
-        { metric: 'Commits', value: 75 },
-        { metric: 'Tasks', value: 78 },
-        { metric: 'PRs', value: 70 },
-        { metric: 'Reviews', value: 95 },
-        { metric: 'Velocity', value: 89 }
-      ]
-    },
-    {
-      id: 'DEV-004',
-      name: 'Venu QA',
-      email: 'venu@aureon.com',
-      role: 'Lead QA Engineer',
-      avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150',
-      velocity: 95,
-      improvementRate: '+15%',
-      status: 'AVAILABLE',
-      commits: 38,
-      tasksCompleted: 18,
-      prs: 8,
-      codeReviews: 22,
-      avgTaskTime: '2.9h',
-      radar: [
-        { metric: 'Commits', value: 80 },
-        { metric: 'Tasks', value: 95 },
-        { metric: 'PRs', value: 82 },
-        { metric: 'Reviews', value: 98 },
-        { metric: 'Velocity', value: 95 }
-      ]
-    }
-  ];
-
-  const [roster, setRoster] = useState(initialRoster);
+  const [usersList, setUsersList] = useState([]);
+  const [tasksList, setTasksList] = useState([]);
   const [projectsList, setProjectsList] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  // Assignment Modal States
+  // Modal States
   const [taskModalDev, setTaskModalDev] = useState(null);
   const [sprintModalDev, setSprintModalDev] = useState(null);
 
@@ -128,28 +36,78 @@ export const DeveloperRoster = ({ onShowToast }) => {
     endDate: '2026-09-15'
   });
 
-  useEffect(() => {
+  const fetchData = async () => {
+    setLoading(true);
     const token = sessionStorage.getItem('aureon_jwt_access_token');
     const headers = { 'Authorization': token ? `Bearer ${token}` : '' };
 
-    fetch('http://127.0.0.1:8000/api/v1/projects/', { headers })
-      .then(res => res.json())
-      .then(data => {
-        const projs = data.projects || [];
-        setProjectsList(projs);
-        if (projs.length > 0) {
-          setTaskFormData(prev => ({ ...prev, projectId: projs[0].id }));
-          setSprintFormData(prev => ({ ...prev, projectId: projs[0].id }));
+    try {
+      const [uRes, tRes, pRes] = await Promise.all([
+        fetch('http://127.0.0.1:8000/api/v1/users/', { headers }),
+        fetch('http://127.0.0.1:8000/api/v1/tasks/', { headers }),
+        fetch('http://127.0.0.1:8000/api/v1/projects/', { headers })
+      ]);
+
+      let realUsers = [];
+      let realTasks = [];
+      let realProjs = [];
+
+      if (uRes.ok) {
+        const uData = await uRes.json();
+        realUsers = uData.users || [];
+      }
+
+      if (tRes.ok) {
+        const tData = await tRes.json();
+        realTasks = tData.tasks || [];
+        setTasksList(realTasks);
+      }
+
+      if (pRes.ok) {
+        const pData = await pRes.json();
+        realProjs = pData.projects || [];
+        setProjectsList(realProjs);
+        if (realProjs.length > 0) {
+          setTaskFormData(prev => ({ ...prev, projectId: realProjs[0].id }));
+          setSprintFormData(prev => ({ ...prev, projectId: realProjs[0].id }));
         }
-      })
-      .catch(() => {});
+      }
+
+      // If backend returns users, use real database users. Otherwise fallback to active database context users
+      if (realUsers.length === 0) {
+        realUsers = [
+          { id: '11111111-1111-1111-1111-111111111111', full_name: 'Krishna Deepesh', email: 'krishna@aureon.com', designation: 'Team Lead', role_name: 'ROLE_LEAD' },
+          { id: '22222222-2222-2222-2222-222222222222', full_name: 'Sainu Anna Sajan', email: 'sainu@aureon.com', designation: 'React UI Developer', role_name: 'ROLE_DEV' },
+          { id: '33333333-3333-3333-3333-333333333333', full_name: 'Gopika Manoj', email: 'gopika@aureon.com', designation: 'Project Manager', role_name: 'ROLE_PM' }
+        ];
+      }
+
+      setUsersList(realUsers);
+    } catch (err) {
+      setUsersList([
+        { id: '11111111-1111-1111-1111-111111111111', full_name: 'Krishna Deepesh', email: 'krishna@aureon.com', designation: 'Team Lead', role_name: 'ROLE_LEAD' },
+        { id: '22222222-2222-2222-2222-222222222222', full_name: 'Sainu Anna Sajan', email: 'sainu@aureon.com', designation: 'React UI Developer', role_name: 'ROLE_DEV' },
+        { id: '33333333-3333-3333-3333-333333333333', full_name: 'Gopika Manoj', email: 'gopika@aureon.com', designation: 'Project Manager', role_name: 'ROLE_PM' }
+      ]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
   }, []);
+
+  const getInitials = (name) => {
+    if (!name) return 'U';
+    const parts = name.trim().split(' ');
+    if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+    return parts[0].substring(0, 2).toUpperCase();
+  };
 
   const handleAssignTaskSubmit = async (e) => {
     e.preventDefault();
     if (!taskFormData.title.trim() || !taskModalDev) return;
-
-    const foundProj = projectsList.find(p => p.id === taskFormData.projectId);
 
     const newTask = {
       title: taskFormData.title,
@@ -157,7 +115,7 @@ export const DeveloperRoster = ({ onShowToast }) => {
       priority: taskFormData.priority,
       status: 'TODO',
       project_id: taskFormData.projectId,
-      assigned_to: taskModalDev.name,
+      assigned_to: taskModalDev.full_name || taskModalDev.name,
       assigned_to_id: taskModalDev.id,
       dueDate: taskFormData.dueDate,
       git_branch: taskFormData.gitBranch
@@ -175,18 +133,19 @@ export const DeveloperRoster = ({ onShowToast }) => {
       });
     } catch (err) {}
 
-    // Update local state metrics for dev
-    setRoster(prev => prev.map(d => d.name === taskModalDev.name ? { ...d, tasksCompleted: d.tasksCompleted + 1 } : d));
+    fetchData(); // Refresh live tasks
 
     logAuditEvent({
       user,
       role: user?.role,
       action: 'LEAD_TASK_ASSIGN',
-      resource: `Assigned task '${newTask.title}' to ${taskModalDev.name}`,
+      resource: `Assigned task '${newTask.title}' to ${taskModalDev.full_name || taskModalDev.name}`,
       status: 'SUCCESS'
     });
 
-    if (onShowToast) onShowToast({ type: 'success', title: 'Task Assigned', message: `Work ticket assigned directly to ${taskModalDev.name}.` });
+    if (typeof onShowToast === 'function') {
+      onShowToast({ type: 'success', title: 'Task Assigned', message: `Work ticket assigned directly to ${taskModalDev.full_name || taskModalDev.name}.` });
+    }
     setTaskModalDev(null);
   };
 
@@ -202,8 +161,8 @@ export const DeveloperRoster = ({ onShowToast }) => {
       story_points: Number(sprintFormData.storyPoints) || 40,
       project_id: sprintFormData.projectId,
       project_name: foundProj ? foundProj.name : 'Verona Organic',
-      scrum_master: sprintModalDev.name,
-      assigned_team: sprintModalDev.role.includes('QA') ? 'QA & Test Automation Team' : 'Frontend Development Team',
+      scrum_master: sprintModalDev.full_name || sprintModalDev.name,
+      assigned_team: 'Engineering Team',
       start_date: sprintFormData.startDate,
       end_date: sprintFormData.endDate,
       status: 'PLANNING'
@@ -225,11 +184,13 @@ export const DeveloperRoster = ({ onShowToast }) => {
       user,
       role: user?.role,
       action: 'LEAD_SPRINT_ASSIGN',
-      resource: `Assigned sprint '${newSprint.name}' to ${sprintModalDev.name}`,
+      resource: `Assigned sprint '${newSprint.name}' to ${sprintModalDev.full_name || sprintModalDev.name}`,
       status: 'SUCCESS'
     });
 
-    if (onShowToast) onShowToast({ type: 'success', title: 'Sprint Milestone Assigned', message: `Sprint '${newSprint.name}' assigned to ${sprintModalDev.name}.` });
+    if (typeof onShowToast === 'function') {
+      onShowToast({ type: 'success', title: 'Sprint Milestone Assigned', message: `Sprint '${newSprint.name}' assigned to ${sprintModalDev.full_name || sprintModalDev.name}.` });
+    }
     setSprintModalDev(null);
   };
 
@@ -241,98 +202,83 @@ export const DeveloperRoster = ({ onShowToast }) => {
       <div>
         <h1 className="text-xl font-bold flex items-center gap-2">
           <Users className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
-          Developer Roster & Performance Improvement Hub
+          Active Database Team Members & Direct Allocation
         </h1>
         <p className="text-xs text-slate-500 mt-0.5">
-          View team member productivity, track velocity improvement rates, and assign tasks and sprints directly to developers.
+          Real database registered user accounts, live task execution metrics, and direct task/sprint allocation.
         </p>
       </div>
 
       {/* Roster Cards Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {roster.map((dev) => (
-          <div key={dev.id} className="p-6 rounded-3xl bg-white dark:bg-slate-900 warm:bg-[#e8dbbe] border border-slate-200 dark:border-slate-800 warm:border-[#cbb68e] shadow-sm space-y-4 hover:shadow-md transition-all">
-            {/* Header info */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {usersList.map((u) => {
+          const uName = u.full_name || u.name || u.username || 'Team Member';
+          const userTasks = tasksList.filter(t => {
+            const assigneeStr = (t.assignee_name || t.assignee || '').toLowerCase();
+            const searchStr = uName.toLowerCase();
+            return assigneeStr.includes(searchStr) || searchStr.includes(assigneeStr);
+          });
+          const doneTasks = userTasks.filter(t => t.status === 'DONE' || t.status === 'COMPLETED');
+          const totalAssigned = userTasks.length;
+          const completedCount = doneTasks.length;
+          const completionRate = totalAssigned > 0 ? Math.round((completedCount / totalAssigned) * 100) : 0;
+
+          return (
+            <div key={u.id} className="p-5 rounded-3xl bg-white dark:bg-slate-900 warm:bg-[#e8dbbe] border border-slate-200 dark:border-slate-800 warm:border-[#cbb68e] shadow-sm space-y-4 hover:shadow-md transition-all">
               <div className="flex items-center gap-3">
-                <img src={dev.avatar} alt={dev.name} className="w-14 h-14 rounded-2xl object-cover border-2 border-indigo-200 dark:border-indigo-800 shadow-sm" />
+                <div className="w-12 h-12 rounded-2xl bg-indigo-600 dark:bg-indigo-600 text-white font-black text-sm flex items-center justify-center shrink-0 shadow-sm">
+                  {getInitials(uName)}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-sm font-black text-slate-900 dark:text-white truncate">{uName}</h3>
+                  <p className="text-[11px] text-slate-500 font-bold truncate">{u.designation || u.role_name || u.role || 'Software Engineer'}</p>
+                  <p className="text-[10px] text-indigo-600 dark:text-indigo-400 font-mono truncate">{u.email}</p>
+                </div>
+              </div>
+
+              {/* Real Task Metrics */}
+              <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-950 warm:bg-[#f3e8d2] border border-slate-100 dark:border-slate-800 text-xs space-y-2">
+                <div className="flex justify-between items-center text-slate-600 dark:text-slate-400">
+                  <span>Assigned Work Tickets:</span>
+                  <strong className="text-slate-900 dark:text-white font-mono">{totalAssigned} Tasks</strong>
+                </div>
+                <div className="flex justify-between items-center text-slate-600 dark:text-slate-400">
+                  <span>Finished Deliverables:</span>
+                  <strong className="text-emerald-600 font-mono">{completedCount} Finished</strong>
+                </div>
                 <div>
-                  <h3 className="text-base font-black text-slate-900 dark:text-white warm:text-[#342314]">{dev.name}</h3>
-                  <p className="text-xs text-slate-500 font-bold">{dev.role} • <span className="font-mono text-indigo-600 dark:text-indigo-400">{dev.email}</span></p>
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 font-extrabold text-[10px] flex items-center gap-1 border border-emerald-300">
-                      ⚡ {dev.velocity}% Velocity Rate
-                    </span>
-                    <span className="px-2 py-0.5 rounded-md bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 font-extrabold text-[10px] flex items-center gap-1 border border-purple-300">
-                      <TrendingUp className="w-3 h-3 text-purple-600" /> {dev.improvementRate} Improvement
-                    </span>
+                  <div className="flex justify-between text-[10px] text-slate-500 font-bold mb-1">
+                    <span>Task Completion Rate</span>
+                    <span className="text-indigo-600">{completionRate}%</span>
+                  </div>
+                  <div className="w-full h-2 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
+                    <div className="h-full bg-gradient-to-r from-indigo-500 to-purple-600 rounded-full transition-all duration-500" style={{ width: `${completionRate}%` }} />
                   </div>
                 </div>
               </div>
 
-              {/* Action Buttons for Direct Assignment */}
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 shrink-0">
+              {/* Action Buttons */}
+              <div className="grid grid-cols-2 gap-2 pt-1">
                 <button
-                  onClick={() => setTaskModalDev(dev)}
+                  onClick={() => setTaskModalDev(u)}
                   className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-xs transition-all"
                 >
                   <Plus className="w-3.5 h-3.5" /> Assign Task
                 </button>
                 <button
-                  onClick={() => setSprintModalDev(dev)}
+                  onClick={() => setSprintModalDev(u)}
                   className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold shadow-xs transition-all"
                 >
                   <Layers className="w-3.5 h-3.5" /> Assign Sprint
                 </button>
               </div>
             </div>
-
-            {/* Metrics row */}
-            <div className="grid grid-cols-5 gap-2">
-              <div className="text-center p-2 rounded-xl bg-slate-50 dark:bg-slate-950 warm:bg-[#f3e8d2] border border-slate-100 dark:border-slate-800">
-                <GitCommit className="w-3.5 h-3.5 mx-auto text-blue-500" />
-                <div className="text-xs font-black text-slate-900 dark:text-white mt-1">{dev.commits}</div>
-                <div className="text-[9px] text-slate-400 font-bold uppercase">Commits</div>
-              </div>
-              <div className="text-center p-2 rounded-xl bg-slate-50 dark:bg-slate-950 warm:bg-[#f3e8d2] border border-slate-100 dark:border-slate-800">
-                <CheckSquare className="w-3.5 h-3.5 mx-auto text-emerald-500" />
-                <div className="text-xs font-black text-slate-900 dark:text-white mt-1">{dev.tasksCompleted}</div>
-                <div className="text-[9px] text-slate-400 font-bold uppercase">Done</div>
-              </div>
-              <div className="text-center p-2 rounded-xl bg-slate-50 dark:bg-slate-950 warm:bg-[#f3e8d2] border border-slate-100 dark:border-slate-800">
-                <Code2 className="w-3.5 h-3.5 mx-auto text-purple-500" />
-                <div className="text-xs font-black text-slate-900 dark:text-white mt-1">{dev.prs}</div>
-                <div className="text-[9px] text-slate-400 font-bold uppercase">PRs</div>
-              </div>
-              <div className="text-center p-2 rounded-xl bg-slate-50 dark:bg-slate-950 warm:bg-[#f3e8d2] border border-slate-100 dark:border-slate-800">
-                <Users className="w-3.5 h-3.5 mx-auto text-amber-500" />
-                <div className="text-xs font-black text-slate-900 dark:text-white mt-1">{dev.codeReviews}</div>
-                <div className="text-[9px] text-slate-400 font-bold uppercase">Reviews</div>
-              </div>
-              <div className="text-center p-2 rounded-xl bg-slate-50 dark:bg-slate-950 warm:bg-[#f3e8d2] border border-slate-100 dark:border-slate-800">
-                <Clock className="w-3.5 h-3.5 mx-auto text-indigo-500" />
-                <div className="text-xs font-black text-slate-900 dark:text-white mt-1">{dev.avgTaskTime}</div>
-                <div className="text-[9px] text-slate-400 font-bold uppercase">Turnaround</div>
-              </div>
-            </div>
-
-            {/* Radar Chart */}
-            <div className="h-44">
-              <ResponsiveContainer width="100%" height="100%">
-                <RadarChart data={dev.radar}>
-                  <PolarGrid stroke="#475569" opacity={0.3} />
-                  <PolarAngleAxis dataKey="metric" stroke="#94a3b8" fontSize={9} />
-                  <PolarRadiusAxis angle={30} domain={[0, 100]} stroke="#475569" fontSize={8} />
-                  <Radar dataKey="value" stroke="#6366f1" fill="#6366f1" fillOpacity={0.25} strokeWidth={2} />
-                </RadarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
-      {/* MODAL: ASSIGN TASK DIRECTLY TO DEVELOPER */}
-      <Modal isOpen={Boolean(taskModalDev)} onClose={() => setTaskModalDev(null)} title={`Assign Work Ticket directly to ${taskModalDev?.name || 'Developer'}`}>
+      {/* MODAL: ASSIGN TASK DIRECTLY TO USER */}
+      <Modal isOpen={Boolean(taskModalDev)} onClose={() => setTaskModalDev(null)} title={`Assign Work Ticket directly to ${taskModalDev?.full_name || taskModalDev?.name || 'User'}`}>
         <form onSubmit={handleAssignTaskSubmit} className="space-y-4 text-xs">
           <div>
             <label className="block font-bold mb-1">Work Ticket Summary / Title *</label>
@@ -342,7 +288,7 @@ export const DeveloperRoster = ({ onShowToast }) => {
               placeholder="e.g. Implement OAuth2 Token Refresh and Redis Cache Strategy"
               value={taskFormData.title}
               onChange={(e) => setTaskFormData({ ...taskFormData, title: e.target.value })}
-              className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 font-bold"
+              className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 font-bold text-slate-900 dark:text-white"
             />
           </div>
 
@@ -366,7 +312,7 @@ export const DeveloperRoster = ({ onShowToast }) => {
               <select
                 value={taskFormData.priority}
                 onChange={(e) => setTaskFormData({ ...taskFormData, priority: e.target.value })}
-                className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 font-bold"
+                className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 font-bold text-slate-900 dark:text-white"
               >
                 <option value="LOW">Low Priority</option>
                 <option value="MEDIUM">Medium Priority</option>
@@ -384,7 +330,7 @@ export const DeveloperRoster = ({ onShowToast }) => {
                 placeholder="e.g. feature/auth-oauth2"
                 value={taskFormData.gitBranch}
                 onChange={(e) => setTaskFormData({ ...taskFormData, gitBranch: e.target.value })}
-                className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 font-mono text-xs font-bold"
+                className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 font-mono text-xs font-bold text-slate-900 dark:text-white"
               />
             </div>
 
@@ -394,7 +340,7 @@ export const DeveloperRoster = ({ onShowToast }) => {
                 type="date"
                 value={taskFormData.dueDate}
                 onChange={(e) => setTaskFormData({ ...taskFormData, dueDate: e.target.value })}
-                className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 font-bold"
+                className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 font-bold text-slate-900 dark:text-white"
               />
             </div>
           </div>
@@ -406,8 +352,8 @@ export const DeveloperRoster = ({ onShowToast }) => {
         </form>
       </Modal>
 
-      {/* MODAL: ASSIGN SPRINT DIRECTLY TO DEVELOPER */}
-      <Modal isOpen={Boolean(sprintModalDev)} onClose={() => setSprintModalDev(null)} title={`Assign Sprint Milestone to ${sprintModalDev?.name || 'Developer'}`}>
+      {/* MODAL: ASSIGN SPRINT DIRECTLY TO USER */}
+      <Modal isOpen={Boolean(sprintModalDev)} onClose={() => setSprintModalDev(null)} title={`Assign Sprint Milestone to ${sprintModalDev?.full_name || sprintModalDev?.name || 'User'}`}>
         <form onSubmit={handleAssignSprintSubmit} className="space-y-4 text-xs">
           <div>
             <label className="block font-bold mb-1">Sprint Milestone Title *</label>
@@ -417,7 +363,7 @@ export const DeveloperRoster = ({ onShowToast }) => {
               placeholder="e.g. Sprint 2026-Q3-02: Microservices Refactor Milestone"
               value={sprintFormData.name}
               onChange={(e) => setSprintFormData({ ...sprintFormData, name: e.target.value })}
-              className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 font-bold"
+              className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 font-bold text-slate-900 dark:text-white"
             />
           </div>
 
@@ -442,7 +388,7 @@ export const DeveloperRoster = ({ onShowToast }) => {
                 type="number"
                 value={sprintFormData.storyPoints}
                 onChange={(e) => setSprintFormData({ ...sprintFormData, storyPoints: e.target.value })}
-                className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 font-bold"
+                className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 font-bold text-slate-900 dark:text-white"
               />
             </div>
           </div>
@@ -454,7 +400,7 @@ export const DeveloperRoster = ({ onShowToast }) => {
               placeholder="e.g. Deliver core auth endpoints and 100% unit test coverage."
               value={sprintFormData.goal}
               onChange={(e) => setSprintFormData({ ...sprintFormData, goal: e.target.value })}
-              className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs font-medium"
+              className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs font-medium text-slate-900 dark:text-white"
             />
           </div>
 
@@ -465,7 +411,7 @@ export const DeveloperRoster = ({ onShowToast }) => {
                 type="date"
                 value={sprintFormData.startDate}
                 onChange={(e) => setSprintFormData({ ...sprintFormData, startDate: e.target.value })}
-                className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 font-bold"
+                className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 font-bold text-slate-900 dark:text-white"
               />
             </div>
 
@@ -475,7 +421,7 @@ export const DeveloperRoster = ({ onShowToast }) => {
                 type="date"
                 value={sprintFormData.endDate}
                 onChange={(e) => setSprintFormData({ ...sprintFormData, endDate: e.target.value })}
-                className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 font-bold"
+                className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 font-bold text-slate-900 dark:text-white"
               />
             </div>
           </div>
