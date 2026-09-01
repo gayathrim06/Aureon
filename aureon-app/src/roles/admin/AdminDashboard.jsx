@@ -106,15 +106,15 @@ export const AdminDashboard = ({ onNavigate }) => {
           <div className="flex flex-wrap gap-2.5 shrink-0">
             <button
               onClick={() => onNavigate('Users')}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/20 hover:bg-white/30 text-white text-xs font-bold shadow-md transition-all hover:scale-105"
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/20 hover:bg-white/30 text-white text-xs font-bold border border-white/30 shadow-md transition-all hover:scale-105"
             >
-              <Users className="w-4 h-4" /> Provision Users
+              <Users className="w-4 h-4 text-white" /> Provision Users
             </button>
             <button
               onClick={() => onNavigate('AuditLogs')}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white text-indigo-900 font-bold text-xs shadow-md transition-all hover:scale-105"
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-900/90 hover:bg-slate-900 text-white text-xs font-bold border border-slate-700 shadow-md transition-all hover:scale-105"
             >
-              <FileText className="w-4 h-4" /> System Audit Logs
+              <FileText className="w-4 h-4 text-indigo-400" /> System Audit Logs
             </button>
           </div>
         </div>
