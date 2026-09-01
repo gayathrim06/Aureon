@@ -30,6 +30,28 @@ def _get_auth_user():
         pass
     return User.query.first()
 
+def _resolve_assigned_user(val):
+    if not val:
+        return None
+    u_uuid = _parse_uuid(val)
+    if u_uuid:
+        found = User.query.get(u_uuid)
+        if found:
+            return found
+    val_str = str(val).strip().lower()
+    users = User.query.all()
+    for u in users:
+        if u.display_name and u.display_name.strip().lower() == val_str:
+            return u
+        if u.username and u.username.strip().lower() == val_str:
+            return u
+        if u.email and u.email.strip().lower() == val_str:
+            return u
+    for u in users:
+        if val_str in (u.display_name or '').lower() or val_str in (u.username or '').lower():
+            return u
+    return None
+
 @task_bp.route('/', methods=['GET', 'POST'])
 @task_bp.route('', methods=['GET', 'POST'])
 @jwt_required(optional=True)
@@ -48,7 +70,12 @@ def manage_tasks():
         status = data.get('status') or data.get('task_status') or 'TODO'
         due_date_str = data.get('due_date') or data.get('dueDate')
         sprint_id = _parse_uuid(data.get('sprint_id'))
-        assigned_to_id = _parse_uuid(data.get('assigned_to') or data.get('assigned_to_id'))
+        project_id = _parse_uuid(data.get('project_id'))
+
+        # Resolve assigned user by ID or Name
+        raw_assignee = data.get('assigned_to') or data.get('assigned_to_id') or data.get('assignee')
+        assigned_user = _resolve_assigned_user(raw_assignee)
+        assigned_to_id = assigned_user.id if assigned_user else None
 
         # ─── TEAM LEAD CROSS-TEAM ASSIGNMENT PROTECTION ───
         if user and user.role_name == 'ROLE_LEAD':
@@ -81,18 +108,45 @@ def manage_tasks():
             status=status,
             due_date=due_date,
             sprint_id=sprint_id,
+            project_id=project_id,
             assigned_to_id=assigned_to_id,
             created_by_id=user.id if user else None
         )
         db.session.add(task)
         db.session.flush()
 
+        # ─── CREATE NOTIFICATIONS FOR ASSIGNED USER & TEAM LEAD ───
+        if assigned_user:
+            n_target = Notification(
+                recipient_id=assigned_user.id,
+                title='⚡ New Task Ticket Assigned',
+                message=f"You have been assigned to task: '{title}'. Assigned by {user.display_name if user else 'Project Manager'}.",
+                notification_type='TASK_ASSIGNMENT',
+                read=False,
+                created_at=datetime.utcnow()
+            )
+            db.session.add(n_target)
+
+        # Notify project team lead if distinct
+        from models import Project
+        project = Project.query.get(project_id) if project_id else None
+        if project and project.lead_id and str(project.lead_id) != str(assigned_user.id if assigned_user else ''):
+            n_lead = Notification(
+                recipient_id=project.lead_id,
+                title='📋 New Task Assigned in Project',
+                message=f"Task '{title}' in project '{project.display_name}' was assigned to {assigned_user.display_name if assigned_user else 'a team member'}.",
+                notification_type='TASK_ASSIGNMENT',
+                read=False,
+                created_at=datetime.utcnow()
+            )
+            db.session.add(n_lead)
+
         try:
             log = AuditLog(
                 user_email=user.email if user else 'system',
                 role_name=user.role_name if user else 'ROLE_DEV',
                 action='TASK_CREATED',
-                details=f"Created task '{title}' assigned to {assigned_to_id or 'Unassigned'}"
+                details=f"Created task '{title}' assigned to {assigned_user.display_name if assigned_user else 'Unassigned'}"
             )
             db.session.add(log)
             db.session.commit()
