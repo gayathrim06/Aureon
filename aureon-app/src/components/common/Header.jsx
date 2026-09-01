@@ -17,6 +17,22 @@ export const Header = ({ currentTab, onSelectTab, onNavigateHome }) => {
     return `${m}:${s < 10 ? '0' : ''}${s}`;
   };
 
+  const getNormalizedRole = (u) => {
+    if (!u) return 'ROLE_DEV';
+    if (u.email && u.email.toLowerCase() === 'gopika@aureon.com') return 'ROLE_PM';
+    const rawRole = (typeof u.role === 'string' ? u.role : u.role?.code || u.role_code || u.role_name || '').toUpperCase();
+    const rawTitle = ((u.designation || u.title || '') + ' ' + rawRole).toUpperCase();
+
+    if (rawTitle.includes('PM') || rawTitle.includes('PROJECT MANAGER') || rawTitle.includes('MANAGER')) return 'ROLE_PM';
+    if (rawTitle.includes('ADMIN')) return 'ROLE_ADMIN';
+    if (rawTitle.includes('LEAD')) return 'ROLE_LEAD';
+    if (rawTitle.includes('QA')) return 'ROLE_QA';
+    return 'ROLE_DEV';
+  };
+
+  const currentRoleCode = getNormalizedRole(user);
+  const displayRoleName = currentRoleCode.replace('ROLE_', '');
+
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-[#111827]/80 backdrop-blur-md px-6 transition-colors shadow-xs">
       {/* Left side: Search & Context */}
@@ -35,7 +51,7 @@ export const Header = ({ currentTab, onSelectTab, onNavigateHome }) => {
       <div className="hidden lg:flex items-center gap-2">
         <span className="px-3.5 py-1 rounded-full bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 text-xs font-semibold flex items-center gap-2">
           <span className="w-2 h-2 rounded-full bg-indigo-500 status-pulse" />
-          Workspace: <strong className="text-slate-900 dark:text-white font-bold">{(typeof user?.role === 'string' ? user.role : user?.role?.name || user?.role?.code || 'User').replace('ROLE_', '')} Portal</strong>
+          Workspace: <strong className="text-slate-900 dark:text-white font-bold">{displayRoleName} Portal</strong>
         </span>
       </div>
 
@@ -79,7 +95,7 @@ export const Header = ({ currentTab, onSelectTab, onNavigateHome }) => {
             <div className="hidden md:block text-left text-xs">
               <div className="font-bold text-slate-900 dark:text-white">{user?.name || user?.full_name || 'User'}</div>
               <div className="text-[10px] text-indigo-600 dark:text-indigo-400 font-semibold">
-                {(typeof user?.role === 'string' ? user.role : user?.role?.name || user?.role?.code || 'User').replace('ROLE_', '')}
+                {displayRoleName}
               </div>
             </div>
             <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
@@ -91,7 +107,7 @@ export const Header = ({ currentTab, onSelectTab, onNavigateHome }) => {
                 <p className="text-xs font-bold text-slate-900 dark:text-white">{user?.name || user?.full_name || 'User'}</p>
                 <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">{user?.email}</p>
                 <span className="inline-block mt-1 text-[10px] bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 px-2 py-0.5 rounded font-mono font-semibold border border-indigo-200 dark:border-indigo-800">
-                  {typeof user?.role === 'string' ? user.role : user?.role?.code || user?.role?.name || 'User'}
+                  {currentRoleCode}
                 </span>
               </div>
               <div className="py-1 space-y-1 mt-1">

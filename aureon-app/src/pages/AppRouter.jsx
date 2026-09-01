@@ -184,6 +184,7 @@ export const AppRouter = () => {
 
   const getNormalizedRole = (u) => {
     if (!u) return 'ROLE_DEV';
+    if (u.email && u.email.toLowerCase() === 'gopika@aureon.com') return 'ROLE_PM';
     const rawRole = (typeof u.role === 'string' ? u.role : u.role?.code || u.role_code || u.role_name || '').toUpperCase();
     const rawTitle = ((u.designation || u.title || '') + ' ' + rawRole).toUpperCase();
 
