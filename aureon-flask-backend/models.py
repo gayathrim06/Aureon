@@ -56,6 +56,10 @@ class User(db.Model):
     role = db.relationship('Role', backref='users')
 
     @property
+    def display_name(self):
+        return self.full_name or self.username or self.email
+
+    @property
     def role_name(self):
         if self.role:
             return self.role.code
