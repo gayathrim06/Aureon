@@ -190,7 +190,7 @@ export const DataTable = ({
                   </td>
                   {normalizedColumns.map(col => (
                     <td key={col.key} className="p-3.5">
-                      {col.render ? col.render(row) : row[col.key]}
+                      {col.render ? col.render(row[col.key], row) : row[col.key]}
                     </td>
                   ))}
                 </tr>
