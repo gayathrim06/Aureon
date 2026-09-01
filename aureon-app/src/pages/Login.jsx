@@ -3,8 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { 
   Shield, Key, Lock, AlertTriangle, ArrowRight, CheckCircle2, 
-  UserCheck, Laptop, Layers, Bug, ArrowLeft, Info, UserPlus, HelpCircle, Calendar, User,
-  Sun, Moon, Coffee
+  ArrowLeft, Sun, Moon, Coffee
 } from 'lucide-react';
 
 export const Login = ({ onNavigateHome }) => {
@@ -164,17 +163,6 @@ export const Login = ({ onNavigateHome }) => {
     }
   };
 
-  const demoAccounts = [
-    { email: 'admin@aureon.com', role: 'ROLE_ADMIN', label: 'System Admin (Gayathri M)', icon: Shield, color: 'bg-purple-600' },
-    { email: 'eli@aureon.com', role: 'ROLE_PM', label: 'Project Manager (Elizabeth M)', icon: Layers, color: 'bg-[#4f46e5]' },
-    { email: 'krish@aureon.com', role: 'ROLE_LEAD', label: 'Tech Lead (Krishna Deepesh)', icon: UserCheck, color: 'bg-amber-600' },
-    { email: 'sainu@aureon.com', role: 'ROLE_DEV', label: 'Frontend Dev (Sainu Anna)', icon: Laptop, color: 'bg-emerald-600' },
-    { email: 'jiya@aureon.com', role: 'ROLE_DEV', label: 'Software Dev (Jiya Thomas)', icon: Laptop, color: 'bg-indigo-600' },
-    { email: 'rinta@aureon.com', role: 'ROLE_DEV', label: 'Full Stack Dev (Rinta Thomas)', icon: Laptop, color: 'bg-blue-600' },
-    { email: 'feba@aureon.com', role: 'ROLE_QA', label: 'Executive QA (Feba Biju)', icon: Bug, color: 'bg-rose-600' },
-    { email: 'bugcheck_user@aureon.com', role: 'ROLE_DEV', label: 'QA Tester (BugCheck User)', icon: Bug, color: 'bg-cyan-600' }
-  ];
-
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-950 warm:bg-[#f3e8d2] p-6 font-sans relative overflow-hidden text-slate-900 dark:text-slate-100 warm:text-[#342314] transition-colors duration-200">
       {/* Top Header Link & Theme Switcher */}
@@ -215,7 +203,7 @@ export const Login = ({ onNavigateHome }) => {
           </p>
         </div>
 
-        {/* Tab Selection */}
+        {/* Tab Selection (Clean 2-Tab Navigation) */}
         <div className="flex rounded-xl bg-slate-200/60 dark:bg-slate-900/60 warm:bg-[#e8dbbe] p-1 border border-slate-200 dark:border-slate-800 warm:border-[#cbb68e]">
           <button
             onClick={() => { setActiveTab('login'); setErrorMsg(''); setRegSuccessMsg(''); }}
@@ -236,16 +224,6 @@ export const Login = ({ onNavigateHome }) => {
             }`}
           >
             Register
-          </button>
-          <button
-            onClick={() => { setActiveTab('forgot'); setErrorMsg(''); setRegSuccessMsg(''); }}
-            className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
-              activeTab === 'forgot'
-                ? 'bg-white dark:bg-slate-800 warm:bg-[#f3e8d2] text-slate-900 dark:text-white warm:text-[#342314] shadow-sm'
-                : 'text-slate-500 dark:text-slate-400 warm:text-[#69523c] hover:text-slate-900 dark:hover:text-white'
-            }`}
-          >
-            Forgot Password
           </button>
         </div>
 
@@ -290,7 +268,16 @@ export const Login = ({ onNavigateHome }) => {
               </div>
 
               <div>
-                <label className="block text-xs font-bold mb-1">Password</label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-bold">Password</label>
+                  <button
+                    type="button"
+                    onClick={() => { setActiveTab('forgot'); setErrorMsg(''); setRegSuccessMsg(''); }}
+                    className="text-[11px] font-semibold text-indigo-600 dark:text-indigo-400 warm:text-[#b45309] hover:underline"
+                  >
+                    Forgot password?
+                  </button>
+                </div>
                 <input
                   type="password"
                   required
@@ -309,26 +296,6 @@ export const Login = ({ onNavigateHome }) => {
                 Sign In to Portal <ArrowRight className="w-4 h-4" />
               </button>
             </form>
-
-            {/* Demo Quick Accounts Presets */}
-            <div className="pt-4 border-t border-slate-100 dark:border-slate-800 warm:border-[#cbb68e] space-y-2">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 warm:text-[#69523c]">
-                Quick Demo Presets (Password: <span className="font-mono text-indigo-600 warm:text-[#b45309]">Aureon@123</span>)
-              </span>
-              <div className="grid grid-cols-2 gap-1.5">
-                {demoAccounts.map((acc, i) => (
-                  <button
-                    key={i}
-                    type="button"
-                    onClick={() => { setEmail(acc.email); setPassword('Aureon@123'); }}
-                    className="p-2 rounded-lg bg-slate-50 dark:bg-slate-800/60 warm:bg-[#f3e8d2] border border-slate-200 dark:border-slate-700 warm:border-[#b8a074] text-left hover:border-indigo-500 transition-all flex items-center gap-2"
-                  >
-                    <div className={`w-2 h-2 rounded-full ${acc.color} shrink-0`} />
-                    <span className="text-[10px] font-semibold truncate text-slate-700 dark:text-slate-300 warm:text-[#342314]">{acc.label}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
           </div>
         )}
 
@@ -437,9 +404,19 @@ export const Login = ({ onNavigateHome }) => {
           </div>
         )}
 
-        {/* ━━━ TAB 3: FORGOT PASSWORD ━━━ */}
+        {/* ━━━ TAB 3: FORGOT PASSWORD (ACCESSED VIA FORGOT PASSWORD LINK) ━━━ */}
         {activeTab === 'forgot' && (
           <div className="p-6 rounded-2xl bg-white dark:bg-slate-900 warm:bg-[#e8dbbe] border border-slate-200 dark:border-slate-800 warm:border-[#cbb68e] shadow-xl space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+              <h2 className="text-sm font-bold text-slate-900 dark:text-white warm:text-[#342314]">Account Password Recovery</h2>
+              <button
+                onClick={() => setActiveTab('login')}
+                className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 warm:text-[#b45309] hover:underline"
+              >
+                Back to Sign In
+              </button>
+            </div>
+
             <form onSubmit={handleForgotSubmit} className="space-y-3 text-xs">
               <div>
                 <label className="block font-bold mb-1">Corporate Email</label>
