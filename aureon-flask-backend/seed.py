@@ -24,23 +24,27 @@ def seed_database():
             db.session.commit()
         role_objs[code] = r
 
-    # 2. Seed Baseline Users
-    default_users = [
-        { 'email': 'admin@aureon.com', 'username': 'admin_gayathri', 'full_name': 'Gayathri M', 'role': 'ROLE_ADMIN', 'department': 'Engineering', 'designation': 'System Administrator' },
-        { 'email': 'manager@aureon.com', 'username': 'sarah_pm', 'full_name': 'Sarah Jenkins', 'role': 'ROLE_PM', 'department': 'Product Management', 'designation': 'Senior Project Manager' },
-        { 'email': 'lead@aureon.com', 'username': 'david_lead', 'full_name': 'David Chen', 'role': 'ROLE_LEAD', 'department': 'Backend Architecture', 'designation': 'Tech Lead' },
-        { 'email': 'ram.dev@aureon.com', 'username': 'ram_dev', 'full_name': 'Ram Kumar', 'role': 'ROLE_DEV', 'department': 'Frontend UI', 'designation': 'Senior Developer' },
-        { 'email': 'venu.qa@aureon.com', 'username': 'venu_qa', 'full_name': 'Venu QA', 'role': 'ROLE_QA', 'department': 'Quality Assurance', 'designation': 'QA Engineer' },
-        { 'email': 'elena.r@aureon.com', 'username': 'elena_dev', 'full_name': 'Elena Rostova', 'role': 'ROLE_DEV', 'department': 'DevOps & CI/CD', 'designation': 'DevOps Engineer' },
-        { 'email': 'michael.b@aureon.com', 'username': 'michael_dev', 'full_name': 'Michael Brown', 'role': 'ROLE_DEV', 'department': 'Security & Auth', 'designation': 'Security Specialist' }
+    # 2. Seed Real PostgreSQL Database Users (matching pgAdmin tbl_user table)
+    real_postgres_users = [
+        { 'email': 'admin@aureon.com', 'username': 'admin', 'full_name': 'GAYATHRI M', 'employee_id': 'EMP-001', 'role': 'ROLE_ADMIN', 'department': 'Executive Management', 'designation': 'CTO' },
+        { 'email': 'krish@aureon.com', 'username': 'krish', 'full_name': 'Krishna Deepesh', 'employee_id': 'EMP-002', 'role': 'ROLE_LEAD', 'department': 'Quality Assurance', 'designation': 'Tech Lead' },
+        { 'email': 'sainu@aureon.com', 'username': 'sainu', 'full_name': 'Sainu Anna Sajan', 'employee_id': 'EMP-003', 'role': 'ROLE_DEV', 'department': 'Engineering', 'designation': 'Frontend Developer' },
+        { 'email': 'jiya@aureon.com', 'username': 'jiya', 'full_name': 'Jiya Thomas', 'employee_id': 'EMP-004', 'role': 'ROLE_DEV', 'department': 'Engineering', 'designation': 'Software Developer' },
+        { 'email': 'eli@aureon.com', 'username': 'eli', 'full_name': 'Elizabeth Mathew', 'employee_id': 'EMP5856', 'role': 'ROLE_PM', 'department': 'Engineering', 'designation': 'Senior Technical Program Manager' },
+        { 'email': 'rinta@aureon.com', 'username': 'rinta', 'full_name': 'Rinta Thomas', 'employee_id': 'EMP-006', 'role': 'ROLE_DEV', 'department': 'Engineering', 'designation': 'Full Stack Developer' },
+        { 'email': 'elena_test_prov@aureon.com', 'username': 'elena_test_prov', 'full_name': 'Elena Rostova Provision Test', 'employee_id': 'EMP1246', 'role': 'ROLE_DEV', 'department': 'Engineering', 'designation': 'Full Stack Developer' },
+        { 'email': 'feba@aureon.com', 'username': 'feba', 'full_name': 'Feba Biju', 'employee_id': 'EMP6268', 'role': 'ROLE_QA', 'department': 'Executive Office', 'designation': 'Executive Officer' },
+        { 'email': 'bugcheck_user@aureon.com', 'username': 'bugcheck_user', 'full_name': 'Test User BugCheck', 'employee_id': 'EMP3180', 'role': 'ROLE_DEV', 'department': 'Engineering', 'designation': 'QA Tester' }
     ]
 
-    for u_data in default_users:
-        if not User.query.filter_by(email=u_data['email']).first():
+    for u_data in real_postgres_users:
+        existing_user = User.query.filter((User.email == u_data['email']) | (User.username == u_data['username'])).first()
+        if not existing_user:
             u = User(
                 email=u_data['email'],
                 username=u_data['username'],
                 full_name=u_data['full_name'],
+                employee_id=u_data['employee_id'],
                 password=generate_password_hash('Aureon@123'),
                 department=u_data['department'],
                 designation=u_data['designation'],
@@ -49,6 +53,12 @@ def seed_database():
                 is_active=True
             )
             db.session.add(u)
+        else:
+            # Update fields if user exists
+            existing_user.full_name = u_data['full_name']
+            existing_user.employee_id = u_data['employee_id']
+            existing_user.department = u_data['department']
+            existing_user.designation = u_data['designation']
 
     # 3. Seed Baseline Projects
     default_projects = [
@@ -89,4 +99,4 @@ def seed_database():
             db.session.add(t)
 
     db.session.commit()
-    print("[DATABASE SEED] Seeded 7 baseline users, 5 projects, 4 teams into Aureon database.")
+    print("[DATABASE SEED] Successfully seeded 9 real PostgreSQL users, 5 projects, 4 teams into Aureon database tables.")
