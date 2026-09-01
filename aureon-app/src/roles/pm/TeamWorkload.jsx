@@ -1,24 +1,91 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Breadcrumb } from '../../components/common/Breadcrumb';
 import { Users, Activity, AlertTriangle, CheckCircle2, GitCommit, ShieldCheck, CheckSquare, Clock } from 'lucide-react';
 
 export const TeamWorkload = () => {
-  const availableLeads = [
-    { id: 'usr_lead_1', name: 'Krishna Deepesh', role: 'Team Lead', title: 'Senior Tech Lead & Architect', email: 'krish@aureon.com', activeTasks: 2, completedTasks: 18, projectsCount: 1, status: 'AVAILABLE', capacityPct: 40 },
-    { id: 'usr_lead_2', name: 'David Chen', role: 'Team Lead', title: 'Lead Systems Architect', email: 'david.c@aureon.com', activeTasks: 1, completedTasks: 24, projectsCount: 1, status: 'AVAILABLE', capacityPct: 25 },
-    { id: 'usr_lead_3', name: 'Vikram Patel', role: 'Team Lead', title: 'Principal Backend Engineer', email: 'vikram.p@aureon.com', activeTasks: 3, completedTasks: 15, projectsCount: 2, status: 'HIGH_WORKLOAD', capacityPct: 85 }
+  const [projectsList, setProjectsList] = useState([]);
+  const [tasksList, setTasksList] = useState([]);
+
+  // Base Senior Team Leads (Clean baseline, stats calculated dynamically from backend database)
+  const baseLeads = [
+    { id: 'usr_lead_1', name: 'Krishna Deepesh', role: 'Team Lead', title: 'Senior Tech Lead & Architect', email: 'krish@aureon.com' },
+    { id: 'usr_lead_2', name: 'David Chen', role: 'Team Lead', title: 'Lead Systems Architect', email: 'david.c@aureon.com' },
+    { id: 'usr_lead_3', name: 'Vikram Patel', role: 'Team Lead', title: 'Principal Backend Engineer', email: 'vikram.p@aureon.com' }
   ];
 
-  const availableMembers = [
-    { id: 'usr_dev_1', name: 'Ram Kumar', role: 'Frontend UI Engineer', type: 'DEV', activeTasks: 1, completedTasks: 12, totalTasks: 13, finishRate: '92%', workloadPct: 35, status: 'AVAILABLE' },
-    { id: 'usr_dev_2', name: 'Alex Rivera', role: 'DevOps & Cloud Architect', type: 'DEV', activeTasks: 2, completedTasks: 16, totalTasks: 18, finishRate: '89%', workloadPct: 55, status: 'AVAILABLE' },
-    { id: 'usr_dev_3', name: 'Priya Sharma', role: 'Database & Analytics Engineer', type: 'DEV', activeTasks: 0, completedTasks: 14, totalTasks: 14, finishRate: '100%', workloadPct: 15, status: 'AVAILABLE' },
-    { id: 'usr_dev_4', name: 'Michael Brown', role: 'Security Engineering Lead', type: 'DEV', activeTasks: 3, completedTasks: 9, totalTasks: 12, finishRate: '75%', workloadPct: 80, status: 'HIGH_WORKLOAD' },
-    { id: 'usr_dev_5', name: 'Sneha Roy', role: 'Flutter & Mobile Engineer', type: 'DEV', activeTasks: 1, completedTasks: 10, totalTasks: 11, finishRate: '91%', workloadPct: 30, status: 'AVAILABLE' },
-    { id: 'usr_qa_1', name: 'Venu QA', role: 'Lead QA Automation Engineer', type: 'QA', activeTasks: 1, completedTasks: 22, totalTasks: 23, finishRate: '96%', workloadPct: 40, status: 'AVAILABLE' },
-    { id: 'usr_qa_2', name: 'Ananya Varma', role: 'Test Automation Specialist', type: 'QA', activeTasks: 0, completedTasks: 15, totalTasks: 15, finishRate: '100%', workloadPct: 10, status: 'AVAILABLE' },
-    { id: 'usr_qa_3', name: 'Sarah Thomas', role: 'Security & Regression QA', type: 'QA', activeTasks: 2, completedTasks: 8, totalTasks: 10, finishRate: '80%', workloadPct: 60, status: 'AVAILABLE' }
+  // Base Developers & QA (Clean baseline, stats calculated dynamically from backend database)
+  const baseMembers = [
+    { id: 'usr_dev_1', name: 'Ram Kumar', role: 'Frontend UI Engineer', type: 'DEV' },
+    { id: 'usr_dev_2', name: 'Alex Rivera', role: 'DevOps & Cloud Architect', type: 'DEV' },
+    { id: 'usr_dev_3', name: 'Priya Sharma', role: 'Database & Analytics Engineer', type: 'DEV' },
+    { id: 'usr_dev_4', name: 'Michael Brown', role: 'Security Engineering Lead', type: 'DEV' },
+    { id: 'usr_dev_5', name: 'Sneha Roy', role: 'Flutter & Mobile Engineer', type: 'DEV' },
+    { id: 'usr_qa_1', name: 'Venu QA', role: 'Lead QA Automation Engineer', type: 'QA' },
+    { id: 'usr_qa_2', name: 'Ananya Varma', role: 'Test Automation Specialist', type: 'QA' },
+    { id: 'usr_qa_3', name: 'Sarah Thomas', role: 'Security & Regression QA', type: 'QA' }
   ];
+
+  useEffect(() => {
+    const fetchData = async () => {
+      const token = sessionStorage.getItem('aureon_jwt_access_token');
+      const headers = { 'Authorization': token ? `Bearer ${token}` : '' };
+      try {
+        const [projRes, taskRes] = await Promise.all([
+          fetch('http://127.0.0.1:8000/api/v1/projects/', { headers }),
+          fetch('http://127.0.0.1:8000/api/v1/tasks/', { headers })
+        ]);
+        if (projRes.ok) {
+          const pData = await projRes.json();
+          setProjectsList(pData.projects || []);
+        }
+        if (taskRes.ok) {
+          const tData = await taskRes.json();
+          setTasksList(tData.tasks || []);
+        }
+      } catch (err) {}
+    };
+    fetchData();
+  }, []);
+
+  // Compute Real Team Lead Metrics from actual DB projects/tasks
+  const availableLeads = baseLeads.map(lead => {
+    const assignedProjects = projectsList.filter(p => p.lead_id === lead.id || p.lead_name?.includes(lead.name));
+    const assignedTasks = tasksList.filter(t => t.assigned_to === lead.name || t.assignee_id === lead.id);
+    const activeTasks = assignedTasks.filter(t => t.status === 'IN_PROGRESS' || t.status === 'TODO').length;
+    const completedTasks = assignedTasks.filter(t => t.status === 'DONE' || t.status === 'COMPLETED').length;
+    const capacityPct = Math.min(100, activeTasks * 25);
+    const status = activeTasks > 3 ? 'HIGH_WORKLOAD' : 'AVAILABLE';
+
+    return {
+      ...lead,
+      activeTasks,
+      completedTasks,
+      projectsCount: assignedProjects.length,
+      capacityPct,
+      status
+    };
+  });
+
+  // Compute Real Member Metrics from actual DB projects/tasks
+  const availableMembers = baseMembers.map(member => {
+    const assignedTasks = tasksList.filter(t => t.assigned_to === member.name || t.assignee_id === member.id);
+    const activeTasks = assignedTasks.filter(t => t.status === 'IN_PROGRESS' || t.status === 'TODO').length;
+    const completedTasks = assignedTasks.filter(t => t.status === 'DONE' || t.status === 'COMPLETED').length;
+    const totalTasks = assignedTasks.length;
+    const finishRate = totalTasks > 0 ? `${Math.round((completedTasks / totalTasks) * 100)}%` : '0%';
+    const workloadPct = Math.min(100, activeTasks * 25);
+    const status = activeTasks > 3 ? 'HIGH_WORKLOAD' : 'AVAILABLE';
+
+    return {
+      ...member,
+      activeTasks,
+      completedTasks,
+      totalTasks,
+      finishRate,
+      workloadPct,
+      status
+    };
+  });
 
   return (
     <div className="space-y-6 font-sans text-slate-900 dark:text-slate-100 warm:text-[#342314]">
@@ -30,7 +97,7 @@ export const TeamWorkload = () => {
           Team Members Availability & Workload Monitor
         </h1>
         <p className="text-xs text-slate-500 mt-0.5">
-          View all team leads, developers, and QA testers, inspect their active vs completed tasks, and check workload capacity before assigning next tasks.
+          Real database metrics: Inspect active vs completed tasks and check workload capacity before assigning new project deliverables.
         </p>
       </div>
 

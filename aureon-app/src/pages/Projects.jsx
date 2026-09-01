@@ -10,6 +10,7 @@ import { useAuth } from '../context/AuthContext';
 export const Projects = () => {
   const { user, showToast } = useAuth();
   const [projectsList, setProjectsList] = useState([]);
+  const [tasksList, setTasksList] = useState([]);
   const [search, setSearch] = useState('');
   const [priorityFilter, setPriorityFilter] = useState('All');
   const [statusFilter, setStatusFilter] = useState('All');
@@ -30,47 +31,97 @@ export const Projects = () => {
   const [startDate, setStartDate] = useState('2026-09-01');
   const [deadline, setDeadline] = useState('2026-11-30');
 
-  // Available Senior Tech Leads with Workload Details
-  const availableLeads = [
-    { id: 'usr_lead_1', name: 'Krishna Deepesh', role: 'Team Lead', title: 'Senior Tech Lead & Architect', email: 'krish@aureon.com', activeTasks: 2, completedTasks: 18, projectsCount: 1, status: 'AVAILABLE' },
-    { id: 'usr_lead_2', name: 'David Chen', role: 'Team Lead', title: 'Lead Systems Architect', email: 'david.c@aureon.com', activeTasks: 1, completedTasks: 24, projectsCount: 1, status: 'AVAILABLE' },
-    { id: 'usr_lead_3', name: 'Vikram Patel', role: 'Team Lead', title: 'Principal Backend Engineer', email: 'vikram.p@aureon.com', activeTasks: 3, completedTasks: 15, projectsCount: 2, status: 'HIGH_WORKLOAD' }
+  // Base Team Leads (No fake non-zero numbers; stats dynamically calculated from DB)
+  const baseLeads = [
+    { id: 'usr_lead_1', name: 'Krishna Deepesh', role: 'Team Lead', title: 'Senior Tech Lead & Architect', email: 'krish@aureon.com' },
+    { id: 'usr_lead_2', name: 'David Chen', role: 'Team Lead', title: 'Lead Systems Architect', email: 'david.c@aureon.com' },
+    { id: 'usr_lead_3', name: 'Vikram Patel', role: 'Team Lead', title: 'Principal Backend Engineer', email: 'vikram.p@aureon.com' }
   ];
 
-  // Available Team Members (Developers & QA) with Live Workload & Task Finish Rates
-  const availableMembers = [
-    { id: 'usr_dev_1', name: 'Ram Kumar', role: 'Frontend UI Engineer', type: 'DEV', activeTasks: 1, completedTasks: 12, totalTasks: 13, finishRate: '92%', workloadPct: 35, status: 'AVAILABLE' },
-    { id: 'usr_dev_2', name: 'Alex Rivera', role: 'DevOps & Cloud Architect', type: 'DEV', activeTasks: 2, completedTasks: 16, totalTasks: 18, finishRate: '89%', workloadPct: 55, status: 'AVAILABLE' },
-    { id: 'usr_dev_3', name: 'Priya Sharma', role: 'Database & Analytics Engineer', type: 'DEV', activeTasks: 0, completedTasks: 14, totalTasks: 14, finishRate: '100%', workloadPct: 15, status: 'AVAILABLE' },
-    { id: 'usr_dev_4', name: 'Michael Brown', role: 'Security Engineering Lead', type: 'DEV', activeTasks: 3, completedTasks: 9, totalTasks: 12, finishRate: '75%', workloadPct: 80, status: 'HIGH_WORKLOAD' },
-    { id: 'usr_dev_5', name: 'Sneha Roy', role: 'Flutter & Mobile Engineer', type: 'DEV', activeTasks: 1, completedTasks: 10, totalTasks: 11, finishRate: '91%', workloadPct: 30, status: 'AVAILABLE' },
-    { id: 'usr_qa_1', name: 'Venu QA', role: 'Lead QA Automation Engineer', type: 'QA', activeTasks: 1, completedTasks: 22, totalTasks: 23, finishRate: '96%', workloadPct: 40, status: 'AVAILABLE' },
-    { id: 'usr_qa_2', name: 'Ananya Varma', role: 'Test Automation Specialist', type: 'QA', activeTasks: 0, completedTasks: 15, totalTasks: 15, finishRate: '100%', workloadPct: 10, status: 'AVAILABLE' },
-    { id: 'usr_qa_3', name: 'Sarah Thomas', role: 'Security & Regression QA', type: 'QA', activeTasks: 2, completedTasks: 8, totalTasks: 10, finishRate: '80%', workloadPct: 60, status: 'AVAILABLE' }
+  // Base Team Members (No fake non-zero numbers; stats dynamically calculated from DB)
+  const baseMembers = [
+    { id: 'usr_dev_1', name: 'Ram Kumar', role: 'Frontend UI Engineer', type: 'DEV' },
+    { id: 'usr_dev_2', name: 'Alex Rivera', role: 'DevOps & Cloud Architect', type: 'DEV' },
+    { id: 'usr_dev_3', name: 'Priya Sharma', role: 'Database & Analytics Engineer', type: 'DEV' },
+    { id: 'usr_dev_4', name: 'Michael Brown', role: 'Security Engineering Lead', type: 'DEV' },
+    { id: 'usr_dev_5', name: 'Sneha Roy', role: 'Flutter & Mobile Engineer', type: 'DEV' },
+    { id: 'usr_qa_1', name: 'Venu QA', role: 'Lead QA Automation Engineer', type: 'QA' },
+    { id: 'usr_qa_2', name: 'Ananya Varma', role: 'Test Automation Specialist', type: 'QA' },
+    { id: 'usr_qa_3', name: 'Sarah Thomas', role: 'Security & Regression QA', type: 'QA' }
   ];
 
-  const fetchProjects = async () => {
+  const fetchProjectsAndTasks = async () => {
     const token = sessionStorage.getItem('aureon_jwt_access_token');
+    const headers = { 'Authorization': token ? `Bearer ${token}` : '' };
+
     try {
-      const res = await fetch('http://127.0.0.1:8000/api/v1/projects/', {
-        headers: { 'Authorization': token ? `Bearer ${token}` : '' }
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setProjectsList(data.projects || []);
+      const [projRes, taskRes] = await Promise.all([
+        fetch('http://127.0.0.1:8000/api/v1/projects/', { headers }),
+        fetch('http://127.0.0.1:8000/api/v1/tasks/', { headers })
+      ]);
+
+      if (projRes.ok) {
+        const pData = await projRes.json();
+        setProjectsList(pData.projects || []);
       } else {
         setProjectsList([]);
       }
+
+      if (taskRes.ok) {
+        const tData = await taskRes.json();
+        setTasksList(tData.tasks || []);
+      } else {
+        setTasksList([]);
+      }
     } catch (err) {
       setProjectsList([]);
+      setTasksList([]);
     }
   };
 
   useEffect(() => {
-    fetchProjects();
-    if (availableLeads.length > 0) setSelectedLeadId(availableLeads[0].id);
-    setSelectedMemberIds([availableMembers[0].id, availableMembers[1].id, availableMembers[5].id]);
+    fetchProjectsAndTasks();
+    if (baseLeads.length > 0) setSelectedLeadId(baseLeads[0].id);
+    setSelectedMemberIds([baseMembers[0].id, baseMembers[1].id, baseMembers[5].id]);
   }, []);
+
+  // Compute Real Team Lead Metrics from actual DB projects/tasks
+  const availableLeads = baseLeads.map(lead => {
+    const assignedProjects = projectsList.filter(p => p.lead_id === lead.id || p.lead_name?.includes(lead.name));
+    const assignedTasks = tasksList.filter(t => t.assigned_to === lead.name || t.assignee_id === lead.id);
+    const activeTasks = assignedTasks.filter(t => t.status === 'IN_PROGRESS' || t.status === 'TODO').length;
+    const completedTasks = assignedTasks.filter(t => t.status === 'DONE' || t.status === 'COMPLETED').length;
+    const status = activeTasks > 3 ? 'HIGH_WORKLOAD' : 'AVAILABLE';
+
+    return {
+      ...lead,
+      activeTasks,
+      completedTasks,
+      projectsCount: assignedProjects.length,
+      status
+    };
+  });
+
+  // Compute Real Member Metrics from actual DB projects/tasks
+  const availableMembers = baseMembers.map(member => {
+    const assignedTasks = tasksList.filter(t => t.assigned_to === member.name || t.assignee_id === member.id);
+    const activeTasks = assignedTasks.filter(t => t.status === 'IN_PROGRESS' || t.status === 'TODO').length;
+    const completedTasks = assignedTasks.filter(t => t.status === 'DONE' || t.status === 'COMPLETED').length;
+    const totalTasks = assignedTasks.length;
+    const finishRate = totalTasks > 0 ? `${Math.round((completedTasks / totalTasks) * 100)}%` : '0%';
+    const workloadPct = Math.min(100, activeTasks * 25);
+    const status = activeTasks > 3 ? 'HIGH_WORKLOAD' : 'AVAILABLE';
+
+    return {
+      ...member,
+      activeTasks,
+      completedTasks,
+      totalTasks,
+      finishRate,
+      workloadPct,
+      status
+    };
+  });
 
   // Add Requirement Handler
   const handleAddRequirement = (e) => {
@@ -318,14 +369,14 @@ export const Projects = () => {
           )}
         </Card>
       ) : (
-        /* WORKLOAD & CAPACITY MONITOR */
+        /* WORKLOAD & CAPACITY MONITOR WITH REAL DATABASE NUMBERS */
         <div className="space-y-6">
           <div className="p-4 rounded-2xl bg-indigo-50/80 dark:bg-indigo-950/50 warm:bg-[#f3e8d2] border border-indigo-200 dark:border-indigo-800 warm:border-[#cbb68e] text-xs">
             <h3 className="font-extrabold text-indigo-900 dark:text-indigo-200 text-sm flex items-center gap-2">
-              <Users className="w-4 h-4 text-indigo-600" /> Virtual Team Capacity & Task Finish Monitor
+              <Users className="w-4 h-4 text-indigo-600" /> Virtual Team Capacity & Task Finish Monitor (Live Database Metrics)
             </h3>
             <p className="text-indigo-700 dark:text-indigo-300 mt-1">
-              Check every member's active tasks, completed tasks count, and current workload capacity before assigning them to new project modules or tasks.
+              Real-time metrics: Check every member's active tasks, completed tasks, and workload capacity before assigning them to new project modules.
             </p>
           </div>
 
@@ -537,7 +588,7 @@ export const Projects = () => {
                         {member.status === 'AVAILABLE' ? '✓ Free' : '⚠️ Busy'}
                       </span>
                     </div>
-                    <div className="text-[10px] text-slate-500">{member.role} • Finished: {member.completedTasks}/{member.totalTasks} ({member.finishRate})</div>
+                    <div className="text-[10px] text-slate-500">{member.role} • Active: {member.activeTasks}</div>
                   </div>
                 </label>
               ))}
