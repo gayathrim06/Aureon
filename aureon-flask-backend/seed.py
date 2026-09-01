@@ -72,17 +72,16 @@ def seed_database():
 
     # 3. Seed Baseline Projects
     default_projects = [
-        { 'code': 'PROJ-101', 'name': 'Aureon Core API Gateway', 'status': 'IN_PROGRESS', 'priority': 'HIGH', 'health_score': 96 },
-        { 'code': 'PROJ-102', 'name': 'Cloud Telemetry Mesh', 'status': 'IN_PROGRESS', 'priority': 'HIGH', 'health_score': 89 },
-        { 'code': 'PROJ-103', 'name': 'Enterprise Auth & OAuth2', 'status': 'COMPLETED', 'priority': 'MEDIUM', 'health_score': 98 },
-        { 'code': 'PROJ-104', 'name': 'SonarQube Vulnerability Scanner', 'status': 'IN_PROGRESS', 'priority': 'HIGH', 'health_score': 94 },
-        { 'code': 'PROJ-105', 'name': 'Executive PDF/CSV Reports Engine', 'status': 'COMPLETED', 'priority': 'LOW', 'health_score': 95 }
+        { 'name': 'Aureon Core API Gateway', 'status': 'IN_PROGRESS', 'priority': 'HIGH', 'health_score': 96 },
+        { 'name': 'Cloud Telemetry Mesh', 'status': 'IN_PROGRESS', 'priority': 'HIGH', 'health_score': 89 },
+        { 'name': 'Enterprise Auth & OAuth2', 'status': 'COMPLETED', 'priority': 'MEDIUM', 'health_score': 98 },
+        { 'name': 'SonarQube Vulnerability Scanner', 'status': 'IN_PROGRESS', 'priority': 'HIGH', 'health_score': 94 },
+        { 'name': 'Executive PDF/CSV Reports Engine', 'status': 'COMPLETED', 'priority': 'LOW', 'health_score': 95 }
     ]
 
     for p_data in default_projects:
-        if not Project.query.filter_by(code=p_data['code']).first():
+        if not Project.query.filter_by(name=p_data['name']).first():
             p = Project(
-                code=p_data['code'],
                 name=p_data['name'],
                 status=p_data['status'],
                 priority=p_data['priority'],
@@ -93,17 +92,17 @@ def seed_database():
 
     # 4. Seed Baseline Teams
     default_teams = [
-        { 'name': 'Core Infrastructure Guild', 'department': 'Engineering' },
-        { 'name': 'Frontend UI Squad', 'department': 'User Experience' },
-        { 'name': 'Backend Data Engine', 'department': 'Database & Analytics' },
-        { 'name': 'QA & Compliance Automation', 'department': 'Quality Assurance' }
+        { 'name': 'Core Infrastructure Guild', 'description': 'Engineering' },
+        { 'name': 'Frontend UI Squad', 'description': 'User Experience' },
+        { 'name': 'Backend Data Engine', 'description': 'Database & Analytics' },
+        { 'name': 'QA & Compliance Automation', 'description': 'Quality Assurance' }
     ]
 
     for t_data in default_teams:
         if not Team.query.filter_by(name=t_data['name']).first():
             t = Team(
                 name=t_data['name'],
-                department=t_data['department'],
+                description=t_data['description'],
                 availability_status='AVAILABLE'
             )
             db.session.add(t)
