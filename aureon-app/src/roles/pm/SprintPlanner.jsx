@@ -3,7 +3,7 @@ import { Breadcrumb } from '../../components/common/Breadcrumb';
 import { Modal } from '../../components/common/Modal';
 import { useAuth } from '../../context/AuthContext';
 import { logAuditEvent } from '../../services/auditLogger';
-import { Layers, Plus, CheckCircle2, Clock, Activity, FolderKanban, Users, Calendar, ShieldCheck, Filter } from 'lucide-react';
+import { Layers, Plus, CheckCircle2, Clock, Activity, FolderKanban, Users, Calendar, ShieldCheck, Filter, Target, Zap, TrendingUp, Flag } from 'lucide-react';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 
 export const SprintPlanner = ({ onShowToast }) => {
@@ -17,19 +17,20 @@ export const SprintPlanner = ({ onShowToast }) => {
   const [projectFilter, setProjectFilter] = useState('ALL');
   const [teamFilter, setTeamFilter] = useState('ALL');
 
-  // Modal Form State
+  // Modal Form State - Strategic Sprint Milestone
   const [formData, setFormData] = useState({
     name: '',
     projectId: '',
     projectName: '',
     assignedTeam: 'Frontend Development Team',
-    teamLeadName: 'Krishna Deepesh (Tech Lead)',
+    scrumMaster: 'Krishna Deepesh (Tech Lead)',
+    epicCategory: 'Core Architecture',
+    capacityStoryPoints: 40,
     startDate: '2026-09-01',
     endDate: '2026-09-15',
     goal: ''
   });
 
-  // Teams / Departments list
   const availableTeams = [
     { id: 'team_fe', name: 'Frontend Development Team', lead: 'Krishna Deepesh (Tech Lead)' },
     { id: 'team_be', name: 'Backend & Microservices Team', lead: 'David Chen (Lead Architect)' },
@@ -90,7 +91,7 @@ export const SprintPlanner = ({ onShowToast }) => {
     setFormData(prev => ({
       ...prev,
       assignedTeam: teamName,
-      teamLeadName: found ? found.lead : ''
+      scrumMaster: found ? found.lead : ''
     }));
   };
 
@@ -104,7 +105,9 @@ export const SprintPlanner = ({ onShowToast }) => {
       project_id: formData.projectId,
       project_name: formData.projectName || (projectsList.find(p => p.id === formData.projectId)?.name || 'General System'),
       assigned_team: formData.assignedTeam,
-      team_lead: formData.teamLeadName,
+      team_lead: formData.scrumMaster,
+      epic_category: formData.epicCategory,
+      story_points: Number(formData.capacityStoryPoints) || 40,
       startDate: formData.startDate,
       endDate: formData.endDate,
       goal: formData.goal || 'Deliver sprint features on schedule.',
@@ -112,9 +115,9 @@ export const SprintPlanner = ({ onShowToast }) => {
       totalTasks: 0,
       completedTasks: 0,
       burnDownData: [
-        { day: 'Day 1', remaining: 20, target: 20 },
-        { day: 'Day 5', remaining: 15, target: 14 },
-        { day: 'Day 10', remaining: 8, target: 7 },
+        { day: 'Day 1', remaining: 40, target: 40 },
+        { day: 'Day 5', remaining: 28, target: 28 },
+        { day: 'Day 10', remaining: 12, target: 14 },
         { day: 'Day 14', remaining: 0, target: 0 }
       ]
     };
@@ -138,22 +141,12 @@ export const SprintPlanner = ({ onShowToast }) => {
       user,
       role: user?.role,
       action: 'SPRINT_CREATE',
-      resource: `Created Sprint: ${newSprint.name} for ${newSprint.project_name} (${newSprint.assigned_team})`,
+      resource: `Strategic Sprint: ${newSprint.name} (${newSprint.story_points} Points)`,
       status: 'SUCCESS'
     });
 
-    if (onShowToast) onShowToast({ type: 'success', title: 'Sprint Initialized', message: `${newSprint.name} created for ${newSprint.assigned_team}.` });
+    if (onShowToast) onShowToast({ type: 'success', title: 'Sprint Milestone Created', message: `${newSprint.name} committed with ${newSprint.story_points} Story Points capacity.` });
     setIsModalOpen(false);
-    setFormData({
-      name: '',
-      projectId: projectsList[0]?.id || '',
-      projectName: projectsList[0]?.name || '',
-      assignedTeam: 'Frontend Development Team',
-      teamLeadName: 'Krishna Deepesh (Tech Lead)',
-      startDate: '2026-09-01',
-      endDate: '2026-09-15',
-      goal: ''
-    });
   };
 
   const filteredSprints = sprints.filter(sp => {
@@ -162,12 +155,6 @@ export const SprintPlanner = ({ onShowToast }) => {
     return matchProj && matchTeam;
   });
 
-  const statusColors = {
-    ACTIVE: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border-emerald-300',
-    COMPLETED: 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 border-blue-300',
-    PLANNING: 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border-amber-300'
-  };
-
   return (
     <div className="space-y-6 font-sans text-slate-900 dark:text-slate-100 warm:text-[#342314]">
       <Breadcrumb activeTab="Sprint Planner" />
@@ -175,32 +162,37 @@ export const SprintPlanner = ({ onShowToast }) => {
       {/* Header Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl font-bold flex items-center gap-2">
-            <Layers className="w-5 h-5 text-indigo-500" />
-            Sprint Planner & Team Backlog Allocation
+          <div className="flex items-center gap-2">
+            <span className="px-2.5 py-0.5 rounded-md bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 font-mono text-[10px] font-extrabold uppercase tracking-wider border border-indigo-200">
+              Strategic Milestone Hub
+            </span>
+          </div>
+          <h1 className="text-2xl font-black tracking-tight mt-1 flex items-center gap-2">
+            <Layers className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
+            Sprint Roadmap & Velocity Planning
           </h1>
           <p className="text-xs text-slate-500 mt-0.5">
-            PM Governance: Define sprints for specific projects and specify which team / team lead is responsible for sprint deliverables.
+            Define timeboxed agile sprints, commit story points capacity, set strategic milestone goals, and monitor burndown velocity.
           </p>
         </div>
 
         <button
           onClick={() => setIsModalOpen(true)}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-md transition-all shrink-0"
+          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-black shadow-md transition-all shrink-0"
         >
-          <Plus className="w-4 h-4" /> Create New Team Sprint
+          <Target className="w-4 h-4" /> Create Strategic Sprint Milestone
         </button>
       </div>
 
       {/* Filter Toolbar */}
-      <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 warm:bg-[#e8dbbe] border border-slate-200 dark:border-slate-800 warm:border-[#cbb68e] flex flex-wrap items-center justify-between gap-4">
+      <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-2 text-xs font-bold text-slate-600 dark:text-slate-400">
-          <Filter className="w-4 h-4 text-indigo-500" /> Filter Sprints By:
+          <Filter className="w-4 h-4 text-indigo-500" /> Filter Sprint Roadmap:
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
           <div>
-            <label className="text-[10px] font-bold text-slate-500 uppercase mr-2">Project:</label>
+            <label className="text-[10px] font-bold text-slate-500 uppercase mr-2">Project Roadmap:</label>
             <select
               value={projectFilter}
               onChange={(e) => setProjectFilter(e.target.value)}
@@ -214,7 +206,7 @@ export const SprintPlanner = ({ onShowToast }) => {
           </div>
 
           <div>
-            <label className="text-[10px] font-bold text-slate-500 uppercase mr-2">Target Team:</label>
+            <label className="text-[10px] font-bold text-slate-500 uppercase mr-2">Scrum Team:</label>
             <select
               value={teamFilter}
               onChange={(e) => setTeamFilter(e.target.value)}
@@ -229,51 +221,66 @@ export const SprintPlanner = ({ onShowToast }) => {
         </div>
       </div>
 
-      {/* Burndown Velocity Chart */}
-      {selectedSprint && selectedSprint.burnDownData && selectedSprint.burnDownData.length > 0 && (
-        <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-3">
-          <div className="flex justify-between items-center">
+      {/* Burndown Velocity Chart Banner */}
+      {selectedSprint && (
+        <div className="p-6 rounded-3xl bg-gradient-to-br from-indigo-900 via-slate-900 to-purple-950 text-white shadow-xl space-y-4 border border-indigo-800/50">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-indigo-800/40 pb-4">
             <div>
-              <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">
-                {selectedSprint.name} — Burndown Velocity & Delivery Progress
-              </h3>
-              <p className="text-xs text-slate-500">
-                Target Project: <strong>{selectedSprint.project_name || 'Aureon'}</strong> • Team: <strong>{selectedSprint.assigned_team || 'Development Team'}</strong>
+              <div className="flex items-center gap-2">
+                <span className="px-2 py-0.5 rounded-md bg-indigo-500/20 text-indigo-300 font-mono text-[10px] font-bold border border-indigo-500/30">
+                  {selectedSprint.id}
+                </span>
+                <h3 className="text-lg font-black">{selectedSprint.name}</h3>
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                  ⚡ {selectedSprint.story_points || 40} Story Points Capacity
+                </span>
+              </div>
+              <p className="text-xs text-indigo-200 mt-1 font-medium">
+                🎯 <strong>Sprint Goal:</strong> {selectedSprint.goal || 'Deliver core milestone features on schedule.'}
               </p>
             </div>
-            <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border uppercase ${statusColors[selectedSprint.status] || 'bg-indigo-100 text-indigo-700'}`}>
-              {selectedSprint.status}
-            </span>
+
+            <div className="flex items-center gap-4 text-xs">
+              <div className="text-right">
+                <span className="text-[10px] text-indigo-300 uppercase block font-bold">Target Project</span>
+                <span className="font-extrabold text-white">{selectedSprint.project_name || 'Aureon SaaS'}</span>
+              </div>
+              <div className="text-right border-l border-indigo-800/60 pl-4">
+                <span className="text-[10px] text-indigo-300 uppercase block font-bold">Assigned Scrum Lead</span>
+                <span className="font-extrabold text-white">{selectedSprint.team_lead || 'Krishna Deepesh'}</span>
+              </div>
+            </div>
           </div>
 
-          <div className="h-60">
+          {/* Velocity Chart */}
+          <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={selectedSprint.burnDownData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.2} />
-                <XAxis dataKey="day" stroke="#9ca3af" fontSize={11} />
-                <YAxis stroke="#9ca3af" fontSize={11} />
-                <Tooltip contentStyle={{ backgroundColor: '#1f2937', borderRadius: '8px', border: 'none', color: '#fff' }} />
-                <Line type="monotone" dataKey="remaining" stroke="#6366f1" strokeWidth={3} name="Actual Remaining Tasks" />
-                <Line type="monotone" dataKey="target" stroke="#9ca3af" strokeDasharray="5 5" strokeWidth={2} name="Target Guideline" />
+              <LineChart data={selectedSprint.burnDownData || []}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.3} />
+                <XAxis dataKey="day" stroke="#a5b4fc" fontSize={11} />
+                <YAxis stroke="#a5b4fc" fontSize={11} />
+                <Tooltip contentStyle={{ backgroundColor: '#1e1b4b', borderRadius: '12px', border: '1px solid #4338ca', color: '#fff' }} />
+                <Line type="monotone" dataKey="remaining" stroke="#818cf8" strokeWidth={3} name="Remaining Story Points" />
+                <Line type="monotone" dataKey="target" stroke="#64748b" strokeDasharray="5 5" strokeWidth={2} name="Ideal Velocity Line" />
               </LineChart>
             </ResponsiveContainer>
           </div>
         </div>
       )}
 
-      {/* Sprints Grid */}
+      {/* Sprints Cards Grid */}
       {filteredSprints.length === 0 ? (
-        <div className="p-12 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-center space-y-3">
+        <div className="p-12 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-center space-y-3">
           <Layers className="w-12 h-12 text-slate-300 dark:text-slate-700 mx-auto" />
-          <h3 className="text-base font-extrabold">No Team Sprints Created Yet</h3>
+          <h3 className="text-base font-extrabold">No Sprint Milestones Created</h3>
           <p className="text-xs text-slate-500 max-w-md mx-auto">
-            Click <strong>"Create New Team Sprint"</strong> to create a sprint, select its target project, and assign it to a specific team (Frontend, Backend, QA, DevOps).
+            Click <strong>"Create Strategic Sprint Milestone"</strong> to commit story points capacity, define timeboxed milestones, and assign teams.
           </p>
           <button
             onClick={() => setIsModalOpen(true)}
             className="px-4 py-2 rounded-xl bg-indigo-600 text-white font-bold text-xs"
           >
-            Create First Sprint Now
+            Create First Sprint Milestone
           </button>
         </div>
       ) : (
@@ -282,13 +289,13 @@ export const SprintPlanner = ({ onShowToast }) => {
             <div
               key={sp.id}
               onClick={() => setSelectedSprint(sp)}
-              className={`p-5 rounded-2xl bg-white dark:bg-slate-900 border shadow-xs cursor-pointer transition-all hover:shadow-md space-y-3 ${
-                selectedSprint?.id === sp.id ? 'border-indigo-500 ring-2 ring-indigo-500/20' : 'border-slate-200 dark:border-slate-800'
+              className={`p-5 rounded-3xl bg-white dark:bg-slate-900 border shadow-xs cursor-pointer transition-all hover:shadow-lg space-y-3 ${
+                selectedSprint?.id === sp.id ? 'border-indigo-600 ring-2 ring-indigo-500/20' : 'border-slate-200 dark:border-slate-800'
               }`}
             >
               <div className="flex items-center justify-between">
-                <span className={`px-2 py-0.5 rounded text-[10px] font-bold border uppercase ${statusColors[sp.status] || 'bg-indigo-100 text-indigo-700'}`}>
-                  {sp.status}
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-indigo-50 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 border border-indigo-200">
+                  ⚡ {sp.story_points || 40} Story Points
                 </span>
                 <span className="text-[10px] font-mono text-slate-400 font-bold">{sp.startDate || '2026-09-01'} → {sp.endDate || '2026-09-15'}</span>
               </div>
@@ -298,8 +305,8 @@ export const SprintPlanner = ({ onShowToast }) => {
                 <div className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 mt-0.5">
                   📁 Project: {sp.project_name || 'Aureon SaaS'}
                 </div>
-                <div className="text-[10px] text-purple-600 dark:text-purple-400 font-semibold">
-                  👥 Team: {sp.assigned_team || 'Development Team'} ({sp.team_lead || 'Krishna Deepesh'})
+                <div className="text-[10px] text-purple-600 dark:text-purple-400 font-bold">
+                  👑 Scrum Master: {sp.team_lead || 'Krishna Deepesh'} ({sp.assigned_team})
                 </div>
               </div>
 
@@ -307,12 +314,12 @@ export const SprintPlanner = ({ onShowToast }) => {
 
               <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
                 <div className="flex items-center justify-between text-[10px] mb-1 font-bold">
-                  <span className="text-emerald-600 flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> {sp.completedTasks || 0} Finished</span>
-                  <span className="text-indigo-600 flex items-center gap-1"><Clock className="w-3 h-3" /> {(sp.totalTasks || 0) - (sp.completedTasks || 0)} Remaining</span>
+                  <span className="text-emerald-600 flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> {sp.completedTasks || 0} Points Delivered</span>
+                  <span className="text-indigo-600 flex items-center gap-1"><Clock className="w-3 h-3" /> {(sp.totalTasks || 0) - (sp.completedTasks || 0)} Points Remaining</span>
                 </div>
                 <div className="w-full h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
                   <div
-                    className="h-full bg-indigo-600 rounded-full transition-all duration-300"
+                    className="h-full bg-gradient-to-r from-indigo-500 to-purple-600 rounded-full"
                     style={{ width: `${sp.totalTasks > 0 ? ((sp.completedTasks / sp.totalTasks) * 100) : 0}%` }}
                   />
                 </div>
@@ -322,18 +329,18 @@ export const SprintPlanner = ({ onShowToast }) => {
         </div>
       )}
 
-      {/* PM SPRINT CREATION MODAL WITH PROJECT & TEAM SELECTORS */}
-      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="PM Governance: Create Sprint & Assign Target Team">
+      {/* STRATEGIC SPRINT MILESTONE CREATION MODAL */}
+      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Strategic Roadmap: Create Sprint Milestone & Capacity Commitment">
         <form onSubmit={handleCreate} className="space-y-4 text-xs">
           <div>
-            <label className="block font-bold mb-1">1. Sprint Name *</label>
+            <label className="block font-bold mb-1">1. Sprint Milestone Name *</label>
             <input
               type="text"
               required
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 font-bold"
-              placeholder="e.g. Sprint 1 - Core Auth & Gateway"
+              placeholder="e.g. Sprint 2026-Q3-01: Core Auth & Gateway Milestone"
             />
           </div>
 
@@ -357,7 +364,7 @@ export const SprintPlanner = ({ onShowToast }) => {
             </div>
 
             <div>
-              <label className="block font-bold mb-1">3. Assigned Team & Team Lead *</label>
+              <label className="block font-bold mb-1">3. Responsible Scrum Team *</label>
               <select
                 required
                 value={formData.assignedTeam}
@@ -365,7 +372,7 @@ export const SprintPlanner = ({ onShowToast }) => {
                 className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 font-bold text-slate-900 dark:text-white"
               >
                 {availableTeams.map(t => (
-                  <option key={t.id} value={t.name}>{t.name} ({t.lead})</option>
+                  <option key={t.id} value={t.name}>{t.name} (Master: {t.lead})</option>
                 ))}
               </select>
             </div>
@@ -373,7 +380,30 @@ export const SprintPlanner = ({ onShowToast }) => {
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block font-bold mb-1">Sprint Start Date</label>
+              <label className="block font-bold mb-1">4. Target Velocity Capacity (Story Points)</label>
+              <input
+                type="number"
+                value={formData.capacityStoryPoints}
+                onChange={(e) => setFormData({ ...formData, capacityStoryPoints: e.target.value })}
+                className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 font-bold"
+                placeholder="e.g. 40"
+              />
+            </div>
+            <div>
+              <label className="block font-bold mb-1">Feature Epic Category</label>
+              <input
+                type="text"
+                value={formData.epicCategory}
+                onChange={(e) => setFormData({ ...formData, epicCategory: e.target.value })}
+                className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 font-bold"
+                placeholder="e.g. Core Architecture / Auth System"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block font-bold mb-1">Timebox Start Date</label>
               <input
                 type="date"
                 required
@@ -383,7 +413,7 @@ export const SprintPlanner = ({ onShowToast }) => {
               />
             </div>
             <div>
-              <label className="block font-bold mb-1">Sprint End Date</label>
+              <label className="block font-bold mb-1">Timebox End Date</label>
               <input
                 type="date"
                 required
@@ -395,13 +425,13 @@ export const SprintPlanner = ({ onShowToast }) => {
           </div>
 
           <div>
-            <label className="block font-bold mb-1">Sprint Deliverable Goals & Scope</label>
+            <label className="block font-bold mb-1">Sprint Milestone Strategic Objective</label>
             <textarea
-              rows={3}
+              rows={2}
               value={formData.goal}
               onChange={(e) => setFormData({ ...formData, goal: e.target.value })}
               className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs font-medium"
-              placeholder="Specify sprint technical goals and feature deliverables for the team..."
+              placeholder="Describe strategic sprint deliverables and acceptance criteria for the scrum team..."
             />
           </div>
 
@@ -417,7 +447,7 @@ export const SprintPlanner = ({ onShowToast }) => {
               type="submit"
               className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs"
             >
-              Initialize Team Sprint
+              Commit Sprint Milestone
             </button>
           </div>
         </form>

@@ -4,7 +4,7 @@ import { DataTable } from '../../components/common/DataTable';
 import { Modal } from '../../components/common/Modal';
 import { useAuth } from '../../context/AuthContext';
 import { logAuditEvent } from '../../services/auditLogger';
-import { CheckSquare, Plus, Filter, FolderKanban, Users, Clock, AlertCircle } from 'lucide-react';
+import { CheckSquare, Plus, Filter, FolderKanban, Users, Clock, AlertCircle, GitBranch, Columns, List, Shield, Bug, Wrench, FileCode, CheckCircle2 } from 'lucide-react';
 
 export const TaskBreakdown = ({ onShowToast }) => {
   const { user } = useAuth();
@@ -12,17 +12,19 @@ export const TaskBreakdown = ({ onShowToast }) => {
   const [projectsList, setProjectsList] = useState([]);
   const [sprintsList, setSprintsList] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [viewMode, setViewMode] = useState('kanban'); // 'kanban' or 'table'
 
   // Filters
   const [projectFilter, setProjectFilter] = useState('ALL');
   const [teamFilter, setTeamFilter] = useState('ALL');
+  const [sprintFilter, setSprintFilter] = useState('ALL');
   const [statusFilter, setStatusFilter] = useState('ALL');
 
-  // Available Teams & Members Mapping
+  // Department Team Members Mapping
   const teamMembersMap = {
     'Frontend Development Team': [
       { name: 'Ram Kumar', role: 'Frontend UI Engineer' },
-      { id: 'usr_dev_1', name: 'Sainu Anna', role: 'React Engineer' }
+      { name: 'Sainu Anna', role: 'React Developer' }
     ],
     'Backend & Microservices Team': [
       { name: 'David Chen', role: 'Lead Architect' },
@@ -39,16 +41,18 @@ export const TaskBreakdown = ({ onShowToast }) => {
     ]
   };
 
-  // Form State
+  // Form State for Work Ticket Creation
   const [formData, setFormData] = useState({
     title: '',
     description: '',
+    ticketType: 'Feature', // Feature, Bug Fix, Code Refactor, QA Test, Vulnerability
+    parentSprintId: '',
     projectId: '',
     projectName: '',
     assignedTeam: 'Frontend Development Team',
     assignee: 'Ram Kumar',
     priority: 'HIGH',
-    type: 'Feature',
+    gitBranch: 'feature/auth-module',
     estimatedHours: 8,
     dueDate: '2026-09-15'
   });
@@ -79,7 +83,11 @@ export const TaskBreakdown = ({ onShowToast }) => {
 
       if (sRes.ok) {
         const sData = await sRes.json();
-        setSprintsList(sData.sprints || []);
+        const spr = sData.sprints || [];
+        setSprintsList(spr);
+        if (spr.length > 0 && !formData.parentSprintId) {
+          setFormData(prev => ({ ...prev, parentSprintId: spr[0].id }));
+        }
       }
 
       if (tRes.ok) {
@@ -119,17 +127,22 @@ export const TaskBreakdown = ({ onShowToast }) => {
     e.preventDefault();
     if (!formData.title.trim()) return;
 
+    const parentSprint = sprintsList.find(s => s.id === formData.parentSprintId);
+
     const newTask = {
-      id: `TASK-${Math.floor(1000 + Math.random() * 9000)}`,
+      id: `TCK-${Math.floor(1000 + Math.random() * 9000)}`,
       title: formData.title,
       description: formData.description,
+      ticket_type: formData.ticketType,
+      sprint_id: formData.parentSprintId,
+      sprint_name: parentSprint ? parentSprint.name : 'Backlog',
       project_id: formData.projectId,
       project_name: formData.projectName || (projectsList.find(p => p.id === formData.projectId)?.name || 'General System'),
       assigned_team: formData.assignedTeam,
       assignee: formData.assignee,
       priority: formData.priority,
       status: 'TODO',
-      type: formData.type,
+      git_branch: formData.gitBranch || `feature/${formData.title.toLowerCase().replace(/[^a-z0-9]/g, '-')}`,
       dueDate: formData.dueDate,
       estimatedHours: Number(formData.estimatedHours) || 8,
       loggedHours: 0
@@ -153,76 +166,94 @@ export const TaskBreakdown = ({ onShowToast }) => {
       user,
       role: user?.role,
       action: 'TASK_CREATE',
-      resource: `Created Task: ${newTask.title} for ${newTask.assignee} (${newTask.assigned_team})`,
+      resource: `Created Work Ticket: ${newTask.id} (${newTask.title}) for ${newTask.assignee}`,
       status: 'SUCCESS'
     });
 
-    if (onShowToast) onShowToast({ type: 'success', title: 'Task Assigned', message: `Task '${newTask.title}' assigned to ${newTask.assignee}.` });
+    if (onShowToast) onShowToast({ type: 'success', title: 'Work Ticket Assigned', message: `Ticket '${newTask.id}' assigned to ${newTask.assignee}.` });
     setIsModalOpen(false);
-    setFormData({
-      title: '',
-      description: '',
-      projectId: projectsList[0]?.id || '',
-      projectName: projectsList[0]?.name || '',
-      assignedTeam: 'Frontend Development Team',
-      assignee: 'Ram Kumar',
-      priority: 'HIGH',
-      type: 'Feature',
-      estimatedHours: 8,
-      dueDate: '2026-09-15'
-    });
+  };
+
+  const handleUpdateTaskStatus = async (taskId, newStatus) => {
+    setTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: newStatus } : t));
+    const token = sessionStorage.getItem('aureon_jwt_access_token');
+    try {
+      await fetch(`http://127.0.0.1:8000/api/v1/tasks/${taskId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': token ? `Bearer ${token}` : ''
+        },
+        body: JSON.stringify({ status: newStatus })
+      });
+    } catch (err) {}
   };
 
   const filteredTasks = tasks.filter(t => {
     const matchProj = projectFilter === 'ALL' || t.project_id === projectFilter || t.project_name === projectFilter;
     const matchTeam = teamFilter === 'ALL' || t.assigned_team === teamFilter;
+    const matchSprint = sprintFilter === 'ALL' || t.sprint_id === sprintFilter;
     const matchStatus = statusFilter === 'ALL' || t.status === statusFilter;
-    return matchProj && matchTeam && matchStatus;
+    return matchProj && matchTeam && matchSprint && matchStatus;
   });
 
-  const priorityColors = {
-    CRITICAL: 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 font-bold border border-rose-300',
-    HIGH: 'bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-300 font-bold border border-orange-300',
-    MEDIUM: 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 font-bold border border-amber-300',
-    LOW: 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 font-bold border border-blue-300'
+  const ticketTypeIcons = {
+    Feature: <FileCode className="w-3.5 h-3.5 text-blue-500" />,
+    'Bug Fix': <Bug className="w-3.5 h-3.5 text-rose-500" />,
+    'Code Refactor': <Wrench className="w-3.5 h-3.5 text-purple-500" />,
+    'QA Test': <CheckSquare className="w-3.5 h-3.5 text-emerald-500" />,
+    Vulnerability: <AlertCircle className="w-3.5 h-3.5 text-amber-500" />
   };
 
-  const statusColors = {
-    TODO: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300',
-    IN_PROGRESS: 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300',
-    REVIEW: 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300',
-    DONE: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
+  const priorityColors = {
+    CRITICAL: 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 font-extrabold border border-rose-300',
+    HIGH: 'bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-300 font-extrabold border border-orange-300',
+    MEDIUM: 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 font-extrabold border border-amber-300',
+    LOW: 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 font-extrabold border border-blue-300'
   };
 
   const columns = [
     {
       key: 'id',
-      label: 'Task ID',
-      render: (val) => <span className="font-mono text-xs font-bold text-indigo-600 dark:text-indigo-400">{val}</span>
+      label: 'Ticket ID & Type',
+      render: (val, row) => (
+        <div className="flex items-center gap-2">
+          {ticketTypeIcons[row.ticket_type] || <FileCode className="w-3.5 h-3.5 text-blue-500" />}
+          <div>
+            <span className="font-mono text-xs font-bold text-indigo-600 dark:text-indigo-400 block">{val}</span>
+            <span className="text-[10px] text-slate-400 font-medium">{row.ticket_type || 'Feature'}</span>
+          </div>
+        </div>
+      )
     },
     {
       key: 'title',
-      label: 'Task Title & Project',
+      label: 'Work Ticket Summary & Git Branch',
       render: (val, row) => (
         <div>
-          <div className="font-extrabold text-slate-900 dark:text-white">{val}</div>
-          <div className="text-[10px] text-slate-500 font-medium">📁 Project: {row.project_name || 'General System'}</div>
+          <div className="font-bold text-slate-900 dark:text-white">{val}</div>
+          <div className="flex items-center gap-2 mt-0.5">
+            <span className="text-[10px] text-slate-500 font-medium">📁 {row.project_name || 'General System'}</span>
+            <span className="font-mono text-[10px] text-indigo-500 font-bold bg-indigo-50 dark:bg-indigo-950 px-1.5 py-0.5 rounded flex items-center gap-1">
+              <GitBranch className="w-3 h-3" /> {row.git_branch || 'feature/main'}
+            </span>
+          </div>
         </div>
       )
     },
     {
       key: 'assigned_team',
-      label: 'Assigned Department',
-      render: (val, row) => (
+      label: 'Department Team',
+      render: (val) => (
         <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-purple-50 text-purple-700 dark:bg-purple-950 dark:text-purple-300 border border-purple-200">
-          {val || row.assigned_team || 'Development Team'}
+          {val || 'Development Team'}
         </span>
       )
     },
     {
       key: 'assignee',
-      label: 'Assignee Member',
-      render: (val) => <span className="font-bold text-slate-900 dark:text-white">{val || 'Unassigned'}</span>
+      label: 'Developer Assignee',
+      render: (val) => <span className="font-extrabold text-slate-900 dark:text-white">{val || 'Unassigned'}</span>
     },
     {
       key: 'priority',
@@ -231,14 +262,32 @@ export const TaskBreakdown = ({ onShowToast }) => {
     },
     {
       key: 'status',
-      label: 'Status',
-      render: (val) => <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${statusColors[val] || 'bg-slate-100'}`}>{(val || 'TODO').replace('_',' ')}</span>
+      label: 'Kanban Column',
+      render: (val, row) => (
+        <select
+          value={val}
+          onChange={(e) => handleUpdateTaskStatus(row.id, e.target.value)}
+          className="p-1 px-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-bold text-slate-900 dark:text-white cursor-pointer"
+        >
+          <option value="TODO">To Do</option>
+          <option value="IN_PROGRESS">In Progress</option>
+          <option value="REVIEW">Code Review</option>
+          <option value="DONE">Done</option>
+        </select>
+      )
     },
     {
       key: 'dueDate',
-      label: 'Due Date',
+      label: 'Target Due Date',
       render: (val) => <span className="font-mono text-xs text-slate-600 dark:text-slate-400 font-bold">{val || '2026-09-15'}</span>
     }
+  ];
+
+  const kanbanColumns = [
+    { id: 'TODO', label: '📋 To Do', bg: 'bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800' },
+    { id: 'IN_PROGRESS', label: '🚀 In Progress', bg: 'bg-blue-50/50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-900' },
+    { id: 'REVIEW', label: '🔍 Code Review', bg: 'bg-amber-50/50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-900' },
+    { id: 'DONE', label: '✅ Completed', bg: 'bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-900' }
   ];
 
   return (
@@ -248,27 +297,53 @@ export const TaskBreakdown = ({ onShowToast }) => {
       {/* Header Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl font-bold flex items-center gap-2">
-            <CheckSquare className="w-5 h-5 text-indigo-500" />
-            Task Breakdown & Multi-Team Task Allocation
+          <div className="flex items-center gap-2">
+            <span className="px-2.5 py-0.5 rounded-md bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300 font-mono text-[10px] font-extrabold uppercase tracking-wider border border-purple-200">
+              Engineering Work Ticket Board
+            </span>
+          </div>
+          <h1 className="text-2xl font-black tracking-tight mt-1 flex items-center gap-2">
+            <CheckSquare className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+            Engineering Tickets & Kanban Execution
           </h1>
           <p className="text-xs text-slate-500 mt-0.5">
-            PM Governance: Assign tasks to specific project modules, select target department team (Frontend, Backend, QA, DevOps), and assign team members.
+            Create actionable work tickets (Bugs, Features, Refactors), link to Sprint Milestones, assign to team developers, and track Kanban progress.
           </p>
         </div>
 
-        <button
-          onClick={() => setIsModalOpen(true)}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-md transition-all shrink-0"
-        >
-          <Plus className="w-4 h-4" /> Create & Assign Task
-        </button>
+        <div className="flex items-center gap-2 shrink-0">
+          <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-bold">
+            <button
+              onClick={() => setViewMode('kanban')}
+              className={`px-3 py-1 rounded-lg flex items-center gap-1.5 transition-all ${
+                viewMode === 'kanban' ? 'bg-white dark:bg-slate-900 shadow-xs text-indigo-600 dark:text-indigo-400' : 'text-slate-500'
+              }`}
+            >
+              <Columns className="w-3.5 h-3.5" /> Kanban Board
+            </button>
+            <button
+              onClick={() => setViewMode('table')}
+              className={`px-3 py-1 rounded-lg flex items-center gap-1.5 transition-all ${
+                viewMode === 'table' ? 'bg-white dark:bg-slate-900 shadow-xs text-indigo-600 dark:text-indigo-400' : 'text-slate-500'
+              }`}
+            >
+              <List className="w-3.5 h-3.5" /> Table List
+            </button>
+          </div>
+
+          <button
+            onClick={() => setIsModalOpen(true)}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-black shadow-md transition-all"
+          >
+            <Plus className="w-4 h-4" /> Create Work Ticket
+          </button>
+        </div>
       </div>
 
       {/* Filter Toolbar */}
-      <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 warm:bg-[#e8dbbe] border border-slate-200 dark:border-slate-800 warm:border-[#cbb68e] flex flex-wrap items-center justify-between gap-4">
+      <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-2 text-xs font-bold text-slate-600 dark:text-slate-400">
-          <Filter className="w-4 h-4 text-indigo-500" /> Filter Tasks By:
+          <Filter className="w-4 h-4 text-purple-500" /> Filter Ticket Board:
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
@@ -287,67 +362,121 @@ export const TaskBreakdown = ({ onShowToast }) => {
           </div>
 
           <div>
-            <label className="text-[10px] font-bold text-slate-500 uppercase mr-2">Department / Team:</label>
+            <label className="text-[10px] font-bold text-slate-500 uppercase mr-2">Parent Sprint:</label>
             <select
-              value={teamFilter}
-              onChange={(e) => setTeamFilter(e.target.value)}
+              value={sprintFilter}
+              onChange={(e) => setSprintFilter(e.target.value)}
               className="p-1.5 px-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 text-xs font-bold"
             >
-              <option value="ALL">All Teams</option>
-              {Object.keys(teamMembersMap).map(t => (
-                <option key={t} value={t}>{t}</option>
+              <option value="ALL">All Sprints ({sprintsList.length})</option>
+              {sprintsList.map(s => (
+                <option key={s.id} value={s.id}>{s.name}</option>
               ))}
             </select>
           </div>
 
           <div>
-            <label className="text-[10px] font-bold text-slate-500 uppercase mr-2">Status:</label>
+            <label className="text-[10px] font-bold text-slate-500 uppercase mr-2">Department Team:</label>
             <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
+              value={teamFilter}
+              onChange={(e) => setTeamFilter(e.target.value)}
               className="p-1.5 px-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 text-xs font-bold"
             >
-              <option value="ALL">All Statuses</option>
-              <option value="TODO">To Do</option>
-              <option value="IN_PROGRESS">In Progress</option>
-              <option value="REVIEW">In Review</option>
-              <option value="DONE">Completed</option>
+              <option value="ALL">All Departments</option>
+              {Object.keys(teamMembersMap).map(t => (
+                <option key={t} value={t}>{t}</option>
+              ))}
             </select>
           </div>
         </div>
       </div>
 
-      {/* Task Summary Metrics */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        {['TODO','IN_PROGRESS','REVIEW','DONE'].map(s => {
-          const count = filteredTasks.filter(t => t.status === s).length;
-          const labels = { TODO: 'To Do', IN_PROGRESS: 'In Progress', REVIEW: 'In Review', DONE: 'Completed' };
-          const colors = { TODO: 'border-l-slate-500', IN_PROGRESS: 'border-l-blue-500', REVIEW: 'border-l-amber-500', DONE: 'border-l-emerald-500' };
-          return (
-            <div key={s} className={`p-4 rounded-2xl bg-white dark:bg-slate-900 border-l-4 ${colors[s]} border-y border-r border-slate-200 dark:border-slate-800 shadow-xs`}>
-              <div className="text-[11px] font-bold text-slate-500 uppercase">{labels[s]}</div>
-              <div className="text-2xl font-black text-slate-900 dark:text-white mt-1">{count}</div>
-            </div>
-          );
-        })}
-      </div>
+      {viewMode === 'kanban' ? (
+        /* KANBAN BOARD COLUMNS */
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          {kanbanColumns.map(col => {
+            const columnTasks = filteredTasks.filter(t => t.status === col.id);
+            return (
+              <div
+                key={col.id}
+                className={`p-4 rounded-3xl ${col.bg} border space-y-3 min-h-[500px] flex flex-col`}
+              >
+                <div className="flex items-center justify-between pb-2 border-b border-slate-200/60 dark:border-slate-800">
+                  <h3 className="text-xs font-extrabold uppercase text-slate-700 dark:text-slate-300">{col.label}</h3>
+                  <span className="px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-800 text-[10px] font-black text-slate-700 dark:text-slate-300">
+                    {columnTasks.length}
+                  </span>
+                </div>
 
-      {/* Tasks Table */}
-      <DataTable
-        columns={columns}
-        data={filteredTasks}
-        searchPlaceholder="Search tasks by title, project, assignee..."
-      />
+                <div className="space-y-3 flex-1 overflow-y-auto">
+                  {columnTasks.length === 0 ? (
+                    <div className="p-6 text-center text-slate-400 text-xs italic">
+                      No tickets in this column
+                    </div>
+                  ) : (
+                    columnTasks.map(ticket => (
+                      <div
+                        key={ticket.id}
+                        className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs space-y-2 hover:shadow-md transition-all"
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="font-mono text-[10px] font-bold text-indigo-600 dark:text-indigo-400">
+                            {ticket.id}
+                          </span>
+                          <span className={`px-2 py-0.5 rounded text-[9px] ${priorityColors[ticket.priority] || 'bg-slate-100'}`}>
+                            {ticket.priority}
+                          </span>
+                        </div>
 
-      {/* CREATE & ASSIGN TASK MODAL */}
-      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="PM Governance: Create Task & Assign Member">
+                        <h4 className="text-xs font-extrabold text-slate-900 dark:text-white leading-tight">
+                          {ticket.title}
+                        </h4>
+
+                        <div className="text-[10px] text-slate-500 font-medium">
+                          📁 {ticket.project_name || 'Aureon SaaS'}
+                        </div>
+
+                        <div className="flex items-center justify-between text-[10px] pt-2 border-t border-slate-100 dark:border-slate-800">
+                          <span className="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1">
+                            👤 {ticket.assignee || 'Unassigned'}
+                          </span>
+                          <select
+                            value={ticket.status}
+                            onChange={(e) => handleUpdateTaskStatus(ticket.id, e.target.value)}
+                            className="p-0.5 px-1.5 rounded bg-slate-100 dark:bg-slate-800 text-[9px] font-bold text-slate-700 dark:text-slate-300"
+                          >
+                            <option value="TODO">To Do</option>
+                            <option value="IN_PROGRESS">In Progress</option>
+                            <option value="REVIEW">Code Review</option>
+                            <option value="DONE">Done</option>
+                          </select>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        /* TASKS TABLE VIEW */
+        <DataTable
+          columns={columns}
+          data={filteredTasks}
+          searchPlaceholder="Search tickets by ID, summary, assignee, branch..."
+        />
+      )}
+
+      {/* CREATE WORK TICKET MODAL */}
+      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Engineering Work Ticket & Developer Assignment">
         <form onSubmit={handleCreateTask} className="space-y-4 text-xs">
           <div>
-            <label className="block font-bold mb-1">1. Task Title *</label>
+            <label className="block font-bold mb-1">1. Work Ticket Summary / Title *</label>
             <input
               type="text"
               required
-              placeholder="e.g. Implement OAuth2 Refresh Token Rotation"
+              placeholder="e.g. Implement JWT Token Rotation & Blacklist Redis Key"
               value={formData.title}
               onChange={(e) => setFormData({ ...formData, title: e.target.value })}
               className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 font-bold"
@@ -356,7 +485,41 @@ export const TaskBreakdown = ({ onShowToast }) => {
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block font-bold mb-1">2. Target Project *</label>
+              <label className="block font-bold mb-1">2. Ticket Category Type</label>
+              <select
+                value={formData.ticketType}
+                onChange={(e) => setFormData({ ...formData, ticketType: e.target.value })}
+                className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 font-bold text-slate-900 dark:text-white"
+              >
+                <option value="Feature">💻 Feature Development</option>
+                <option value="Bug Fix">🐞 Bug Fix / Incident</option>
+                <option value="Code Refactor">🛠️ Code Refactor / Debt</option>
+                <option value="QA Test">🧪 QA Test Suite</option>
+                <option value="Vulnerability">🛡️ Security Vulnerability</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block font-bold mb-1">3. Link to Sprint Milestone</label>
+              <select
+                value={formData.parentSprintId}
+                onChange={(e) => setFormData({ ...formData, parentSprintId: e.target.value })}
+                className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 font-bold text-slate-900 dark:text-white"
+              >
+                {sprintsList.length === 0 ? (
+                  <option value="">No Sprints created yet</option>
+                ) : (
+                  sprintsList.map(s => (
+                    <option key={s.id} value={s.id}>{s.name} ({s.id})</option>
+                  ))
+                )}
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block font-bold mb-1">4. Target Project *</label>
               <select
                 required
                 value={formData.projectId}
@@ -364,7 +527,7 @@ export const TaskBreakdown = ({ onShowToast }) => {
                 className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 font-bold text-slate-900 dark:text-white"
               >
                 {projectsList.length === 0 ? (
-                  <option value="">No projects created yet (Create Project first)</option>
+                  <option value="">No projects created yet</option>
                 ) : (
                   projectsList.map(p => (
                     <option key={p.id} value={p.id}>{p.name}</option>
@@ -374,7 +537,7 @@ export const TaskBreakdown = ({ onShowToast }) => {
             </div>
 
             <div>
-              <label className="block font-bold mb-1">3. Department / Team *</label>
+              <label className="block font-bold mb-1">5. Department Team *</label>
               <select
                 required
                 value={formData.assignedTeam}
@@ -390,7 +553,7 @@ export const TaskBreakdown = ({ onShowToast }) => {
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block font-bold mb-1">4. Assignee Member *</label>
+              <label className="block font-bold mb-1">6. Assignee Member *</label>
               <select
                 required
                 value={formData.assignee}
@@ -404,7 +567,20 @@ export const TaskBreakdown = ({ onShowToast }) => {
             </div>
 
             <div>
-              <label className="block font-bold mb-1">5. Task Priority</label>
+              <label className="block font-bold mb-1">7. Git Branch / Repository</label>
+              <input
+                type="text"
+                placeholder="e.g. feature/auth-jwt-rotation"
+                value={formData.gitBranch}
+                onChange={(e) => setFormData({ ...formData, gitBranch: e.target.value })}
+                className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 font-mono text-xs font-bold"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block font-bold mb-1">Ticket Severity / Priority</label>
               <select
                 value={formData.priority}
                 onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
@@ -416,21 +592,9 @@ export const TaskBreakdown = ({ onShowToast }) => {
                 <option value="CRITICAL">Critical Priority</option>
               </select>
             </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block font-bold mb-1">Estimated Hours</label>
-              <input
-                type="number"
-                value={formData.estimatedHours}
-                onChange={(e) => setFormData({ ...formData, estimatedHours: e.target.value })}
-                className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 font-bold"
-              />
-            </div>
 
             <div>
-              <label className="block font-bold mb-1">Due Date</label>
+              <label className="block font-bold mb-1">Target Due Date</label>
               <input
                 type="date"
                 value={formData.dueDate}
@@ -450,9 +614,9 @@ export const TaskBreakdown = ({ onShowToast }) => {
             </button>
             <button
               type="submit"
-              className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs"
+              className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs"
             >
-              Save & Assign Task
+              Create Work Ticket
             </button>
           </div>
         </form>
