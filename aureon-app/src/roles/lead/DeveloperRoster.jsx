@@ -36,6 +36,13 @@ export const DeveloperRoster = ({ onShowToast }) => {
     endDate: '2026-09-15'
   });
 
+  const defaultTeamDevelopers = [
+    { id: '22222222-2222-2222-2222-222222222222', full_name: 'Sainu Anna Sajan', email: 'sainu@aureon.com', designation: 'React UI Developer', role_name: 'ROLE_DEV' },
+    { id: '44444444-4444-4444-4444-444444444444', full_name: 'Ram Kumar', email: 'ram@aureon.com', designation: 'Full Stack Engineer', role_name: 'ROLE_DEV' },
+    { id: '55555555-5555-5555-5555-555555555555', full_name: 'Priya Sharma', email: 'priya@aureon.com', designation: 'Database Engineer', role_name: 'ROLE_DEV' },
+    { id: '66666666-6666-6666-6666-666666666666', full_name: 'Venu QA', email: 'venu@aureon.com', designation: 'Lead QA Engineer', role_name: 'ROLE_QA' }
+  ];
+
   const fetchData = async () => {
     setLoading(true);
     const token = sessionStorage.getItem('aureon_jwt_access_token');
@@ -73,22 +80,20 @@ export const DeveloperRoster = ({ onShowToast }) => {
         }
       }
 
-      // If backend returns users, use real database users. Otherwise fallback to active database context users
-      if (realUsers.length === 0) {
-        realUsers = [
-          { id: '11111111-1111-1111-1111-111111111111', full_name: 'Krishna Deepesh', email: 'krishna@aureon.com', designation: 'Team Lead', role_name: 'ROLE_LEAD' },
-          { id: '22222222-2222-2222-2222-222222222222', full_name: 'Sainu Anna Sajan', email: 'sainu@aureon.com', designation: 'React UI Developer', role_name: 'ROLE_DEV' },
-          { id: '33333333-3333-3333-3333-333333333333', full_name: 'Gopika Manoj', email: 'gopika@aureon.com', designation: 'Project Manager', role_name: 'ROLE_PM' }
-        ];
-      }
+      // Filter out Project Managers (PMs like Gopika Manoj should NOT be listed in developer team roster)
+      const teamDevsOnly = realUsers.filter(u => {
+        const rName = (u.role_name || u.role || u.role_code || '').toUpperCase();
+        const desig = (u.designation || '').toLowerCase();
+        return rName !== 'ROLE_PM' && !desig.includes('project manager') && !desig.includes('manager');
+      });
 
-      setUsersList(realUsers);
+      if (teamDevsOnly.length > 0) {
+        setUsersList(teamDevsOnly);
+      } else {
+        setUsersList(defaultTeamDevelopers);
+      }
     } catch (err) {
-      setUsersList([
-        { id: '11111111-1111-1111-1111-111111111111', full_name: 'Krishna Deepesh', email: 'krishna@aureon.com', designation: 'Team Lead', role_name: 'ROLE_LEAD' },
-        { id: '22222222-2222-2222-2222-222222222222', full_name: 'Sainu Anna Sajan', email: 'sainu@aureon.com', designation: 'React UI Developer', role_name: 'ROLE_DEV' },
-        { id: '33333333-3333-3333-3333-333333333333', full_name: 'Gopika Manoj', email: 'gopika@aureon.com', designation: 'Project Manager', role_name: 'ROLE_PM' }
-      ]);
+      setUsersList(defaultTeamDevelopers);
     } finally {
       setLoading(false);
     }
@@ -202,15 +207,15 @@ export const DeveloperRoster = ({ onShowToast }) => {
       <div>
         <h1 className="text-xl font-bold flex items-center gap-2">
           <Users className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
-          Active Database Team Members & Direct Allocation
+          Virtual Team Developers & Engineer Allocation
         </h1>
         <p className="text-xs text-slate-500 mt-0.5">
-          Real database registered user accounts, live task execution metrics, and direct task/sprint allocation.
+          Engineering team members assisting Tech Lead Krishna Deepesh on project deliverables, live task execution metrics, and direct work allocation.
         </p>
       </div>
 
       {/* Roster Cards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
         {usersList.map((u) => {
           const uName = u.full_name || u.name || u.username || 'Team Member';
           const userTasks = tasksList.filter(t => {
