@@ -171,6 +171,11 @@ class ProjectMember(db.Model):
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     project_id = db.Column(UUID(as_uuid=True), db.ForeignKey('tbl_project.id'), nullable=False)
     user_id = db.Column(UUID(as_uuid=True), db.ForeignKey('tbl_user.id'), nullable=False)
+    role_in_project = db.Column(db.String(100), default='MEMBER', nullable=False)
+    is_active = db.Column(db.Boolean, default=True, nullable=False)
+    is_deleted = db.Column(db.Boolean, default=False, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
 class Team(db.Model):
     __tablename__ = 'tbl_team'
