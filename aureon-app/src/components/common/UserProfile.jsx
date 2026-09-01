@@ -6,27 +6,27 @@ import { Input } from './Input';
 import { Button } from './Button';
 import {
   User, Mail, Shield, Briefcase, Building, Edit3, Plus, X, Award, Phone, Calendar, Key, Hash,
-  Activity, CheckSquare, GitCommit, Code2, Bug, TestTube2, Layers, Server, Sparkles, CheckCircle2
+  Activity, CheckSquare, GitCommit, Code2, Bug, TestTube2, Layers, Server, Sparkles, CheckCircle2, Save
 } from 'lucide-react';
 
 export const UserProfile = () => {
-  const { user, updateProfile } = useAuth();
+  const { user, updateProfile, showToast } = useAuth();
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   // Fallback defaults if user properties are omitted
-  const role = user?.role || user?.role_name || 'ROLE_ADMIN';
+  const role = user?.role || user?.role_name || 'ROLE_DEV';
   const name = user?.name || user?.full_name || 'Aureon User';
   const username = user?.username || (user?.email ? user.email.split('@')[0] : '');
-  const email = user?.email || 'user@aureon.io';
+  const email = user?.email || '';
   const phone = user?.phone || '';
   const employeeId = user?.employee_id || user?.employeeId || '';
-  const department = user?.department || 'Software Engineering';
-  const title = user?.designation || user?.title || 'Software Developer';
+  const department = user?.department || 'Engineering';
+  const title = user?.designation || user?.title || 'Team Member';
   const gender = user?.gender || 'PREFER_NOT_TO_SAY';
-  const dob = user?.date_of_birth || user?.dob || '2000-01-01';
+  const dob = user?.date_of_birth || user?.dob || '';
   const petName = user?.pet_name || user?.petName || '';
   const schoolFriendName = user?.school_friend_name || user?.best_friend_name || user?.bestFriendName || '';
-  const skills = user?.skills || ['React.js', 'Python', 'PostgreSQL', 'Docker', 'REST API', 'Git', 'Agile Methodologies'];
+  const skills = Array.isArray(user?.skills) ? user.skills : [];
 
   const [stats, setStats] = useState({
     commits: 0,
@@ -55,7 +55,7 @@ export const UserProfile = () => {
     fetchStats();
   }, [user]);
 
-  // Form State for Editing ALL 11 tbl_user Columns
+  // Form State for Editing User Details
   const [editName, setEditName] = useState(name);
   const [editUsername, setEditUsername] = useState(username);
   const [editPhone, setEditPhone] = useState(phone);
@@ -98,7 +98,7 @@ export const UserProfile = () => {
   };
 
   const handleSaveProfile = async (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
 
     const payload = {
       name: editName,
@@ -133,6 +133,7 @@ export const UserProfile = () => {
       // Fallback
     }
 
+    if (showToast) showToast('Account profile updated successfully!', 'success');
     setIsEditModalOpen(false);
   };
 
@@ -186,7 +187,7 @@ export const UserProfile = () => {
       <div className="relative p-6 rounded-2xl aureon-theme-banner overflow-hidden transition-all duration-300 shadow-xl flex flex-col md:flex-row justify-between items-start md:items-center gap-6 border border-white/20">
         <div className="flex items-center gap-5 relative z-10">
           <div className="w-20 h-20 rounded-2xl bg-white/20 text-white font-black text-3xl flex items-center justify-center border-2 border-white/30 shadow-md ring-4 ring-white/10">
-            {name ? name.charAt(0).toUpperCase() : 'G'}
+            {name ? name.charAt(0).toUpperCase() : 'A'}
           </div>
           <div>
             <div className="flex items-center gap-2">
@@ -201,9 +202,11 @@ export const UserProfile = () => {
               <Building className="w-3.5 h-3.5 text-white/80" /> {department}
             </p>
             <div className="flex flex-wrap items-center gap-4 mt-2.5 text-[11px] text-white/90">
-              <span className="flex items-center gap-1.5">
-                <Mail className="w-3.5 h-3.5 text-white/80" /> {email}
-              </span>
+              {email && (
+                <span className="flex items-center gap-1.5">
+                  <Mail className="w-3.5 h-3.5 text-white/80" /> {email}
+                </span>
+              )}
               {phone && (
                 <span className="flex items-center gap-1.5">
                   <Phone className="w-3.5 h-3.5 text-white/80" /> {phone}
@@ -251,7 +254,7 @@ export const UserProfile = () => {
         {/* Personal Details */}
         <div className="p-6 rounded-2xl bg-white dark:bg-slate-900 warm:bg-[#e8dbbe] border border-slate-200 dark:border-slate-800 warm:border-[#cbb68e] shadow-sm space-y-4">
           <h3 className="text-sm font-extrabold text-slate-900 dark:text-white warm:text-[#342314] flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
-            <User className="w-4 h-4 text-indigo-500" /> Personal & Account Details (`tbl_user`)
+            <User className="w-4 h-4 text-indigo-500" /> Personal & Account Details
           </h3>
           <div className="space-y-3 text-xs">
             <div className="flex justify-between py-1 border-b border-slate-100 dark:border-slate-800/60">
@@ -260,7 +263,7 @@ export const UserProfile = () => {
             </div>
             <div className="flex justify-between py-1 border-b border-slate-100 dark:border-slate-800/60">
               <span className="font-semibold text-slate-500 dark:text-slate-400 warm:text-[#69523c]">Employee ID / Staff Code</span>
-              <span className="font-mono text-slate-700 dark:text-slate-300 warm:text-[#342314] font-bold">{employeeId || 'EMP-UNASSIGNED'}</span>
+              <span className="font-mono text-slate-700 dark:text-slate-300 warm:text-[#342314] font-bold">{employeeId || 'Not configured'}</span>
             </div>
             <div className="flex justify-between py-1 border-b border-slate-100 dark:border-slate-800/60">
               <span className="font-semibold text-slate-500 dark:text-slate-400 warm:text-[#69523c]">Contact Phone</span>
@@ -272,7 +275,7 @@ export const UserProfile = () => {
             </div>
             <div className="flex justify-between py-1">
               <span className="font-semibold text-slate-500 dark:text-slate-400 warm:text-[#69523c]">Date of Birth</span>
-              <span className="font-mono text-slate-700 dark:text-slate-300 warm:text-[#342314]">{dob}</span>
+              <span className="font-mono text-slate-700 dark:text-slate-300 warm:text-[#342314]">{dob || 'Not provided'}</span>
             </div>
           </div>
         </div>
@@ -317,20 +320,40 @@ export const UserProfile = () => {
           </button>
         </div>
         <div className="flex flex-wrap gap-2">
-          {skillsList.map((skill, index) => (
-            <span
-              key={index}
-              className="px-3 py-1 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 warm:bg-[#f3e8d2] text-indigo-900 dark:text-indigo-200 warm:text-[#342314] text-xs font-extrabold border border-indigo-200 dark:border-indigo-800 warm:border-[#cbb68e] flex items-center gap-1.5 shadow-xs"
-            >
-              <Sparkles className="w-3 h-3 text-indigo-600 dark:text-indigo-400 warm:text-[#b45309]" />
-              <span className="text-indigo-900 dark:text-indigo-200 warm:text-[#342314] font-bold">{skill}</span>
+          {skillsList && skillsList.length > 0 ? (
+            skillsList.map((skill, index) => (
+              <span
+                key={index}
+                className="px-3 py-1 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 warm:bg-[#f3e8d2] text-indigo-900 dark:text-indigo-200 warm:text-[#342314] text-xs font-extrabold border border-indigo-200 dark:border-indigo-800 warm:border-[#cbb68e] flex items-center gap-1.5 shadow-xs"
+              >
+                <Sparkles className="w-3 h-3 text-indigo-600 dark:text-indigo-400 warm:text-[#b45309]" />
+                <span className="text-indigo-900 dark:text-indigo-200 warm:text-[#342314] font-bold">{skill}</span>
+              </span>
+            ))
+          ) : (
+            <span className="text-xs text-slate-500 dark:text-slate-400 warm:text-[#69523c] font-semibold italic">
+              No technical skills added yet. Click "Manage Skills" to add your skills.
             </span>
-          ))}
+          )}
         </div>
       </div>
 
-      {/* Edit Profile Modal */}
-      <Modal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} title="Update Account Credentials">
+      {/* Edit Profile Modal with Sticky Footer Bar */}
+      <Modal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        title="Update Account Profile Credentials"
+        footer={
+          <div className="flex items-center justify-end gap-2 w-full">
+            <Button type="button" variant="secondary" onClick={() => setIsEditModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button type="button" variant="primary" icon={Save} onClick={handleSaveProfile}>
+              Save Account Profile
+            </Button>
+          </div>
+        }
+      >
         <form onSubmit={handleSaveProfile} className="space-y-4 text-xs">
           <div className="grid grid-cols-2 gap-3">
             <Input label="Full Name" value={editName} onChange={(e) => setEditName(e.target.value)} required />
@@ -380,7 +403,7 @@ export const UserProfile = () => {
             <div className="flex gap-2">
               <input
                 type="text"
-                placeholder="Add a new skill (e.g. GraphQL)"
+                placeholder="Add a new skill (e.g. React, Python, PostgreSQL)"
                 value={newSkillInput}
                 onChange={(e) => setNewSkillInput(e.target.value)}
                 className="flex-1 p-2 rounded-xl border border-slate-200 dark:border-slate-800 warm:border-[#b8a074] bg-slate-50 dark:bg-slate-950 warm:bg-[#f3e8d2] text-xs"
@@ -390,7 +413,7 @@ export const UserProfile = () => {
                 onClick={handleAddSkill}
                 className="px-3 py-2 rounded-xl bg-indigo-600 text-white font-bold text-xs"
               >
-                Add
+                Add Skill
               </button>
             </div>
             <div className="flex flex-wrap gap-1.5 mt-2">
@@ -403,15 +426,6 @@ export const UserProfile = () => {
                 </span>
               ))}
             </div>
-          </div>
-
-          <div className="flex justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
-            <Button type="button" variant="secondary" onClick={() => setIsEditModalOpen(false)}>
-              Cancel
-            </Button>
-            <Button type="submit" variant="primary">
-              Save Account Profile
-            </Button>
           </div>
         </form>
       </Modal>
