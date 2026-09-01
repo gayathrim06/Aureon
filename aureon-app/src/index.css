@@ -112,7 +112,7 @@ html.light aside, html:not(.dark):not(.warm) aside {
   border-color: #e2e8f0 !important;
 }
 
-/* Light Mode Card & Container Surfaces (EXCLUDING BANNERS) */
+/* Light Mode Card & Container Surfaces */
 html.light main div:not(.aureon-theme-banner)[class*="bg-[#111827]"],
 html.light main div:not(.aureon-theme-banner)[class*="bg-[#090d16]"],
 html.light main div:not(.aureon-theme-banner)[class*="bg-[#120c1e]"],
@@ -125,7 +125,7 @@ html:not(.dark):not(.warm) main div:not(.aureon-theme-banner)[class*="bg-[#090d1
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05) !important;
 }
 
-/* Light Mode Typography (EXCLUDING BANNERS) */
+/* Light Mode Typography */
 html.light main h1:not(.aureon-theme-banner *),
 html.light main h2:not(.aureon-theme-banner *),
 html.light main h3:not(.aureon-theme-banner *),
@@ -185,4 +185,39 @@ html.warm input, html.warm select, html.warm textarea {
   background-color: #f3e8d2 !important;
   border-color: #b8a074 !important;
   color: #342314 !important;
+}
+
+/* ━━━ WARM THEME ACCENT OVERRIDES (LOGO BOX, AVATAR, SAAS BADGE, DOTS) ━━━ */
+html.warm .bg-indigo-600,
+html.warm .bg-indigo-500,
+html.warm .bg-blue-600,
+html[data-theme='warm'] .bg-indigo-600,
+html[data-theme='warm'] .bg-indigo-500 {
+  background-color: #b45309 !important;
+  color: #ffffff !important;
+}
+
+html.warm .text-indigo-600,
+html.warm .text-indigo-500,
+html.warm .text-indigo-700,
+html.warm .text-blue-600,
+html[data-theme='warm'] .text-indigo-600 {
+  color: #b45309 !important;
+}
+
+html.warm .bg-indigo-50,
+html.warm .bg-indigo-950,
+html.warm .bg-indigo-950\/50,
+html.warm .bg-indigo-950\/60,
+html[data-theme='warm'] .bg-indigo-50 {
+  background-color: #e8dbbe !important;
+  color: #342314 !important;
+  border-color: #b8a074 !important;
+}
+
+html.warm .border-indigo-600,
+html.warm .border-indigo-500,
+html.warm .border-indigo-200,
+html[data-theme='warm'] .border-indigo-600 {
+  border-color: #b45309 !important;
 }
