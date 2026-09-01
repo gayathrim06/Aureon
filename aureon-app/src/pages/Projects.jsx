@@ -11,13 +11,7 @@ import { useAuth } from '../context/AuthContext';
 
 export const Projects = () => {
   const { user, showToast } = useAuth();
-  const [projectsList, setProjectsList] = useState([
-    { id: 'PROJ-101', name: 'Aureon Core API Gateway', manager_name: 'Elizabeth Mathew (PM)', lead_name: 'David Chen (Tech Lead)', status: 'IN_PROGRESS', priority: 'HIGH', health_score: 96, target_deadline: '2026-10-15', team_members: [{ name: 'Sainu Anna' }, { name: 'Jiya Thomas' }] },
-    { id: 'PROJ-102', name: 'Cloud Telemetry Mesh', manager_name: 'Sarah Jenkins (PM)', lead_name: 'Krishna Deepesh (Tech Lead)', status: 'IN_PROGRESS', priority: 'HIGH', health_score: 89, target_deadline: '2026-11-01', team_members: [{ name: 'Ram Kumar' }, { name: 'Venu QA' }] },
-    { id: 'PROJ-103', name: 'Enterprise Auth & OAuth2', manager_name: 'Elizabeth Mathew (PM)', lead_name: 'Vikram Patel (Tech Lead)', status: 'COMPLETED', priority: 'MEDIUM', health_score: 98, target_deadline: '2026-08-30', team_members: [{ name: 'Alex Rivera' }] },
-    { id: 'PROJ-104', name: 'SonarQube Vulnerability Scanner', manager_name: 'Sarah Jenkins (PM)', lead_name: 'David Chen (Tech Lead)', status: 'IN_PROGRESS', priority: 'HIGH', health_score: 94, target_deadline: '2026-12-05', team_members: [{ name: 'Michael Brown' }, { name: 'Ananya Varma' }] },
-    { id: 'PROJ-105', name: 'Executive PDF/CSV Reports Engine', manager_name: 'Elizabeth Mathew (PM)', lead_name: 'Krishna Deepesh (Tech Lead)', status: 'COMPLETED', priority: 'LOW', health_score: 95, target_deadline: '2026-07-20', team_members: [{ name: 'Sneha Roy' }] }
-  ]);
+  const [projectsList, setProjectsList] = useState([]);
 
   const [search, setSearch] = useState('');
   const [priorityFilter, setPriorityFilter] = useState('All');
@@ -56,12 +50,12 @@ export const Projects = () => {
       });
       if (res.ok) {
         const data = await res.json();
-        if (data.projects && data.projects.length > 0) {
-          setProjectsList(data.projects);
-        }
+        setProjectsList(data.projects || []);
+      } else {
+        setProjectsList([]);
       }
     } catch (err) {
-      // Fallback
+      setProjectsList([]);
     }
   };
 
