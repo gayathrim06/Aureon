@@ -165,11 +165,14 @@ export const Login = ({ onNavigateHome }) => {
   };
 
   const demoAccounts = [
-    { email: 'admin@aureon.com', role: 'ROLE_ADMIN', label: 'System Admin (Gayathri)', icon: Shield, color: 'bg-purple-600' },
-    { email: 'manager@aureon.com', role: 'ROLE_PM', label: 'Project Manager (Sarah)', icon: Layers, color: 'bg-[#4f46e5]' },
-    { email: 'lead@aureon.com', role: 'ROLE_LEAD', label: 'Team Lead (David)', icon: UserCheck, color: 'bg-amber-600' },
-    { email: 'ram.dev@aureon.com', role: 'ROLE_DEV', label: 'Developer (Ram Kumar)', icon: Laptop, color: 'bg-emerald-600' },
-    { email: 'venu.qa@aureon.com', role: 'ROLE_QA', label: 'QA Engineer (Venu QA)', icon: Bug, color: 'bg-rose-600' }
+    { email: 'admin@aureon.com', role: 'ROLE_ADMIN', label: 'System Admin (Gayathri M)', icon: Shield, color: 'bg-purple-600' },
+    { email: 'eli@aureon.com', role: 'ROLE_PM', label: 'Project Manager (Elizabeth M)', icon: Layers, color: 'bg-[#4f46e5]' },
+    { email: 'krish@aureon.com', role: 'ROLE_LEAD', label: 'Tech Lead (Krishna Deepesh)', icon: UserCheck, color: 'bg-amber-600' },
+    { email: 'sainu@aureon.com', role: 'ROLE_DEV', label: 'Frontend Dev (Sainu Anna)', icon: Laptop, color: 'bg-emerald-600' },
+    { email: 'jiya@aureon.com', role: 'ROLE_DEV', label: 'Software Dev (Jiya Thomas)', icon: Laptop, color: 'bg-indigo-600' },
+    { email: 'rinta@aureon.com', role: 'ROLE_DEV', label: 'Full Stack Dev (Rinta Thomas)', icon: Laptop, color: 'bg-blue-600' },
+    { email: 'feba@aureon.com', role: 'ROLE_QA', label: 'Executive QA (Feba Biju)', icon: Bug, color: 'bg-rose-600' },
+    { email: 'bugcheck_user@aureon.com', role: 'ROLE_DEV', label: 'QA Tester (BugCheck User)', icon: Bug, color: 'bg-cyan-600' }
   ];
 
   return (
@@ -198,261 +201,321 @@ export const Login = ({ onNavigateHome }) => {
         </button>
       </div>
 
-      <div className="w-full max-w-lg relative z-10 space-y-5 my-8">
-        {/* Logo & Header */}
-        <div className="text-center">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-600 to-purple-600 dark:from-indigo-500 dark:to-purple-600 warm:from-amber-700 warm:to-amber-900 text-white font-black text-2xl shadow-xl mb-3">
+      <div className="w-full max-w-md space-y-6 relative z-10">
+        {/* Brand Header */}
+        <div className="text-center space-y-2">
+          <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-indigo-600 dark:bg-indigo-600 warm:bg-[#b45309] text-white font-black text-xl shadow-lg shadow-indigo-600/20 mb-1">
             A
           </div>
-          <h1 className="text-2xl font-black text-slate-900 dark:text-white warm:text-[#342314] tracking-tight">Aureon Enterprise Access Portal</h1>
-          <p className="text-xs text-slate-500 dark:text-slate-400 warm:text-[#69523c] mt-1">Sign in to your account or register a new team member</p>
+          <h1 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white warm:text-[#342314]">
+            Aureon SaaS Platform
+          </h1>
+          <p className="text-xs text-slate-500 dark:text-slate-400 warm:text-[#69523c]">
+            Role-Based Engineering Intelligence Portal
+          </p>
         </div>
 
-        {/* Tab Toggle: Sign In vs Register */}
-        <div className="flex bg-white dark:bg-slate-900 warm:bg-[#e8dbbe] p-1 rounded-xl border border-slate-200 dark:border-slate-800 warm:border-[#cbb68e] shadow-sm">
+        {/* Tab Selection */}
+        <div className="flex rounded-xl bg-slate-200/60 dark:bg-slate-900/60 warm:bg-[#e8dbbe] p-1 border border-slate-200 dark:border-slate-800 warm:border-[#cbb68e]">
           <button
-            type="button"
             onClick={() => { setActiveTab('login'); setErrorMsg(''); setRegSuccessMsg(''); }}
-            className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 ${
+            className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
               activeTab === 'login'
-                ? 'bg-indigo-600 dark:bg-indigo-600 warm:bg-[#b45309] text-white shadow-md'
+                ? 'bg-white dark:bg-slate-800 warm:bg-[#f3e8d2] text-slate-900 dark:text-white warm:text-[#342314] shadow-sm'
                 : 'text-slate-500 dark:text-slate-400 warm:text-[#69523c] hover:text-slate-900 dark:hover:text-white'
             }`}
           >
-            <Key className="w-3.5 h-3.5" /> Sign In
+            Sign In
           </button>
           <button
-            type="button"
             onClick={() => { setActiveTab('register'); setErrorMsg(''); setRegSuccessMsg(''); }}
-            className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 ${
+            className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
               activeTab === 'register'
-                ? 'bg-indigo-600 dark:bg-indigo-600 warm:bg-[#b45309] text-white shadow-md'
+                ? 'bg-white dark:bg-slate-800 warm:bg-[#f3e8d2] text-slate-900 dark:text-white warm:text-[#342314] shadow-sm'
                 : 'text-slate-500 dark:text-slate-400 warm:text-[#69523c] hover:text-slate-900 dark:hover:text-white'
             }`}
           >
-            <UserPlus className="w-3.5 h-3.5" /> Register Account
+            Register
+          </button>
+          <button
+            onClick={() => { setActiveTab('forgot'); setErrorMsg(''); setRegSuccessMsg(''); }}
+            className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
+              activeTab === 'forgot'
+                ? 'bg-white dark:bg-slate-800 warm:bg-[#f3e8d2] text-slate-900 dark:text-white warm:text-[#342314] shadow-sm'
+                : 'text-slate-500 dark:text-slate-400 warm:text-[#69523c] hover:text-slate-900 dark:hover:text-white'
+            }`}
+          >
+            Forgot Password
           </button>
         </div>
 
-        {/* Account Lockout Warning */}
+        {/* Lockout Warning Alert */}
         {isLocked && (
-          <div className="p-4 rounded-xl bg-rose-950/80 border border-rose-800 text-rose-300 text-xs flex items-start gap-3">
-            <AlertTriangle className="w-5 h-5 flex-shrink-0 text-rose-500" />
-            <div>
-              <span className="font-bold block text-white">Account Security Lockout Engaged</span>
-              5 consecutive failed login attempts detected. Rate limiting active.
-            </div>
+          <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-600 dark:text-amber-400 text-xs font-semibold flex items-center gap-3">
+            <AlertTriangle className="w-5 h-5 shrink-0" />
+            <span>Account temporarily locked due to excessive failed attempts. Try again later.</span>
           </div>
         )}
 
-        {errorMsg && !isLocked && (
-          <div className="p-3 rounded-lg bg-rose-950/60 border border-rose-800 text-rose-300 text-xs font-semibold">
-            {errorMsg}
+        {/* Error Alert */}
+        {errorMsg && (
+          <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-600 dark:text-rose-400 text-xs font-semibold flex items-center gap-2.5">
+            <AlertTriangle className="w-4 h-4 shrink-0" />
+            <span>{errorMsg}</span>
           </div>
         )}
 
+        {/* Success Alert */}
         {regSuccessMsg && (
-          <div className="p-3 rounded-lg bg-emerald-950/60 border border-emerald-800 text-emerald-300 text-xs font-semibold flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-            {regSuccessMsg}
+          <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-xs font-semibold flex items-center gap-2.5">
+            <CheckCircle2 className="w-4 h-4 shrink-0" />
+            <span>{regSuccessMsg}</span>
           </div>
         )}
 
-        {/* Form Container */}
-        <div className="p-6 rounded-2xl bg-white dark:bg-slate-900 warm:bg-[#e8dbbe] border border-slate-200 dark:border-slate-800 warm:border-[#cbb68e] shadow-2xl space-y-5">
-          {activeTab === 'login' && (
-            /* LOGIN FORM */
-            <form onSubmit={handleLoginSubmit} className="space-y-4 text-xs">
+        {/* ━━━ TAB 1: SIGN IN ━━━ */}
+        {activeTab === 'login' && (
+          <div className="p-6 rounded-2xl bg-white dark:bg-slate-900 warm:bg-[#e8dbbe] border border-slate-200 dark:border-slate-800 warm:border-[#cbb68e] shadow-xl space-y-4">
+            <form onSubmit={handleLoginSubmit} className="space-y-4">
               <div>
-                <label className="block font-semibold mb-1 text-slate-700 dark:text-slate-300 warm:text-[#342314]">Corporate Email Address or Username</label>
+                <label className="block text-xs font-bold mb-1">Corporate Email</label>
                 <input
-                  type="text"
+                  type="email"
                   required
+                  placeholder="admin@aureon.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full p-2.5 rounded-lg bg-slate-100 dark:bg-slate-800 warm:bg-[#f3e8d2] border border-slate-300 dark:border-slate-700 warm:border-[#b8a074] text-slate-900 dark:text-white warm:text-[#342314] focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  placeholder="admin@aureon.com, manager@aureon.com..."
+                  className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-800 warm:border-[#b8a074] bg-slate-50 dark:bg-slate-950 warm:bg-[#f3e8d2] text-xs font-mono text-slate-900 dark:text-white warm:text-[#342314] focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
               </div>
 
               <div>
-                <label className="block font-semibold mb-1 text-slate-700 dark:text-slate-300 warm:text-[#342314]">Password</label>
+                <label className="block text-xs font-bold mb-1">Password</label>
                 <input
                   type="password"
                   required
+                  placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full p-2.5 rounded-lg bg-slate-100 dark:bg-slate-800 warm:bg-[#f3e8d2] border border-slate-300 dark:border-slate-700 warm:border-[#b8a074] text-slate-900 dark:text-white warm:text-[#342314] focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  placeholder="••••••••"
+                  className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-800 warm:border-[#b8a074] bg-slate-50 dark:bg-slate-950 warm:bg-[#f3e8d2] text-xs font-mono text-slate-900 dark:text-white warm:text-[#342314] focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
-              </div>
-
-              <div className="flex justify-between items-center text-[11px]">
-                <span />
-                <button
-                  type="button"
-                  onClick={() => { setActiveTab('forgot'); setErrorMsg(''); setRegSuccessMsg(''); }}
-                  className="text-indigo-600 dark:text-indigo-400 warm:text-[#b45309] font-bold hover:underline"
-                >
-                  Forgot Password?
-                </button>
               </div>
 
               <button
                 type="submit"
                 disabled={isLocked}
-                className="w-full py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 dark:bg-indigo-600 warm:bg-[#b45309] warm:hover:bg-[#92400e] disabled:opacity-50 text-white font-bold text-xs shadow-lg transition-all flex items-center justify-center gap-2"
+                className="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 dark:bg-indigo-600 warm:bg-[#b45309] warm:hover:bg-[#92400e] text-white font-bold text-xs shadow-md transition-all flex items-center justify-center gap-2"
               >
-                <Key className="w-4 h-4" /> Sign In to Role Workspace
+                Sign In to Portal <ArrowRight className="w-4 h-4" />
               </button>
             </form>
-          )}
 
-          {activeTab === 'register' && (
-            /* REGISTRATION FORM */
-            <form onSubmit={handleRegisterSubmit} className="space-y-3.5 text-xs">
+            {/* Demo Quick Accounts Presets */}
+            <div className="pt-4 border-t border-slate-100 dark:border-slate-800 warm:border-[#cbb68e] space-y-2">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 warm:text-[#69523c]">
+                Quick Demo Presets (Password: <span className="font-mono text-indigo-600 warm:text-[#b45309]">Aureon@123</span>)
+              </span>
+              <div className="grid grid-cols-2 gap-1.5">
+                {demoAccounts.map((acc, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => { setEmail(acc.email); setPassword('Aureon@123'); }}
+                    className="p-2 rounded-lg bg-slate-50 dark:bg-slate-800/60 warm:bg-[#f3e8d2] border border-slate-200 dark:border-slate-700 warm:border-[#b8a074] text-left hover:border-indigo-500 transition-all flex items-center gap-2"
+                  >
+                    <div className={`w-2 h-2 rounded-full ${acc.color} shrink-0`} />
+                    <span className="text-[10px] font-semibold truncate text-slate-700 dark:text-slate-300 warm:text-[#342314]">{acc.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ━━━ TAB 2: REGISTER ━━━ */}
+        {activeTab === 'register' && (
+          <div className="p-6 rounded-2xl bg-white dark:bg-slate-900 warm:bg-[#e8dbbe] border border-slate-200 dark:border-slate-800 warm:border-[#cbb68e] shadow-xl space-y-4">
+            <form onSubmit={handleRegisterSubmit} className="space-y-3 text-xs">
               <div>
-                <label className="block font-semibold mb-1 text-slate-700 dark:text-slate-300 warm:text-[#342314]">Full Name *</label>
+                <label className="block font-bold mb-1">Full Name</label>
                 <input
                   type="text"
                   required
-                  placeholder="e.g. Gayathri M"
+                  placeholder="e.g. Alex Rivera"
                   value={regData.fullName}
                   onChange={(e) => setRegData({ ...regData, fullName: e.target.value })}
-                  className="w-full p-2.5 rounded-lg bg-slate-100 dark:bg-slate-800 warm:bg-[#f3e8d2] border border-slate-300 dark:border-slate-700 warm:border-[#b8a074] text-slate-900 dark:text-white warm:text-[#342314]"
+                  className="w-full p-2.5 rounded-xl border bg-slate-50 dark:bg-slate-950 warm:bg-[#f3e8d2]"
                 />
               </div>
 
               <div>
-                <label className="block font-semibold mb-1 text-slate-700 dark:text-slate-300 warm:text-[#342314]">Email Address *</label>
+                <label className="block font-bold mb-1">Corporate Email</label>
                 <input
                   type="email"
                   required
-                  placeholder="user@aureon.com"
+                  placeholder="alex.rivera@aureon.com"
                   value={regData.email}
                   onChange={(e) => setRegData({ ...regData, email: e.target.value })}
-                  className="w-full p-2.5 rounded-lg bg-slate-100 dark:bg-slate-800 warm:bg-[#f3e8d2] border border-slate-300 dark:border-slate-700 warm:border-[#b8a074] text-slate-900 dark:text-white warm:text-[#342314]"
+                  className="w-full p-2.5 rounded-xl border bg-slate-50 dark:bg-slate-950 warm:bg-[#f3e8d2]"
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="block font-semibold mb-1 text-slate-700 dark:text-slate-300 warm:text-[#342314]">Password *</label>
+                  <label className="block font-bold mb-1">Password</label>
                   <input
                     type="password"
                     required
                     placeholder="••••••••"
                     value={regData.password}
                     onChange={(e) => setRegData({ ...regData, password: e.target.value })}
-                    className="w-full p-2.5 rounded-lg bg-slate-100 dark:bg-slate-800 warm:bg-[#f3e8d2] border border-slate-300 dark:border-slate-700 warm:border-[#b8a074] text-slate-900 dark:text-white warm:text-[#342314]"
+                    className="w-full p-2.5 rounded-xl border bg-slate-50 dark:bg-slate-950 warm:bg-[#f3e8d2]"
                   />
                 </div>
                 <div>
-                  <label className="block font-semibold mb-1 text-slate-700 dark:text-slate-300 warm:text-[#342314]">Confirm Password *</label>
+                  <label className="block font-bold mb-1">Confirm Password</label>
                   <input
                     type="password"
                     required
                     placeholder="••••••••"
                     value={regData.confirmPassword}
                     onChange={(e) => setRegData({ ...regData, confirmPassword: e.target.value })}
-                    className="w-full p-2.5 rounded-lg bg-slate-100 dark:bg-slate-800 warm:bg-[#f3e8d2] border border-slate-300 dark:border-slate-700 warm:border-[#b8a074] text-slate-900 dark:text-white warm:text-[#342314]"
+                    className="w-full p-2.5 rounded-xl border bg-slate-50 dark:bg-slate-950 warm:bg-[#f3e8d2]"
                   />
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-semibold mb-1 text-slate-700 dark:text-slate-300 warm:text-[#342314]">Requested Role *</label>
-                  <select
-                    value={regData.role}
-                    onChange={(e) => setRegData({ ...regData, role: e.target.value })}
-                    className="w-full p-2.5 rounded-lg bg-slate-100 dark:bg-slate-800 warm:bg-[#f3e8d2] border border-slate-300 dark:border-slate-700 warm:border-[#b8a074] text-slate-900 dark:text-white warm:text-[#342314]"
-                  >
-                    <option value="ROLE_DEV">Developer</option>
-                    <option value="ROLE_LEAD">Team Lead</option>
-                    <option value="ROLE_PM">Project Manager</option>
-                    <option value="ROLE_QA">QA Auditor</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block font-semibold mb-1 text-slate-700 dark:text-slate-300 warm:text-[#342314]">Department</label>
-                  <input
-                    type="text"
-                    value={regData.department}
-                    onChange={(e) => setRegData({ ...regData, department: e.target.value })}
-                    className="w-full p-2.5 rounded-lg bg-slate-100 dark:bg-slate-800 warm:bg-[#f3e8d2] border border-slate-300 dark:border-slate-700 warm:border-[#b8a074] text-slate-900 dark:text-white warm:text-[#342314]"
-                  />
+              <div>
+                <label className="block font-bold mb-1">RBAC Role</label>
+                <select
+                  value={regData.role}
+                  onChange={(e) => setRegData({ ...regData, role: e.target.value })}
+                  className="w-full p-2.5 rounded-xl border bg-slate-50 dark:bg-slate-950 warm:bg-[#f3e8d2]"
+                >
+                  <option value="ROLE_DEV">Developer</option>
+                  <option value="ROLE_LEAD">Team Lead</option>
+                  <option value="ROLE_PM">Project Manager</option>
+                  <option value="ROLE_QA">QA Engineer</option>
+                  <option value="ROLE_ADMIN">System Admin</option>
+                </select>
+              </div>
+
+              <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
+                <span className="text-[10px] font-bold text-indigo-600 warm:text-[#b45309] uppercase tracking-wider block mb-2">
+                  Account Recovery Security Questions
+                </span>
+                <div className="space-y-2">
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-500 mb-1">Date of Birth</label>
+                    <input
+                      type="date"
+                      value={regData.dateOfBirth}
+                      onChange={(e) => setRegData({ ...regData, dateOfBirth: e.target.value })}
+                      className="w-full p-2 rounded-lg border bg-slate-50 dark:bg-slate-950 warm:bg-[#f3e8d2]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-500 mb-1">Best Friend's Name</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Samuel"
+                      value={regData.bestFriendName}
+                      onChange={(e) => setRegData({ ...regData, bestFriendName: e.target.value })}
+                      className="w-full p-2 rounded-lg border bg-slate-50 dark:bg-slate-950 warm:bg-[#f3e8d2]"
+                    />
+                  </div>
                 </div>
               </div>
 
               <button
                 type="submit"
-                className="w-full py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 dark:bg-indigo-600 warm:bg-[#b45309] warm:hover:bg-[#92400e] text-white font-bold text-xs shadow-lg transition-all flex items-center justify-center gap-2 mt-2"
+                className="w-full py-3 rounded-xl bg-indigo-600 warm:bg-[#b45309] text-white font-bold shadow-md transition-all mt-2"
               >
-                <UserPlus className="w-4 h-4" /> Create Account
+                Register Account
               </button>
             </form>
-          )}
+          </div>
+        )}
 
-          {activeTab === 'forgot' && (
-            /* FORGOT PASSWORD FORM */
-            <form onSubmit={handleForgotSubmit} className="space-y-3.5 text-xs">
+        {/* ━━━ TAB 3: FORGOT PASSWORD ━━━ */}
+        {activeTab === 'forgot' && (
+          <div className="p-6 rounded-2xl bg-white dark:bg-slate-900 warm:bg-[#e8dbbe] border border-slate-200 dark:border-slate-800 warm:border-[#cbb68e] shadow-xl space-y-4">
+            <form onSubmit={handleForgotSubmit} className="space-y-3 text-xs">
               <div>
-                <label className="block font-semibold mb-1 text-slate-700 dark:text-slate-300 warm:text-[#342314]">Email Address *</label>
+                <label className="block font-bold mb-1">Corporate Email</label>
                 <input
                   type="email"
                   required
                   placeholder="admin@aureon.com"
                   value={forgotData.email}
                   onChange={(e) => setForgotData({ ...forgotData, email: e.target.value })}
-                  className="w-full p-2.5 rounded-lg bg-slate-100 dark:bg-slate-800 warm:bg-[#f3e8d2] border border-slate-300 dark:border-slate-700 warm:border-[#b8a074] text-slate-900 dark:text-white warm:text-[#342314]"
+                  className="w-full p-2.5 rounded-xl border bg-slate-50 dark:bg-slate-950 warm:bg-[#f3e8d2]"
                 />
               </div>
 
-              <div>
-                <label className="block font-semibold mb-1 text-slate-700 dark:text-slate-300 warm:text-[#342314]">Date of Birth (Security Question)</label>
-                <input
-                  type="date"
-                  value={forgotData.dateOfBirth}
-                  onChange={(e) => setForgotData({ ...forgotData, dateOfBirth: e.target.value })}
-                  className="w-full p-2.5 rounded-lg bg-slate-100 dark:bg-slate-800 warm:bg-[#f3e8d2] border border-slate-300 dark:border-slate-700 warm:border-[#b8a074] text-slate-900 dark:text-white warm:text-[#342314]"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-semibold mb-1 text-slate-700 dark:text-slate-300 warm:text-[#342314]">New Password *</label>
-                  <input
-                    type="password"
-                    required
-                    placeholder="••••••••"
-                    value={forgotData.newPassword}
-                    onChange={(e) => setForgotData({ ...forgotData, newPassword: e.target.value })}
-                    className="w-full p-2.5 rounded-lg bg-slate-100 dark:bg-slate-800 warm:bg-[#f3e8d2] border border-slate-300 dark:border-slate-700 warm:border-[#b8a074] text-slate-900 dark:text-white warm:text-[#342314]"
-                  />
+              <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
+                <span className="text-[10px] font-bold text-indigo-600 warm:text-[#b45309] uppercase tracking-wider block mb-2">
+                  Verify Security Answer
+                </span>
+                <div className="space-y-2">
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-500 mb-1">Date of Birth</label>
+                    <input
+                      type="date"
+                      value={forgotData.dateOfBirth}
+                      onChange={(e) => setForgotData({ ...forgotData, dateOfBirth: e.target.value })}
+                      className="w-full p-2 rounded-lg border bg-slate-50 dark:bg-slate-950 warm:bg-[#f3e8d2]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-500 mb-1">OR Best Friend's Name</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Samuel"
+                      value={forgotData.bestFriendName}
+                      onChange={(e) => setForgotData({ ...forgotData, bestFriendName: e.target.value })}
+                      className="w-full p-2 rounded-lg border bg-slate-50 dark:bg-slate-950 warm:bg-[#f3e8d2]"
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label className="block font-semibold mb-1 text-slate-700 dark:text-slate-300 warm:text-[#342314]">Confirm New Password *</label>
-                  <input
-                    type="password"
-                    required
-                    placeholder="••••••••"
-                    value={forgotData.confirmNewPassword}
-                    onChange={(e) => setForgotData({ ...forgotData, confirmNewPassword: e.target.value })}
-                    className="w-full p-2.5 rounded-lg bg-slate-100 dark:bg-slate-800 warm:bg-[#f3e8d2] border border-slate-300 dark:border-slate-700 warm:border-[#b8a074] text-slate-900 dark:text-white warm:text-[#342314]"
-                  />
+              </div>
+
+              <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
+                <div className="space-y-2">
+                  <div>
+                    <label className="block font-bold mb-1">New Password</label>
+                    <input
+                      type="password"
+                      required
+                      placeholder="••••••••"
+                      value={forgotData.newPassword}
+                      onChange={(e) => setForgotData({ ...forgotData, newPassword: e.target.value })}
+                      className="w-full p-2.5 rounded-xl border bg-slate-50 dark:bg-slate-950 warm:bg-[#f3e8d2]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-bold mb-1">Confirm New Password</label>
+                    <input
+                      type="password"
+                      required
+                      placeholder="••••••••"
+                      value={forgotData.confirmNewPassword}
+                      onChange={(e) => setForgotData({ ...forgotData, confirmNewPassword: e.target.value })}
+                      className="w-full p-2.5 rounded-xl border bg-slate-50 dark:bg-slate-950 warm:bg-[#f3e8d2]"
+                    />
+                  </div>
                 </div>
               </div>
 
               <button
                 type="submit"
-                className="w-full py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 dark:bg-indigo-600 warm:bg-[#b45309] warm:hover:bg-[#92400e] text-white font-bold text-xs shadow-lg transition-all flex items-center justify-center gap-2 mt-2"
+                className="w-full py-3 rounded-xl bg-indigo-600 warm:bg-[#b45309] text-white font-bold shadow-md transition-all mt-2"
               >
                 Reset Password
               </button>
             </form>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );
