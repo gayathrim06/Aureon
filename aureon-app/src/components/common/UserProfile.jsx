@@ -49,7 +49,7 @@ export const UserProfile = () => {
           setStats(data.stats);
         }
       } catch (err) {
-        // Fallback
+        // Zero baseline fallback
       }
     };
     fetchStats();
@@ -147,31 +147,31 @@ export const UserProfile = () => {
         ];
       case 'ROLE_PM':
         return [
-          { label: 'Active Projects', value: '5', icon: Layers, color: 'border-l-indigo-500' },
-          { label: 'Sprint Velocity', value: '94%', icon: Activity, color: 'border-l-emerald-500' },
-          { label: 'Milestones', value: '12', icon: Award, color: 'border-l-blue-500' },
-          { label: 'Team Allocation', value: 'Optimal', icon: User, color: 'border-l-purple-500' }
+          { label: 'Active Projects', value: '0', icon: Layers, color: 'border-l-indigo-500' },
+          { label: 'Sprint Velocity', value: '0%', icon: Activity, color: 'border-l-emerald-500' },
+          { label: 'Milestones', value: '0', icon: Award, color: 'border-l-blue-500' },
+          { label: 'Team Allocation', value: 'Unassigned', icon: User, color: 'border-l-purple-500' }
         ];
       case 'ROLE_LEAD':
         return [
-          { label: 'Team Velocity', value: '88 pts', icon: Activity, color: 'border-l-emerald-500' },
+          { label: 'Team Velocity', value: '0 pts', icon: Activity, color: 'border-l-emerald-500' },
           { label: 'Code Quality', value: '100%', icon: Code2, color: 'border-l-blue-500' },
-          { label: 'Code Reviews', value: '4', icon: CheckSquare, color: 'border-l-purple-500' },
-          { label: 'Active Sprints', value: '3', icon: Layers, color: 'border-l-amber-500' }
+          { label: 'Code Reviews', value: '0', icon: CheckSquare, color: 'border-l-purple-500' },
+          { label: 'Active Sprints', value: '0', icon: Layers, color: 'border-l-amber-500' }
         ];
       case 'ROLE_QA':
         return [
-          { label: 'Test Cases', value: '42', icon: CheckSquare, color: 'border-l-emerald-500' },
+          { label: 'Test Cases', value: '0', icon: CheckSquare, color: 'border-l-emerald-500' },
           { label: 'Bugs Logged', value: '0', icon: Bug, color: 'border-l-rose-500' },
-          { label: 'Test Suites', value: '8', icon: TestTube2, color: 'border-l-blue-500' },
+          { label: 'Test Suites', value: '0', icon: TestTube2, color: 'border-l-blue-500' },
           { label: 'Pass Rate', value: '100%', icon: Activity, color: 'border-l-purple-500' }
         ];
       default:
         return [
-          { label: 'Commits', value: String(stats.commits || 18), icon: GitCommit, color: 'border-l-blue-500' },
-          { label: 'Tasks Completed', value: String(stats.tasks_done || 6), icon: CheckSquare, color: 'border-l-emerald-500' },
-          { label: 'Pull Requests', value: String(stats.pull_requests || 4), icon: Code2, color: 'border-l-purple-500' },
-          { label: 'Code Reviews', value: String(stats.code_reviews || 8), icon: User, color: 'border-l-amber-500' }
+          { label: 'Commits', value: String(stats.commits || 0), icon: GitCommit, color: 'border-l-blue-500' },
+          { label: 'Tasks Completed', value: String(stats.tasks_done || 0), icon: CheckSquare, color: 'border-l-emerald-500' },
+          { label: 'Pull Requests', value: String(stats.pull_requests || 0), icon: Code2, color: 'border-l-purple-500' },
+          { label: 'Code Reviews', value: String(stats.code_reviews || 0), icon: User, color: 'border-l-amber-500' }
         ];
     }
   };
@@ -320,10 +320,10 @@ export const UserProfile = () => {
           {skillsList.map((skill, index) => (
             <span
               key={index}
-              className="px-3 py-1 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 warm:bg-[#f3e8d2] text-indigo-700 dark:text-indigo-300 warm:text-[#342314] text-xs font-bold border border-indigo-200 dark:border-indigo-800 warm:border-[#cbb68e] flex items-center gap-1.5 shadow-xs"
+              className="px-3 py-1 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 warm:bg-[#f3e8d2] text-indigo-900 dark:text-indigo-200 warm:text-[#342314] text-xs font-extrabold border border-indigo-200 dark:border-indigo-800 warm:border-[#cbb68e] flex items-center gap-1.5 shadow-xs"
             >
-              <Sparkles className="w-3 h-3 text-indigo-500 warm:text-[#b45309]" />
-              {skill}
+              <Sparkles className="w-3 h-3 text-indigo-600 dark:text-indigo-400 warm:text-[#b45309]" />
+              <span className="text-indigo-900 dark:text-indigo-200 warm:text-[#342314] font-bold">{skill}</span>
             </span>
           ))}
         </div>
