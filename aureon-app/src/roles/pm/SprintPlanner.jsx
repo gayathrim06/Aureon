@@ -223,31 +223,31 @@ export const SprintPlanner = ({ onShowToast }) => {
 
       {/* Burndown Velocity Chart Banner */}
       {selectedSprint && (
-        <div className="p-6 rounded-3xl bg-gradient-to-br from-indigo-900 via-slate-900 to-purple-950 text-white shadow-xl space-y-4 border border-indigo-800/50">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-indigo-800/40 pb-4">
+        <div className="p-6 rounded-3xl bg-gradient-to-br from-indigo-950 via-slate-900 to-purple-950 !text-white warm:!text-white shadow-xl space-y-4 border border-indigo-700/60">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-indigo-700/50 pb-4">
             <div>
               <div className="flex items-center gap-2">
-                <span className="px-2 py-0.5 rounded-md bg-indigo-500/20 text-indigo-300 font-mono text-[10px] font-bold border border-indigo-500/30">
+                <span className="px-2 py-0.5 rounded-md bg-indigo-500/30 !text-indigo-200 warm:!text-indigo-200 font-mono text-[10px] font-bold border border-indigo-400/40">
                   {selectedSprint.id}
                 </span>
-                <h3 className="text-lg font-black">{selectedSprint.name}</h3>
-                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                <h3 className="text-lg font-black !text-white warm:!text-white">{selectedSprint.name}</h3>
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-emerald-500/30 !text-emerald-300 warm:!text-emerald-300 border border-emerald-400/40">
                   ⚡ {selectedSprint.story_points || 40} Story Points Capacity
                 </span>
               </div>
-              <p className="text-xs text-indigo-200 mt-1 font-medium">
+              <p className="text-xs !text-indigo-100 warm:!text-indigo-100 mt-1 font-medium">
                 🎯 <strong>Sprint Goal:</strong> {selectedSprint.goal || 'Deliver core milestone features on schedule.'}
               </p>
             </div>
 
             <div className="flex items-center gap-4 text-xs">
               <div className="text-right">
-                <span className="text-[10px] text-indigo-300 uppercase block font-bold">Target Project</span>
-                <span className="font-extrabold text-white">{selectedSprint.project_name || 'Aureon SaaS'}</span>
+                <span className="text-[10px] !text-indigo-300 warm:!text-indigo-300 uppercase block font-bold">Target Project</span>
+                <span className="font-extrabold !text-white warm:!text-white">{selectedSprint.project_name || 'Aureon SaaS'}</span>
               </div>
-              <div className="text-right border-l border-indigo-800/60 pl-4">
-                <span className="text-[10px] text-indigo-300 uppercase block font-bold">Assigned Scrum Lead</span>
-                <span className="font-extrabold text-white">{selectedSprint.team_lead || 'Krishna Deepesh'}</span>
+              <div className="text-right border-l border-indigo-700/60 pl-4">
+                <span className="text-[10px] !text-indigo-300 warm:!text-indigo-300 uppercase block font-bold">Assigned Scrum Lead</span>
+                <span className="font-extrabold !text-white warm:!text-white">{selectedSprint.team_lead || 'Krishna Deepesh'}</span>
               </div>
             </div>
           </div>
@@ -256,12 +256,12 @@ export const SprintPlanner = ({ onShowToast }) => {
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={selectedSprint.burnDownData || []}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.3} />
-                <XAxis dataKey="day" stroke="#a5b4fc" fontSize={11} />
-                <YAxis stroke="#a5b4fc" fontSize={11} />
-                <Tooltip contentStyle={{ backgroundColor: '#1e1b4b', borderRadius: '12px', border: '1px solid #4338ca', color: '#fff' }} />
-                <Line type="monotone" dataKey="remaining" stroke="#818cf8" strokeWidth={3} name="Remaining Story Points" />
-                <Line type="monotone" dataKey="target" stroke="#64748b" strokeDasharray="5 5" strokeWidth={2} name="Ideal Velocity Line" />
+                <CartesianGrid strokeDasharray="3 3" stroke="#475569" opacity={0.4} />
+                <XAxis dataKey="day" stroke="#c7d2fe" fontSize={11} tick={{ fill: '#c7d2fe' }} />
+                <YAxis stroke="#c7d2fe" fontSize={11} tick={{ fill: '#c7d2fe' }} />
+                <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderRadius: '12px', border: '1px solid #6366f1', color: '#fff' }} />
+                <Line type="monotone" dataKey="remaining" stroke="#38bdf8" strokeWidth={3} name="Remaining Story Points" />
+                <Line type="monotone" dataKey="target" stroke="#a7f3d0" strokeDasharray="5 5" strokeWidth={2} name="Ideal Velocity Line" />
               </LineChart>
             </ResponsiveContainer>
           </div>
