@@ -78,16 +78,27 @@ html.warm .aureon-theme-banner {
   border-color: rgba(180, 83, 9, 0.4) !important;
 }
 
+/* ━━━ BANNER TEXT CONTRAST PROTECTION Across ALL Pages ━━━ */
 .aureon-theme-banner *,
 .aureon-theme-banner h1,
 .aureon-theme-banner h2,
 .aureon-theme-banner h3,
 .aureon-theme-banner p,
-.aureon-theme-banner span {
+.aureon-theme-banner span,
+[class*="bg-slate-9"] h1, [class*="bg-slate-9"] h2, [class*="bg-slate-9"] h3, [class*="bg-slate-9"] p, [class*="bg-slate-9"] span,
+[class*="bg-slate-8"] h1, [class*="bg-slate-8"] h2, [class*="bg-slate-8"] h3, [class*="bg-slate-8"] p, [class*="bg-slate-8"] span,
+[class*="bg-gradient-to"] h1, [class*="bg-gradient-to"] h2, [class*="bg-gradient-to"] h3, [class*="bg-gradient-to"] p, [class*="bg-gradient-to"] span,
+[class*="from-slate-"] h1, [class*="from-slate-"] h2, [class*="from-slate-"] h3, [class*="from-slate-"] p, [class*="from-slate-"] span,
+[class*="from-indigo-"] h1, [class*="from-indigo-"] h2, [class*="from-indigo-"] h3, [class*="from-indigo-"] p, [class*="from-indigo-"] span,
+[class*="from-amber-"] h1, [class*="from-amber-"] h2, [class*="from-amber-"] h3, [class*="from-amber-"] p, [class*="from-amber-"] span,
+[class*="from-rose-"] h1, [class*="from-rose-"] h2, [class*="from-rose-"] h3, [class*="from-rose-"] p, [class*="from-rose-"] span,
+[class*="from-emerald-"] h1, [class*="from-emerald-"] h2, [class*="from-emerald-"] h3, [class*="from-emerald-"] p, [class*="from-emerald-"] span {
   color: #ffffff !important;
 }
 
-.aureon-theme-banner .banner-subtext {
+.aureon-theme-banner .banner-subtext,
+[class*="bg-slate-9"] .banner-subtext,
+[class*="bg-gradient-to"] p {
   color: rgba(255, 255, 255, 0.85) !important;
 }
 
@@ -98,7 +109,6 @@ html:not(.dark):not(.warm) body, html:not(.dark):not(.warm) main {
   color: #0f172a !important;
 }
 
-/* Header & Sidebar Light Mode */
 html.light header, html:not(.dark):not(.warm) header {
   background-color: #ffffff !important;
   color: #0f172a !important;
@@ -112,7 +122,6 @@ html.light aside, html:not(.dark):not(.warm) aside {
   border-color: #e2e8f0 !important;
 }
 
-/* Light Mode Typography */
 html.light main h1:not(.aureon-theme-banner *):not([class*="bg-slate"] *):not([class*="from-"] *),
 html.light main h2:not(.aureon-theme-banner *):not([class*="bg-slate"] *):not([class*="from-"] *),
 html.light main h3:not(.aureon-theme-banner *):not([class*="bg-slate"] *):not([class*="from-"] *),
@@ -163,11 +172,26 @@ html.warm main div:not(.aureon-theme-banner):not([class*="bg-slate-9"]):not([cla
 }
 
 /* Prevent text in dark cards from turning dark brown in warm mode */
-html.warm main h1:not(.aureon-theme-banner *):not([class*="bg-slate-9"] *):not([class*="bg-slate-8"] *):not([class*="from-"] *),
-html.warm main h2:not(.aureon-theme-banner *):not([class*="bg-slate-9"] *):not([class*="bg-slate-8"] *):not([class*="from-"] *),
-html.warm main h3:not(.aureon-theme-banner *):not([class*="bg-slate-9"] *):not([class*="bg-slate-8"] *):not([class*="from-"] *),
-html.warm main p:not(.aureon-theme-banner *):not([class*="bg-slate-9"] *):not([class*="bg-slate-8"] *):not([class*="from-"] *) {
+html.warm main div:not(.aureon-theme-banner):not([class*="bg-slate-9"]):not([class*="bg-slate-8"]):not([class*="from-"]) h1,
+html.warm main div:not(.aureon-theme-banner):not([class*="bg-slate-9"]):not([class*="bg-slate-8"]):not([class*="from-"]) h2,
+html.warm main div:not(.aureon-theme-banner):not([class*="bg-slate-9"]):not([class*="bg-slate-8"]):not([class*="from-"]) h3,
+html.warm main div:not(.aureon-theme-banner):not([class*="bg-slate-9"]):not([class*="bg-slate-8"]):not([class*="from-"]) h4,
+html.warm main div:not(.aureon-theme-banner):not([class*="bg-slate-9"]):not([class*="bg-slate-8"]):not([class*="from-"]) p {
   color: #342314 !important;
+}
+
+html.warm table, html.warm th, html.warm td {
+  border-color: #cbb68e !important;
+  color: #342314 !important;
+}
+
+html.warm th {
+  background-color: #e4d5b2 !important;
+  color: #342314 !important;
+}
+
+html.warm tr:hover td {
+  background-color: #f3e8d2 !important;
 }
 
 html.warm input, html.warm select, html.warm textarea {
