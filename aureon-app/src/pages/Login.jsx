@@ -1,12 +1,15 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 import { 
   Shield, Key, Lock, AlertTriangle, ArrowRight, CheckCircle2, 
-  UserCheck, Laptop, Layers, Bug, ArrowLeft, Info, UserPlus, HelpCircle, Calendar, User
+  UserCheck, Laptop, Layers, Bug, ArrowLeft, Info, UserPlus, HelpCircle, Calendar, User,
+  Sun, Moon, Coffee
 } from 'lucide-react';
 
 export const Login = ({ onNavigateHome }) => {
   const { login, isLocked } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const [activeTab, setActiveTab] = useState('login'); // 'login', 'register', or 'forgot'
   
   // Login State
@@ -171,17 +174,29 @@ export const Login = ({ onNavigateHome }) => {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-950 warm:bg-[#f3e8d2] p-6 font-sans relative overflow-hidden text-slate-900 dark:text-slate-100 warm:text-[#342314] transition-colors duration-200">
-      {/* Top Header Link */}
-      {onNavigateHome && (
-        <div className="absolute top-6 left-6 z-20">
+      {/* Top Header Link & Theme Switcher */}
+      <div className="absolute top-6 left-6 z-20">
+        {onNavigateHome && (
           <button
             onClick={onNavigateHome}
             className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white dark:bg-slate-900 warm:bg-[#e8dbbe] border border-slate-200 dark:border-slate-800 warm:border-[#cbb68e] text-xs font-bold text-slate-700 dark:text-slate-300 warm:text-[#342314] hover:opacity-90 transition-colors shadow-sm"
           >
             <ArrowLeft className="w-3.5 h-3.5" /> Back to Home Page
           </button>
-        </div>
-      )}
+        )}
+      </div>
+
+      <div className="absolute top-6 right-6 z-20">
+        <button
+          onClick={toggleTheme}
+          className="p-2 rounded-lg bg-white dark:bg-slate-900 warm:bg-[#e8dbbe] border border-slate-200 dark:border-slate-800 warm:border-[#cbb68e] text-slate-700 dark:text-slate-300 warm:text-[#342314] hover:opacity-90 transition-colors shadow-sm"
+          title={`Current Theme: ${theme === 'dark' ? 'Dark Obsidian' : theme === 'warm' ? 'Warm Eye-Care Sepia' : 'Clean Light'} (Click to switch)`}
+        >
+          {theme === 'dark' && <Sun className="w-4 h-4 text-amber-400" />}
+          {theme === 'light' && <Coffee className="w-4 h-4 text-amber-700" />}
+          {theme === 'warm' && <Moon className="w-4 h-4 text-indigo-400" />}
+        </button>
+      </div>
 
       <div className="w-full max-w-lg relative z-10 space-y-5 my-8">
         {/* Logo & Header */}
