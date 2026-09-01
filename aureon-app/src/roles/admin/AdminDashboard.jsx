@@ -12,8 +12,8 @@ export const AdminDashboard = ({ onNavigate }) => {
   const userName = user?.name || user?.full_name || 'System Administrator';
 
   const [metrics, setMetrics] = useState({
-    total_users: 9,
-    active_users: 9,
+    total_users: 20,
+    active_users: 20,
     total_projects: 5,
     active_projects: 3,
     completed_projects: 2,
@@ -46,8 +46,8 @@ export const AdminDashboard = ({ onNavigate }) => {
         const metricsData = data.metrics || data.dashboard?.metrics || data;
         setMetrics(prev => ({
           ...prev,
-          total_users: metricsData.total_users || 9,
-          active_users: metricsData.active_users || 9,
+          total_users: metricsData.total_users || 20,
+          active_users: metricsData.active_users || 20,
           total_projects: metricsData.total_projects || 5,
           active_projects: metricsData.active_projects || 3,
           completed_projects: metricsData.completed_projects || 2,

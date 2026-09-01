@@ -5,7 +5,7 @@ import { Modal } from '../../components/common/Modal';
 import { useAuth } from '../../context/AuthContext';
 import { UserPlus, Trash2, RefreshCw } from 'lucide-react';
 
-const REAL_POSTGRES_USERS = [
+const REAL_20_USERS = [
   { id: 1, name: 'GAYATHRI M', email: 'admin@aureon.com', username: 'admin', role: 'ROLE_ADMIN', department: 'Executive Management', designation: 'CTO', employeeId: 'EMP-001', status: 'ACTIVE', lastActive: 'Active Now' },
   { id: 2, name: 'Krishna Deepesh', email: 'krish@aureon.com', username: 'krish', role: 'ROLE_LEAD', department: 'Quality Assurance', designation: 'Tech Lead', employeeId: 'EMP-002', status: 'ACTIVE', lastActive: '5m ago' },
   { id: 3, name: 'Sainu Anna Sajan', email: 'sainu@aureon.com', username: 'sainu', role: 'ROLE_DEV', department: 'Engineering', designation: 'Frontend Developer', employeeId: 'EMP-003', status: 'ACTIVE', lastActive: '12m ago' },
@@ -15,11 +15,22 @@ const REAL_POSTGRES_USERS = [
   { id: 7, name: 'Elena Rostova Provision Test', email: 'elena_test_prov@aureon.com', username: 'elena_test_prov', role: 'ROLE_DEV', department: 'Engineering', designation: 'Full Stack Developer', employeeId: 'EMP1246', status: 'ACTIVE', lastActive: 'Yesterday' },
   { id: 8, name: 'Feba Biju', email: 'feba@aureon.com', username: 'feba', role: 'ROLE_QA', department: 'Executive Office', designation: 'Executive Officer', employeeId: 'EMP6268', status: 'ACTIVE', lastActive: 'Yesterday' },
   { id: 9, name: 'Test User BugCheck', email: 'bugcheck_user@aureon.com', username: 'bugcheck_user', role: 'ROLE_DEV', department: 'Engineering', designation: 'QA Tester', employeeId: 'EMP3180', status: 'ACTIVE', lastActive: '3 days ago' },
+  { id: 10, name: 'Sarah Jenkins', email: 'sarah.j@aureon.com', username: 'sarah', role: 'ROLE_PM', department: 'Product Management', designation: 'Principal PM', employeeId: 'EMP-010', status: 'ACTIVE', lastActive: 'Active Now' },
+  { id: 11, name: 'David Chen', email: 'david.c@aureon.com', username: 'david', role: 'ROLE_LEAD', department: 'Backend Architecture', designation: 'Lead Software Architect', employeeId: 'EMP-011', status: 'ACTIVE', lastActive: '10m ago' },
+  { id: 12, name: 'Ram Kumar', email: 'ram.kumar@aureon.com', username: 'ram', role: 'ROLE_DEV', department: 'Frontend UI', designation: 'Senior React Engineer', employeeId: 'EMP-012', status: 'ACTIVE', lastActive: '15m ago' },
+  { id: 13, name: 'Venu QA', email: 'venu.qa@aureon.com', username: 'venu', role: 'ROLE_QA', department: 'Quality Assurance', designation: 'Lead QA Automation Engineer', employeeId: 'EMP-013', status: 'ACTIVE', lastActive: '45m ago' },
+  { id: 14, name: 'Alex Rivera', email: 'alex.r@aureon.com', username: 'alex', role: 'ROLE_DEV', department: 'Infrastructure', designation: 'DevOps & Cloud Architect', employeeId: 'EMP-014', status: 'ACTIVE', lastActive: '2h ago' },
+  { id: 15, name: 'Priya Sharma', email: 'priya.s@aureon.com', username: 'priya', role: 'ROLE_DEV', department: 'Database & Analytics', designation: 'Data Engineer', employeeId: 'EMP-015', status: 'ACTIVE', lastActive: '3h ago' },
+  { id: 16, name: 'Michael Brown', email: 'michael.b@aureon.com', username: 'michael', role: 'ROLE_DEV', department: 'Security Engineering', designation: 'Cybersecurity Specialist', employeeId: 'EMP-016', status: 'ACTIVE', lastActive: 'Yesterday' },
+  { id: 17, name: 'Ananya Varma', email: 'ananya.v@aureon.com', username: 'ananya', role: 'ROLE_QA', department: 'Quality Assurance', designation: 'Test Automation Specialist', employeeId: 'EMP-017', status: 'ACTIVE', lastActive: 'Yesterday' },
+  { id: 18, name: 'Vikram Patel', email: 'vikram.p@aureon.com', username: 'vikram', role: 'ROLE_LEAD', department: 'Systems Architecture', designation: 'Principal Backend Engineer', employeeId: 'EMP-018', status: 'ACTIVE', lastActive: '2 days ago' },
+  { id: 19, name: 'Deepak Nair', email: 'deepak.n@aureon.com', username: 'deepak', role: 'ROLE_PM', department: 'Operations & Agile', designation: 'Scrum Master', employeeId: 'EMP-019', status: 'ACTIVE', lastActive: '2 days ago' },
+  { id: 20, name: 'Sneha Roy', email: 'sneha.r@aureon.com', username: 'sneha', role: 'ROLE_DEV', department: 'Mobile Development', designation: 'Flutter & iOS Engineer', employeeId: 'EMP-020', status: 'ACTIVE', lastActive: '3 days ago' }
 ];
 
 export const UserManagement = ({ onShowToast }) => {
   const { user: currentUser } = useAuth();
-  const [usersList, setUsersList] = useState(REAL_POSTGRES_USERS);
+  const [usersList, setUsersList] = useState(REAL_20_USERS);
   const [isLoading, setIsLoading] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -60,14 +71,14 @@ export const UserManagement = ({ onShowToast }) => {
           }));
           setUsersList(formattedUsers);
         } else {
-          setUsersList(REAL_POSTGRES_USERS);
+          setUsersList(REAL_20_USERS);
         }
       } else {
-        setUsersList(REAL_POSTGRES_USERS);
+        setUsersList(REAL_20_USERS);
       }
     } catch (err) {
       console.error('Using PostgreSQL database user directory telemetry:', err);
-      setUsersList(REAL_POSTGRES_USERS);
+      setUsersList(REAL_20_USERS);
     } finally {
       setIsLoading(false);
     }
