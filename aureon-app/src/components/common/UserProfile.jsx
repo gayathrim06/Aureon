@@ -100,6 +100,18 @@ export const UserProfile = () => {
   const handleSaveProfile = async (e) => {
     if (e) e.preventDefault();
 
+    let newRole = role;
+    const titleUpper = (editTitle || '').toUpperCase();
+    if (titleUpper.includes('PM') || titleUpper.includes('MANAGER') || titleUpper.includes('PROJECT MANAGER')) {
+      newRole = 'ROLE_PM';
+    } else if (titleUpper.includes('LEAD')) {
+      newRole = 'ROLE_LEAD';
+    } else if (titleUpper.includes('QA')) {
+      newRole = 'ROLE_QA';
+    } else if (titleUpper.includes('ADMIN')) {
+      newRole = 'ROLE_ADMIN';
+    }
+
     const payload = {
       name: editName,
       full_name: editName,
@@ -108,6 +120,9 @@ export const UserProfile = () => {
       employee_id: editEmployeeId,
       designation: editTitle,
       title: editTitle,
+      role: newRole,
+      role_name: newRole,
+      role_code: newRole,
       department: editDepartment,
       gender: editGender,
       date_of_birth: editDob,
@@ -355,6 +370,17 @@ export const UserProfile = () => {
         }
       >
         <form onSubmit={handleSaveProfile} className="space-y-4 text-xs">
+          {/* TOP SAVE BUTTON */}
+          <div className="flex justify-between items-center p-3 rounded-xl bg-indigo-50 dark:bg-indigo-950/50 warm:bg-[#f3e8d2] border border-indigo-200 dark:border-indigo-800 warm:border-[#cbb68e]">
+            <span className="font-bold text-indigo-900 dark:text-indigo-200 warm:text-[#342314]">Update Profile Fields below:</span>
+            <button
+              type="submit"
+              className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-md flex items-center gap-1.5"
+            >
+              <Save className="w-3.5 h-3.5" /> Save Changes Now
+            </button>
+          </div>
+
           <div className="grid grid-cols-2 gap-3">
             <Input label="Full Name" value={editName} onChange={(e) => setEditName(e.target.value)} required />
             <Input label="Username" value={editUsername} onChange={(e) => setEditUsername(e.target.value)} required />
@@ -426,6 +452,16 @@ export const UserProfile = () => {
                 </span>
               ))}
             </div>
+          </div>
+
+          {/* BOTTOM SUBMIT BUTTON INSIDE FORM */}
+          <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex justify-end">
+            <button
+              type="submit"
+              className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-md flex items-center gap-2"
+            >
+              <Save className="w-4 h-4" /> Save Account Profile
+            </button>
           </div>
         </form>
       </Modal>

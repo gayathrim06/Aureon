@@ -32,8 +32,32 @@ def user_me():
             user.phone = data.get('phone')
         if 'employee_id' in data or 'employeeId' in data:
             user.employee_id = data.get('employee_id') or data.get('employeeId')
-        if 'title' in data or 'designation' in data:
-            user.designation = data.get('title') or data.get('designation')
+        if 'title' in data or 'designation' in data or 'role' in data or 'role_name' in data:
+            new_title = data.get('title') or data.get('designation') or ''
+            new_role_code = data.get('role') or data.get('role_name') or data.get('role_code') or ''
+            if new_title:
+                user.designation = new_title
+            
+            target_str = (new_role_code + ' ' + new_title).upper()
+            if 'PM' in target_str or 'MANAGER' in target_str:
+                target_code = 'ROLE_PM'
+            elif 'LEAD' in target_str:
+                target_code = 'ROLE_LEAD'
+            elif 'QA' in target_str:
+                target_code = 'ROLE_QA'
+            elif 'ADMIN' in target_str:
+                target_code = 'ROLE_ADMIN'
+            else:
+                target_code = 'ROLE_DEV'
+
+            from models import Role
+            role_obj = Role.query.filter_by(code=target_code).first()
+            if not role_obj:
+                role_obj = Role(code=target_code, name=target_code.replace('ROLE_', '').replace('_', ' ').title())
+                db.session.add(role_obj)
+                db.session.flush()
+            user.role_id = role_obj.id
+
         if 'department' in data:
             user.department = data.get('department')
         if 'gender' in data:

@@ -11,11 +11,13 @@ export const Sidebar = ({ activeTab, onSelectTab }) => {
 
   const getNormalizedRole = (u) => {
     if (!u) return 'ROLE_ADMIN';
-    const r = (typeof u.role === 'string' ? u.role : u.role?.code || u.role_code || u.role_name || '').toUpperCase();
-    if (r.includes('ADMIN')) return 'ROLE_ADMIN';
-    if (r.includes('PM') || r.includes('MANAGER')) return 'ROLE_PM';
-    if (r.includes('LEAD')) return 'ROLE_LEAD';
-    if (r.includes('QA')) return 'ROLE_QA';
+    const rawRole = (typeof u.role === 'string' ? u.role : u.role?.code || u.role_code || u.role_name || '').toUpperCase();
+    const rawTitle = ((u.designation || u.title || '') + ' ' + rawRole).toUpperCase();
+
+    if (rawTitle.includes('PM') || rawTitle.includes('PROJECT MANAGER') || rawTitle.includes('MANAGER')) return 'ROLE_PM';
+    if (rawTitle.includes('ADMIN')) return 'ROLE_ADMIN';
+    if (rawTitle.includes('LEAD')) return 'ROLE_LEAD';
+    if (rawTitle.includes('QA')) return 'ROLE_QA';
     return 'ROLE_DEV';
   };
 
