@@ -78,6 +78,23 @@ html.warm .aureon-theme-banner {
   border-color: rgba(180, 83, 9, 0.4) !important;
 }
 
+/* ━━━ DARK CARD CONTRAST PROTECTION ━━━ */
+.aureon-dark-card {
+  color: #ffffff !important;
+}
+.aureon-dark-card h1,
+.aureon-dark-card h2,
+.aureon-dark-card h3,
+.aureon-dark-card h4,
+.aureon-dark-card strong {
+  color: #ffffff !important;
+}
+.aureon-dark-card p,
+.aureon-dark-card span,
+.aureon-dark-card font {
+  color: #e0e7ff !important;
+}
+
 /* ━━━ BANNER TEXT CONTRAST PROTECTION (Strict Header Banners Only) ━━━ */
 .aureon-theme-banner *,
 .aureon-theme-banner h1,
