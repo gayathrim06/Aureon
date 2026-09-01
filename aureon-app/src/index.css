@@ -5,10 +5,6 @@
 
 @theme {
   --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --color-indigo-primary: #4f46e5;
-  --color-indigo-hover: #4338ca;
-  --color-slate-dark: #090d16;
-  --color-slate-card: #111827;
 }
 
 @layer base {
@@ -16,45 +12,27 @@
     --bg-app: #f8fafc;
     --bg-surface: #ffffff;
     --bg-card: #ffffff;
-    --bg-card-hover: #f1f5f9;
-    --bg-sidebar: #ffffff;
-    --bg-header: rgba(255, 255, 255, 0.85);
     --border-subtle: #e2e8f0;
-    --border-strong: #cbd5e1;
     --text-main: #0f172a;
     --text-muted: #64748b;
-    --text-accent: #4f46e5;
-    --shadow-custom: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
   }
 
   .dark {
     --bg-app: #090d16;
     --bg-surface: #111827;
     --bg-card: #111827;
-    --bg-card-hover: #1e293b;
-    --bg-sidebar: #0b0f17;
-    --bg-header: rgba(17, 24, 39, 0.85);
     --border-subtle: #1e293b;
-    --border-strong: #334155;
     --text-main: #f8fafc;
     --text-muted: #94a3b8;
-    --text-accent: #818cf8;
-    --shadow-custom: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.05);
   }
 
   .warm {
     --bg-app: #f3e8d2;
     --bg-surface: #e9dcbe;
     --bg-card: #e9dcbe;
-    --bg-card-hover: #dfcfad;
-    --bg-sidebar: #e4d5b2;
-    --bg-header: rgba(233, 220, 190, 0.95);
     --border-subtle: #cbb68e;
-    --border-strong: #b8a074;
     --text-main: #342314;
     --text-muted: #69523c;
-    --text-accent: #b45309;
-    --shadow-custom: 0 4px 15px -2px rgba(180, 83, 9, 0.15), 0 2px 4px -2px rgba(180, 83, 9, 0.1);
   }
 }
 
@@ -63,7 +41,7 @@ body {
   font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   background-color: var(--bg-app);
   color: var(--text-main);
-  transition: background-color 0.25s ease, color 0.25s ease;
+  transition: background-color 0.2s ease, color 0.2s ease;
   min-height: 100vh;
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
@@ -74,94 +52,141 @@ body {
   width: 6px;
   height: 6px;
 }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(100, 116, 139, 0.3); border-radius: 9999px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(100, 116, 139, 0.5); }
 
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-::-webkit-scrollbar-thumb {
-  background: rgba(100, 116, 139, 0.3);
-  border-radius: 9999px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(100, 116, 139, 0.5);
-}
-
-/* ━━━ DYNAMIC THEME OVERRIDES FOR LIGHT & WARM MODES ━━━ */
-
-/* Light Mode Overrides */
-html.light body,
-html[data-theme='light'] body,
-html:not(.dark):not(.warm) body {
+/* ━━━ 1. LIGHT THEME COMPLETE OVERRIDES (TRANSFORMS EVERY CORNER) ━━━ */
+html.light,
+html[data-theme='light'],
+html:not(.dark):not(.warm) {
   background-color: #f8fafc !important;
   color: #0f172a !important;
 }
 
-html.light main,
-html[data-theme='light'] main,
-html:not(.dark):not(.warm) main {
+html.light body, html.light main,
+html:not(.dark):not(.warm) body, html:not(.dark):not(.warm) main {
   background-color: #f8fafc !important;
   color: #0f172a !important;
 }
 
-/* Light Mode Card & Container Surfaces */
-html.light main div[class*="bg-[#111827]"],
-html.light main div[class*="bg-[#090d16]"],
-html.light main div[class*="bg-[#120c1e]"],
-html.light main div[class*="bg-[#191128]"],
-html.light main section[class*="bg-[#111827]"],
-html.light main article[class*="bg-[#111827]"],
-html:not(.dark):not(.warm) main div[class*="bg-[#111827]"],
-html:not(.dark):not(.warm) main div[class*="bg-[#090d16]"],
-html:not(.dark):not(.warm) main div[class*="bg-[#120c1e]"] {
+/* Header & Sidebar Light Mode Overrides */
+html.light header,
+html:not(.dark):not(.warm) header {
   background-color: #ffffff !important;
   color: #0f172a !important;
   border-color: #e2e8f0 !important;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
 }
 
-/* Light Mode Typography */
-html.light main h1, html.light main h2, html.light main h3, html.light main h4, html.light main h5, html.light main h6,
-html:not(.dark):not(.warm) main h1, html:not(.dark):not(.warm) main h2, html:not(.dark):not(.warm) main h3 {
+html.light aside,
+html:not(.dark):not(.warm) aside {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #e2e8f0 !important;
+}
+
+html.light aside div, html.light header div,
+html:not(.dark):not(.warm) aside div, html:not(.dark):not(.warm) header div {
+  border-color: #e2e8f0 !important;
+}
+
+/* Light Mode Card, Panel & Section Background Overrides */
+html.light [class*="bg-slate-9"],
+html.light [class*="bg-slate-8"],
+html.light [class*="bg-[#1"],
+html.light [class*="bg-[#0"],
+html:not(.dark):not(.warm) [class*="bg-slate-9"],
+html:not(.dark):not(.warm) [class*="bg-slate-8"],
+html:not(.dark):not(.warm) [class*="bg-[#1"],
+html:not(.dark):not(.warm) [class*="bg-[#0"] {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #e2e8f0 !important;
+}
+
+html.light [class*="bg-slate-800/"],
+html.light [class*="bg-slate-950"],
+html:not(.dark):not(.warm) [class*="bg-slate-800/"],
+html:not(.dark):not(.warm) [class*="bg-slate-950"] {
+  background-color: #f1f5f9 !important;
   color: #0f172a !important;
 }
 
-html.light main p, html.light main label, html.light main span[class*="text-[#94A3B8]"],
-html:not(.dark):not(.warm) main p, html:not(.dark):not(.warm) main label {
-  color: #475569 !important;
+/* Light Mode Borders */
+html.light [class*="border-slate-8"],
+html.light [class*="border-slate-7"],
+html.light [class*="border-[#3"],
+html:not(.dark):not(.warm) [class*="border-slate-8"],
+html:not(.dark):not(.warm) [class*="border-slate-7"] {
+  border-color: #cbd5e1 !important;
 }
 
+/* Light Mode Typography Overrides */
+html.light h1, html.light h2, html.light h3, html.light h4, html.light h5, html.light h6,
+html:not(.dark):not(.warm) h1, html:not(.dark):not(.warm) h2, html:not(.dark):not(.warm) h3, html:not(.dark):not(.warm) h4 {
+  color: #0f172a !important;
+}
+
+html.light p, html.light label, html.light td, html.light th,
+html:not(.dark):not(.warm) p, html:not(.dark):not(.warm) label {
+  color: #334155 !important;
+}
+
+html.light [class*="text-slate-1"],
+html.light [class*="text-slate-2"],
+html.light [class*="text-slate-3"],
+html.light [class*="text-white"],
+html.light [class*="text-[#F8FAFC]"],
+html:not(.dark):not(.warm) [class*="text-slate-1"],
+html:not(.dark):not(.warm) [class*="text-slate-2"],
+html:not(.dark):not(.warm) [class*="text-white"] {
+  color: #0f172a !important;
+}
+
+html.light [class*="text-slate-4"],
+html.light [class*="text-slate-5"],
+html.light [class*="text-[#94A3B8]"],
+html:not(.dark):not(.warm) [class*="text-slate-4"] {
+  color: #64748b !important;
+}
+
+/* Light Mode Form Controls */
 html.light input, html.light select, html.light textarea,
 html:not(.dark):not(.warm) input, html:not(.dark):not(.warm) select {
-  background-color: #f1f5f9 !important;
+  background-color: #f8fafc !important;
   border-color: #cbd5e1 !important;
   color: #0f172a !important;
 }
 
-/* ━━━ WARM EYE-CARE SEPIA AMBER THEME OVERRIDES ━━━ */
+
+/* ━━━ 2. WARM EYE-CARE SEPIA AMBER OVERRIDES ━━━ */
 html.warm, html[data-theme='warm'] {
   background-color: #f3e8d2 !important;
   color: #342314 !important;
   filter: sepia(35%) saturate(140%) hue-rotate(-12deg) brightness(97%);
 }
 
-html.warm body, html[data-theme='warm'] body,
-html.warm main, html[data-theme='warm'] main {
+html.warm body, html.warm main {
   background-color: #f3e8d2 !important;
   color: #342314 !important;
 }
 
-html.warm main div, html.warm main section, html.warm main article, html.warm main table, html.warm main tr, html.warm main th, html.warm main td {
+html.warm header, html.warm aside, html.warm nav {
+  background-color: #e4d5b2 !important;
+  color: #342314 !important;
   border-color: #cbb68e !important;
 }
 
-html.warm main div[class*="bg-[#"],
-html.warm main section[class*="bg-[#"],
+html.warm *, html.warm div, html.warm section, html.warm article, html.warm table, html.warm tr, html.warm th, html.warm td {
+  border-color: #cbb68e !important;
+}
+
 html.warm [class*="bg-slate"],
 html.warm [class*="bg-gray"],
 html.warm [class*="bg-indigo"],
-html.warm [class*="bg-purple"] {
+html.warm [class*="bg-purple"],
+html.warm [class*="bg-[#"] {
   background-color: #e8dbbe !important;
   color: #342314 !important;
 }
@@ -173,8 +198,8 @@ html.warm button[class*="bg-indigo"] {
   color: #ffffff !important;
 }
 
-html.warm main h1, html.warm main h2, html.warm main h3, html.warm main h4, html.warm main h5, html.warm main h6,
-html.warm main p, html.warm main span, html.warm main label {
+html.warm h1, html.warm h2, html.warm h3, html.warm h4, html.warm h5, html.warm h6,
+html.warm p, html.warm span, html.warm label, html.warm [class*="text-"] {
   color: #342314 !important;
 }
 
