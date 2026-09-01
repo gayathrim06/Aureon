@@ -56,109 +56,98 @@ body {
 ::-webkit-scrollbar-thumb { background: rgba(100, 116, 139, 0.3); border-radius: 9999px; }
 ::-webkit-scrollbar-thumb:hover { background: rgba(100, 116, 139, 0.5); }
 
-/* ━━━ 1. LIGHT THEME COMPLETE OVERRIDES (TRANSFORMS EVERY CORNER) ━━━ */
-html.light,
-html[data-theme='light'],
-html:not(.dark):not(.warm) {
-  background-color: #f8fafc !important;
-  color: #0f172a !important;
+/* ━━━ DYNAMIC THEME COMMAND HEADER BANNER ━━━ */
+.aureon-theme-banner {
+  background: linear-gradient(135deg, #4f46e5 0%, #4338ca 50%, #6d28d9 100%) !important;
+  color: #ffffff !important;
+  border-color: rgba(99, 102, 241, 0.3) !important;
+  box-shadow: 0 10px 25px -5px rgba(79, 70, 229, 0.25) !important;
 }
 
+.dark .aureon-theme-banner,
+html.dark .aureon-theme-banner {
+  background: linear-gradient(135deg, #090d16 0%, #1e1b4b 50%, #2e1065 100%) !important;
+  color: #ffffff !important;
+  border-color: rgba(168, 85, 247, 0.3) !important;
+}
+
+.warm .aureon-theme-banner,
+html.warm .aureon-theme-banner {
+  background: linear-gradient(135deg, #b45309 0%, #92400e 50%, #78350f 100%) !important;
+  color: #ffffff !important;
+  border-color: rgba(180, 83, 9, 0.4) !important;
+}
+
+.aureon-theme-banner *,
+.aureon-theme-banner h1,
+.aureon-theme-banner h2,
+.aureon-theme-banner h3,
+.aureon-theme-banner p,
+.aureon-theme-banner span {
+  color: #ffffff !important;
+}
+
+.aureon-theme-banner .banner-subtext {
+  color: rgba(255, 255, 255, 0.85) !important;
+}
+
+/* ━━━ 1. LIGHT THEME COMPLETE OVERRIDES ━━━ */
 html.light body, html.light main,
 html:not(.dark):not(.warm) body, html:not(.dark):not(.warm) main {
   background-color: #f8fafc !important;
   color: #0f172a !important;
 }
 
-/* Header & Sidebar Light Mode Overrides */
-html.light header,
-html:not(.dark):not(.warm) header {
+/* Header & Sidebar Light Mode */
+html.light header, html:not(.dark):not(.warm) header {
   background-color: #ffffff !important;
   color: #0f172a !important;
   border-color: #e2e8f0 !important;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
 }
 
-html.light aside,
-html:not(.dark):not(.warm) aside {
+html.light aside, html:not(.dark):not(.warm) aside {
   background-color: #ffffff !important;
   color: #0f172a !important;
   border-color: #e2e8f0 !important;
 }
 
-html.light aside div, html.light header div,
-html:not(.dark):not(.warm) aside div, html:not(.dark):not(.warm) header div {
-  border-color: #e2e8f0 !important;
-}
-
-/* Light Mode Card, Panel & Section Background Overrides */
-html.light [class*="bg-slate-9"],
-html.light [class*="bg-slate-8"],
-html.light [class*="bg-[#1"],
-html.light [class*="bg-[#0"],
-html:not(.dark):not(.warm) [class*="bg-slate-9"],
-html:not(.dark):not(.warm) [class*="bg-slate-8"],
-html:not(.dark):not(.warm) [class*="bg-[#1"],
-html:not(.dark):not(.warm) [class*="bg-[#0"] {
+/* Light Mode Card & Container Surfaces (EXCLUDING BANNERS) */
+html.light main div:not(.aureon-theme-banner)[class*="bg-[#111827]"],
+html.light main div:not(.aureon-theme-banner)[class*="bg-[#090d16]"],
+html.light main div:not(.aureon-theme-banner)[class*="bg-[#120c1e]"],
+html.light main section:not(.aureon-theme-banner)[class*="bg-[#111827]"],
+html:not(.dark):not(.warm) main div:not(.aureon-theme-banner)[class*="bg-[#111827]"],
+html:not(.dark):not(.warm) main div:not(.aureon-theme-banner)[class*="bg-[#090d16]"] {
   background-color: #ffffff !important;
   color: #0f172a !important;
   border-color: #e2e8f0 !important;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05) !important;
 }
 
-html.light [class*="bg-slate-800/"],
-html.light [class*="bg-slate-950"],
-html:not(.dark):not(.warm) [class*="bg-slate-800/"],
-html:not(.dark):not(.warm) [class*="bg-slate-950"] {
-  background-color: #f1f5f9 !important;
+/* Light Mode Typography (EXCLUDING BANNERS) */
+html.light main h1:not(.aureon-theme-banner *),
+html.light main h2:not(.aureon-theme-banner *),
+html.light main h3:not(.aureon-theme-banner *),
+html.light main h4:not(.aureon-theme-banner *),
+html:not(.dark):not(.warm) main h1:not(.aureon-theme-banner *),
+html:not(.dark):not(.warm) main h2:not(.aureon-theme-banner *),
+html:not(.dark):not(.warm) main h3:not(.aureon-theme-banner *) {
   color: #0f172a !important;
 }
 
-/* Light Mode Borders */
-html.light [class*="border-slate-8"],
-html.light [class*="border-slate-7"],
-html.light [class*="border-[#3"],
-html:not(.dark):not(.warm) [class*="border-slate-8"],
-html:not(.dark):not(.warm) [class*="border-slate-7"] {
-  border-color: #cbd5e1 !important;
-}
-
-/* Light Mode Typography Overrides */
-html.light h1, html.light h2, html.light h3, html.light h4, html.light h5, html.light h6,
-html:not(.dark):not(.warm) h1, html:not(.dark):not(.warm) h2, html:not(.dark):not(.warm) h3, html:not(.dark):not(.warm) h4 {
-  color: #0f172a !important;
-}
-
-html.light p, html.light label, html.light td, html.light th,
-html:not(.dark):not(.warm) p, html:not(.dark):not(.warm) label {
+html.light main p:not(.aureon-theme-banner *),
+html.light main label:not(.aureon-theme-banner *),
+html:not(.dark):not(.warm) main p:not(.aureon-theme-banner *) {
   color: #334155 !important;
 }
 
-html.light [class*="text-slate-1"],
-html.light [class*="text-slate-2"],
-html.light [class*="text-slate-3"],
-html.light [class*="text-white"],
-html.light [class*="text-[#F8FAFC]"],
-html:not(.dark):not(.warm) [class*="text-slate-1"],
-html:not(.dark):not(.warm) [class*="text-slate-2"],
-html:not(.dark):not(.warm) [class*="text-white"] {
-  color: #0f172a !important;
-}
-
-html.light [class*="text-slate-4"],
-html.light [class*="text-slate-5"],
-html.light [class*="text-[#94A3B8]"],
-html:not(.dark):not(.warm) [class*="text-slate-4"] {
-  color: #64748b !important;
-}
-
-/* Light Mode Form Controls */
 html.light input, html.light select, html.light textarea,
 html:not(.dark):not(.warm) input, html:not(.dark):not(.warm) select {
   background-color: #f8fafc !important;
   border-color: #cbd5e1 !important;
   color: #0f172a !important;
 }
-
 
 /* ━━━ 2. WARM EYE-CARE SEPIA AMBER OVERRIDES ━━━ */
 html.warm, html[data-theme='warm'] {
@@ -178,28 +167,17 @@ html.warm header, html.warm aside, html.warm nav {
   border-color: #cbb68e !important;
 }
 
-html.warm *, html.warm div, html.warm section, html.warm article, html.warm table, html.warm tr, html.warm th, html.warm td {
+html.warm main div:not(.aureon-theme-banner)[class*="bg-slate"],
+html.warm main div:not(.aureon-theme-banner)[class*="bg-[#"] {
+  background-color: #e8dbbe !important;
+  color: #342314 !important;
   border-color: #cbb68e !important;
 }
 
-html.warm [class*="bg-slate"],
-html.warm [class*="bg-gray"],
-html.warm [class*="bg-indigo"],
-html.warm [class*="bg-purple"],
-html.warm [class*="bg-[#"] {
-  background-color: #e8dbbe !important;
-  color: #342314 !important;
-}
-
-html.warm button[class*="bg-purple"],
-html.warm button[class*="bg-blue"],
-html.warm button[class*="bg-indigo"] {
-  background-color: #b45309 !important;
-  color: #ffffff !important;
-}
-
-html.warm h1, html.warm h2, html.warm h3, html.warm h4, html.warm h5, html.warm h6,
-html.warm p, html.warm span, html.warm label, html.warm [class*="text-"] {
+html.warm main h1:not(.aureon-theme-banner *),
+html.warm main h2:not(.aureon-theme-banner *),
+html.warm main h3:not(.aureon-theme-banner *),
+html.warm main p:not(.aureon-theme-banner *) {
   color: #342314 !important;
 }
 
