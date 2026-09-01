@@ -1,9 +1,21 @@
+import uuid
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
+from datetime import datetime
 from extensions import db
-from models import User, AuditLog, Task, Commit
+from models import User, AuditLog, Task, Commit, Role
 
 user_bp = Blueprint('users', __name__, url_prefix='/api/v1/users')
+
+def _parse_uuid(val):
+    if not val:
+        return None
+    if isinstance(val, uuid.UUID):
+        return val
+    try:
+        return uuid.UUID(str(val))
+    except Exception:
+        return None
 
 @user_bp.route('/', methods=['GET'])
 @user_bp.route('', methods=['GET'])
@@ -15,15 +27,25 @@ def list_users():
 @user_bp.route('/me/', methods=['GET', 'PUT', 'PATCH'])
 @jwt_required(optional=True)
 def user_me():
+    data = request.get_json() or {} if request.method in ['PUT', 'PATCH'] else {}
+    email_param = request.args.get('email') or data.get('email')
+
     user_id = get_jwt_identity()
     user = None
     if user_id:
-        user = User.query.get(user_id)
+        u_uuid = _parse_uuid(user_id)
+        user = User.query.get(u_uuid or user_id)
+
+    if not user and email_param:
+        user = User.query.filter_by(email=email_param.strip().lower()).first()
+
     if not user:
-        user = User.query.first() # Fallback to initial user if testing
+        user = User.query.first()
+
+    if not user:
+        return jsonify({'success': False, 'message': 'User account not found.'}), 404
 
     if request.method in ['PUT', 'PATCH']:
-        data = request.get_json() or {}
         if 'name' in data or 'full_name' in data:
             user.full_name = data.get('name') or data.get('full_name')
         if 'username' in data:
@@ -32,12 +54,13 @@ def user_me():
             user.phone = data.get('phone')
         if 'employee_id' in data or 'employeeId' in data:
             user.employee_id = data.get('employee_id') or data.get('employeeId')
+        
         if 'title' in data or 'designation' in data or 'role' in data or 'role_name' in data:
             new_title = data.get('title') or data.get('designation') or ''
             new_role_code = data.get('role') or data.get('role_name') or data.get('role_code') or ''
             if new_title:
                 user.designation = new_title
-            
+
             target_str = (new_role_code + ' ' + new_title).upper()
             if 'PM' in target_str or 'MANAGER' in target_str:
                 target_code = 'ROLE_PM'
@@ -50,7 +73,6 @@ def user_me():
             else:
                 target_code = 'ROLE_DEV'
 
-            from models import Role
             role_obj = Role.query.filter_by(code=target_code).first()
             if not role_obj:
                 role_obj = Role(code=target_code, name=target_code.replace('ROLE_', '').replace('_', ' ').title())
@@ -65,7 +87,6 @@ def user_me():
         if 'date_of_birth' in data or 'dob' in data:
             dob_str = data.get('date_of_birth') or data.get('dob')
             if isinstance(dob_str, str) and dob_str:
-                from datetime import datetime
                 try:
                     user.date_of_birth = datetime.strptime(dob_str, '%Y-%m-%d').date()
                 except Exception:
@@ -74,6 +95,7 @@ def user_me():
             user.pet_name = data.get('pet_name') or data.get('petName')
         if 'school_friend_name' in data or 'best_friend_name' in data or 'bestFriendName' in data:
             user.school_friend_name = data.get('school_friend_name') or data.get('best_friend_name') or data.get('bestFriendName')
+        
         db.session.commit()
 
     return jsonify({'success': True, 'user': user.to_dict()}), 200
@@ -85,7 +107,8 @@ def user_me_stats():
     user_id = get_jwt_identity()
     user = None
     if user_id:
-        user = User.query.get(user_id)
+        u_uuid = _parse_uuid(user_id)
+        user = User.query.get(u_uuid or user_id)
     if not user:
         user = User.query.first()
 
@@ -103,62 +126,10 @@ def user_me_stats():
     return jsonify({
         'success': True,
         'stats': {
-            'commits': commits_count,
-            'tasks_done': completed_tasks,
-            'total_tasks': total_tasks,
-            'audit_logs': audit_logs_count,
-            'pull_requests': int(commits_count * 0.15) if commits_count > 0 else 0,
-            'code_reviews': int(completed_tasks * 0.4) if completed_tasks > 0 else 0
+          'commits': commits_count,
+          'tasks_done': completed_tasks,
+          'pull_requests': 0,
+          'code_reviews': 0,
+          'audit_logs': audit_logs_count
         }
     }), 200
-
-@user_bp.route('/', methods=['POST'])
-@user_bp.route('', methods=['POST'])
-@jwt_required(optional=True)
-def create_user():
-    data = request.get_json() or {}
-    email = data.get('email', '').strip().lower()
-    if not email:
-        return jsonify({'success': False, 'message': 'Email is required'}), 400
-    if User.query.filter_by(email=email).first():
-        return jsonify({'success': False, 'message': 'User already exists'}), 400
-    from datetime import date
-    user = User(
-        email=email,
-        full_name=data.get('name') or data.get('fullName') or 'Provisioned User',
-        role_name=data.get('role') or 'ROLE_DEV',
-        department=data.get('department') or 'Engineering',
-        designation=data.get('title') or 'Software Developer',
-        date_of_birth=date(2000, 1, 1),
-        best_friend_name='Ankit',
-        status='ACTIVE'
-    )
-    user.set_password('Aureon@123')
-    db.session.add(user)
-    db.session.commit()
-    return jsonify({'success': True, 'user': user.to_dict()}), 201
-
-@user_bp.route('/<int:uid>/status', methods=['PATCH'])
-@user_bp.route('/<int:uid>/status/', methods=['PATCH'])
-@jwt_required(optional=True)
-def change_user_status(uid):
-    user = User.query.get(uid)
-    if not user:
-        return jsonify({'success': False, 'message': 'User not found'}), 404
-    data = request.get_json() or {}
-    new_status = data.get('status')
-    if new_status:
-        user.status = new_status
-        db.session.commit()
-    return jsonify({'success': True, 'user': user.to_dict()}), 200
-
-@user_bp.route('/<int:uid>', methods=['DELETE'])
-@user_bp.route('/<int:uid>/', methods=['DELETE'])
-@jwt_required(optional=True)
-def delete_user(uid):
-    user = User.query.get(uid)
-    if not user:
-        return jsonify({'success': False, 'message': 'User not found'}), 404
-    db.session.delete(user)
-    db.session.commit()
-    return jsonify({'success': True, 'message': 'User deleted successfully'}), 200

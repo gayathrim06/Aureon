@@ -138,13 +138,14 @@ export const UserProfile = () => {
 
     const token = sessionStorage.getItem('aureon_jwt_access_token');
     try {
-      await fetch('http://127.0.0.1:8000/api/v1/users/me', {
+      const targetEmail = email || user?.email || '';
+      await fetch(`http://127.0.0.1:8000/api/v1/users/me?email=${encodeURIComponent(targetEmail)}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': token ? `Bearer ${token}` : ''
         },
-        body: JSON.stringify(payload)
+        body: JSON.stringify({ ...payload, email: targetEmail })
       });
     } catch (err) {
       // Fallback
