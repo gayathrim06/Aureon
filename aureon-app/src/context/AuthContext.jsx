@@ -141,10 +141,16 @@ export const AuthProvider = ({ children }) => {
     }
 
     // 2. Dynamic Fallback Validation for User Accounts
-    let foundUser = initialUsers.find(u => 
-      u.email.toLowerCase() === cleanInput ||
-      u.email.split('@')[0].toLowerCase() === cleanInput
-    );
+    let registeredUsersList = [];
+    try {
+      registeredUsersList = JSON.parse(localStorage.getItem('aureon_registered_users') || '[]');
+    } catch (e) {}
+
+    let foundUser = registeredUsersList.find(u => u.email.toLowerCase() === cleanInput) ||
+      initialUsers.find(u => 
+        u.email.toLowerCase() === cleanInput ||
+        u.email.split('@')[0].toLowerCase() === cleanInput
+      );
     
     if (!foundUser) {
       const namePart = cleanInput.split('@')[0].replace('.', ' ').replace('_', ' ');
@@ -196,22 +202,31 @@ export const AuthProvider = ({ children }) => {
   const register = (data) => {
     const newUser = {
       id: `usr_${Date.now()}`,
-      name: data.fullName || 'New Engineer',
-      full_name: data.fullName || 'New Engineer',
+      name: data.fullName || 'New User',
+      full_name: data.fullName || 'New User',
       email: data.email,
       role: data.role || 'ROLE_DEV',
       department: data.department || 'Engineering',
       designation: data.designation || 'Software Engineer',
       date_of_birth: data.dateOfBirth,
       best_friend_name: data.bestFriendName,
-      avatar: data.fullName ? data.fullName.split(' ').map(n=>n[0]).join('') : 'NE',
+      avatar: data.fullName ? data.fullName.split(' ').map(n=>n[0]).join('') : 'NU',
     };
+
     const existingIndex = initialUsers.findIndex(u => u.email.toLowerCase() === data.email.toLowerCase());
     if (existingIndex >= 0) {
       initialUsers[existingIndex] = { ...initialUsers[existingIndex], ...newUser };
     } else {
       initialUsers.push(newUser);
     }
+
+    try {
+      let regList = JSON.parse(localStorage.getItem('aureon_registered_users') || '[]');
+      regList = regList.filter(u => u.email.toLowerCase() !== data.email.toLowerCase());
+      regList.push(newUser);
+      localStorage.setItem('aureon_registered_users', JSON.stringify(regList));
+    } catch (e) {}
+
     return newUser;
   };
 

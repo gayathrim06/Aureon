@@ -93,6 +93,9 @@ export const Login = ({ onNavigateHome }) => {
       if (res.ok) {
         const data = await res.json();
         if (data.success) {
+          if (register) {
+            register(regData);
+          }
           setRegSuccessMsg(`Registration successful for ${regData.fullName}! Please sign in using your credentials.`);
           setEmail(regData.email);
           setPassword(regData.password);

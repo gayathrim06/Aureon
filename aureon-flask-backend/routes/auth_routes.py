@@ -93,8 +93,19 @@ def register():
     if User.query.filter_by(email=email).first():
         return jsonify({'success': False, 'message': 'User with this email already exists.'}), 400
 
-    # Look up Role ID in tbl_role
-    role_obj = Role.query.filter_by(code=role_name).first()
+    # Look up Role ID in tbl_role (e.g. ROLE_PM, ROLE_LEAD, ROLE_DEV, ROLE_QA)
+    role_obj = Role.query.filter(
+        db.or_(
+            Role.code == role_name,
+            Role.code == role_name.upper()
+        )
+    ).first()
+
+    if not role_obj:
+        role_obj = Role(code=role_name, name=role_name.replace('ROLE_', '').replace('_', ' ').title())
+        db.session.add(role_obj)
+        db.session.flush()
+
     role_id = role_obj.id if role_obj else None
 
     user = User(
