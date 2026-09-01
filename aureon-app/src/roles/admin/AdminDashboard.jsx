@@ -12,8 +12,8 @@ export const AdminDashboard = ({ onNavigate }) => {
   const userName = user?.name || user?.full_name || 'System Administrator';
 
   const [metrics, setMetrics] = useState({
-    total_users: 7,
-    active_users: 7,
+    total_users: 9,
+    active_users: 9,
     total_projects: 5,
     active_projects: 3,
     completed_projects: 2,
@@ -24,7 +24,7 @@ export const AdminDashboard = ({ onNavigate }) => {
   });
 
   const [recentActivities, setRecentActivities] = useState([
-    { id: 1, action: 'USER_REGISTRATION', details: 'New user Ram Kumar (Developer) provisioned', timestamp: '10 mins ago', type: 'info' },
+    { id: 1, action: 'USER_REGISTRATION', details: 'User Sainu Anna Sajan (Frontend Developer) provisioned', timestamp: '10 mins ago', type: 'info' },
     { id: 2, action: 'SECURITY_SCAN', details: 'Radon & Pylint Static Code Analysis completed on aureon-flask-backend', timestamp: '25 mins ago', type: 'success' },
     { id: 3, action: 'DEPLOYMENT_PIPELINE', details: 'Sprint 4 release candidate deployed to staging server', timestamp: '1 hour ago', type: 'info' },
     { id: 4, action: 'RBAC_UPDATE', details: 'Role permissions matrix updated for ROLE_DEV', timestamp: '3 hours ago', type: 'warning' },
@@ -46,8 +46,8 @@ export const AdminDashboard = ({ onNavigate }) => {
         const metricsData = data.metrics || data.dashboard?.metrics || data;
         setMetrics(prev => ({
           ...prev,
-          total_users: metricsData.total_users || 7,
-          active_users: metricsData.active_users || 7,
+          total_users: metricsData.total_users || 9,
+          active_users: metricsData.active_users || 9,
           total_projects: metricsData.total_projects || 5,
           active_projects: metricsData.active_projects || 3,
           completed_projects: metricsData.completed_projects || 2,

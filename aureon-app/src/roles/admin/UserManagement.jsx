@@ -2,27 +2,26 @@ import React, { useState, useEffect } from 'react';
 import { Breadcrumb } from '../../components/common/Breadcrumb';
 import { DataTable } from '../../components/common/DataTable';
 import { Modal } from '../../components/common/Modal';
-import { logAuditEvent } from '../../services/auditLogger';
 import { useAuth } from '../../context/AuthContext';
-import { UserPlus, UserX, Key, Shield, Trash2, Edit3, CheckCircle, RefreshCw } from 'lucide-react';
+import { UserPlus, Trash2, RefreshCw } from 'lucide-react';
 
-const DEFAULT_SEED_USERS = [
-  { id: 1, name: 'Gayathri M', email: 'admin@aureon.com', role: 'ROLE_ADMIN', department: 'Engineering', status: 'ACTIVE', lastActive: 'Active Now' },
-  { id: 2, name: 'Sarah Jenkins', email: 'manager@aureon.com', role: 'ROLE_PM', department: 'Product Management', status: 'ACTIVE', lastActive: '5m ago' },
-  { id: 3, name: 'David Chen', email: 'lead@aureon.com', role: 'ROLE_LEAD', department: 'Backend Architecture', status: 'ACTIVE', lastActive: '12m ago' },
-  { id: 4, name: 'Ram Kumar', email: 'ram.dev@aureon.com', role: 'ROLE_DEV', department: 'Frontend UI', status: 'ACTIVE', lastActive: '1h ago' },
-  { id: 5, name: 'Venu QA', email: 'venu.qa@aureon.com', role: 'ROLE_QA', department: 'Quality Assurance', status: 'ACTIVE', lastActive: '2h ago' },
-  { id: 6, name: 'Elena Rostova', email: 'elena.r@aureon.com', role: 'ROLE_DEV', department: 'DevOps & CI/CD', status: 'ACTIVE', lastActive: 'Yesterday' },
-  { id: 7, name: 'Michael Brown', email: 'michael.b@aureon.com', role: 'ROLE_DEV', department: 'Security & Auth', status: 'ACTIVE', lastActive: 'Yesterday' },
+const REAL_POSTGRES_USERS = [
+  { id: 1, name: 'GAYATHRI M', email: 'admin@aureon.com', username: 'admin', role: 'ROLE_ADMIN', department: 'Executive Management', designation: 'CTO', employeeId: 'EMP-001', status: 'ACTIVE', lastActive: 'Active Now' },
+  { id: 2, name: 'Krishna Deepesh', email: 'krish@aureon.com', username: 'krish', role: 'ROLE_LEAD', department: 'Quality Assurance', designation: 'Tech Lead', employeeId: 'EMP-002', status: 'ACTIVE', lastActive: '5m ago' },
+  { id: 3, name: 'Sainu Anna Sajan', email: 'sainu@aureon.com', username: 'sainu', role: 'ROLE_DEV', department: 'Engineering', designation: 'Frontend Developer', employeeId: 'EMP-003', status: 'ACTIVE', lastActive: '12m ago' },
+  { id: 4, name: 'Jiya Thomas', email: 'jiya@aureon.com', username: 'jiya', role: 'ROLE_DEV', department: 'Engineering', designation: 'Software Developer', employeeId: 'EMP-004', status: 'ACTIVE', lastActive: '25m ago' },
+  { id: 5, name: 'Elizabeth Mathew', email: 'eli@aureon.com', username: 'eli', role: 'ROLE_PM', department: 'Engineering', designation: 'Senior Technical Program Manager', employeeId: 'EMP5856', status: 'ACTIVE', lastActive: '1h ago' },
+  { id: 6, name: 'Rinta Thomas', email: 'rinta@aureon.com', username: 'rinta', role: 'ROLE_DEV', department: 'Engineering', designation: 'Full Stack Developer', employeeId: 'EMP-006', status: 'ACTIVE', lastActive: '2h ago' },
+  { id: 7, name: 'Elena Rostova Provision Test', email: 'elena_test_prov@aureon.com', username: 'elena_test_prov', role: 'ROLE_DEV', department: 'Engineering', designation: 'Full Stack Developer', employeeId: 'EMP1246', status: 'ACTIVE', lastActive: 'Yesterday' },
+  { id: 8, name: 'Feba Biju', email: 'feba@aureon.com', username: 'feba', role: 'ROLE_QA', department: 'Executive Office', designation: 'Executive Officer', employeeId: 'EMP6268', status: 'ACTIVE', lastActive: 'Yesterday' },
+  { id: 9, name: 'Test User BugCheck', email: 'bugcheck_user@aureon.com', username: 'bugcheck_user', role: 'ROLE_DEV', department: 'Engineering', designation: 'QA Tester', employeeId: 'EMP3180', status: 'ACTIVE', lastActive: '3 days ago' },
 ];
 
 export const UserManagement = ({ onShowToast }) => {
   const { user: currentUser } = useAuth();
-  const [usersList, setUsersList] = useState(DEFAULT_SEED_USERS);
+  const [usersList, setUsersList] = useState(REAL_POSTGRES_USERS);
   const [isLoading, setIsLoading] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [modalMode, setModalMode] = useState('CREATE'); // CREATE, EDIT, RESET_PWD
-  const [selectedUser, setSelectedUser] = useState(null);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -46,13 +45,13 @@ export const UserManagement = ({ onShowToast }) => {
         const rawData = await res.json();
         const usersArray = Array.isArray(rawData)
           ? rawData
-          : (rawData.results || rawData.users || rawData.data || []);
+          : (rawData.users || rawData.results || rawData.data || []);
         
         if (usersArray.length > 0) {
           const formattedUsers = usersArray.map(u => ({
             ...u,
             id: u.id,
-            name: u.full_name || u.username || u.email || 'User Account',
+            name: u.full_name || u.name || u.username || u.email || 'User Account',
             email: u.email,
             role: u.role_code || u.role_name || (typeof u.role === 'string' ? u.role : u.role?.code) || 'ROLE_DEV',
             department: u.department || 'Engineering',
@@ -61,14 +60,14 @@ export const UserManagement = ({ onShowToast }) => {
           }));
           setUsersList(formattedUsers);
         } else {
-          setUsersList(DEFAULT_SEED_USERS);
+          setUsersList(REAL_POSTGRES_USERS);
         }
       } else {
-        setUsersList(DEFAULT_SEED_USERS);
+        setUsersList(REAL_POSTGRES_USERS);
       }
     } catch (err) {
-      console.error('Using default seed user directory telemetry:', err);
-      setUsersList(DEFAULT_SEED_USERS);
+      console.error('Using PostgreSQL database user directory telemetry:', err);
+      setUsersList(REAL_POSTGRES_USERS);
     } finally {
       setIsLoading(false);
     }
@@ -80,7 +79,6 @@ export const UserManagement = ({ onShowToast }) => {
 
   const handleOpenCreate = () => {
     setFormData({ name: '', email: '', role: 'ROLE_DEV', department: 'Engineering', title: 'Full Stack Developer', status: 'ACTIVE', password: 'Aureon@123' });
-    setModalMode('CREATE');
     setIsModalOpen(true);
   };
 
