@@ -45,7 +45,8 @@ def seed_database():
         { 'email': 'ananya.v@aureon.com', 'username': 'ananya', 'full_name': 'Ananya Varma', 'employee_id': 'EMP-017', 'role': 'ROLE_QA', 'department': 'Quality Assurance', 'designation': 'Test Automation Specialist' },
         { 'email': 'vikram.p@aureon.com', 'username': 'vikram', 'full_name': 'Vikram Patel', 'employee_id': 'EMP-018', 'role': 'ROLE_LEAD', 'department': 'Systems Architecture', 'designation': 'Principal Backend Engineer' },
         { 'email': 'deepak.n@aureon.com', 'username': 'deepak', 'full_name': 'Deepak Nair', 'employee_id': 'EMP-019', 'role': 'ROLE_PM', 'department': 'Operations & Agile', 'designation': 'Scrum Master' },
-        { 'email': 'sneha.r@aureon.com', 'username': 'sneha', 'full_name': 'Sneha Roy', 'employee_id': 'EMP-020', 'role': 'ROLE_DEV', 'department': 'Mobile Development', 'designation': 'Flutter & iOS Engineer' }
+        { 'email': 'sneha.r@aureon.com', 'username': 'sneha', 'full_name': 'Sneha Roy', 'employee_id': 'EMP-020', 'role': 'ROLE_DEV', 'department': 'Mobile Development', 'designation': 'Flutter & iOS Engineer' },
+        { 'email': 'gopika@aureon.com', 'username': 'gopika', 'full_name': 'Gopika Manoj', 'employee_id': 'EMP-021', 'role': 'ROLE_PM', 'department': 'Product Management', 'designation': 'Project Manager' }
     ]
 
     for u_data in twenty_postgres_users:

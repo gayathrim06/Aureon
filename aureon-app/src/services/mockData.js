@@ -69,6 +69,20 @@ export const initialUsers = [
     online: true,
     failedLogins: 0,
     mfaEnabled: true
+  },
+  {
+    id: 'usr_gopika',
+    name: 'Gopika Manoj',
+    email: 'gopika@aureon.com',
+    role: 'ROLE_PM',
+    role_name: 'ROLE_PM',
+    role_code: 'ROLE_PM',
+    status: 'ACTIVE',
+    title: 'Project Manager',
+    designation: 'Project Manager',
+    department: 'Product Management',
+    avatar: 'GM',
+    online: true
   }
 ];
 
