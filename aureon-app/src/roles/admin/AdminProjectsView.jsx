@@ -1,10 +1,45 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Breadcrumb } from '../../components/common/Breadcrumb';
 import { DataTable } from '../../components/common/DataTable';
 import { initialProjects } from '../../services/mockData';
 import { FolderKanban, Cpu } from 'lucide-react';
 
 export const AdminProjectsView = () => {
+  const [projects, setProjects] = useState(initialProjects);
+
+  const fetchLiveProjects = async () => {
+    const token = sessionStorage.getItem('aureon_jwt_access_token') || localStorage.getItem('aureon_jwt_access_token') || sessionStorage.getItem('aureon_access_token');
+    try {
+      const res = await fetch('http://127.0.0.1:8000/api/v1/projects/', {
+        headers: { 'Authorization': token ? `Bearer ${token}` : '' }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const liveList = data.projects || [];
+        if (liveList.length > 0) {
+          const formatted = liveList.map(p => ({
+            id: p.id,
+            key: p.id?.substring(0, 8) || 'PROJ',
+            name: p.name || p.project_name || 'Verona Organic',
+            manager: p.manager_name || 'Gopika Manoj',
+            lead: p.lead_name || 'Krishna Deepesh',
+            status: p.status || 'IN_PROGRESS',
+            progress: p.progress || 25,
+            healthScore: p.health_score || 90,
+            deadline: p.target_deadline || p.deadline || '2026-09-08'
+          }));
+          setProjects(formatted);
+        }
+      }
+    } catch (err) {
+      // Fallback to initialProjects
+    }
+  };
+
+  useEffect(() => {
+    fetchLiveProjects();
+  }, []);
+
   const columns = [
     { key: 'name', label: 'Project', render: (val, row) => (<div><div className="font-bold text-gray-900 dark:text-gray-100">{val}</div><div className="font-mono text-[10px] text-blue-600 dark:text-blue-400">{row.key}</div></div>) },
     { key: 'manager', label: 'Manager' },
@@ -22,7 +57,7 @@ export const AdminProjectsView = () => {
     <div className="space-y-6">
       <Breadcrumb activeTab="Projects Directory" />
       <div><h1 className="text-xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2"><FolderKanban className="w-5 h-5 text-indigo-500" />Global Projects Directory</h1><p className="text-xs text-gray-500">Platform-wide view of all projects, health scores, budgets, and delivery timelines.</p></div>
-      <DataTable columns={columns} data={initialProjects} searchPlaceholder="Search projects..." />
+      <DataTable columns={columns} data={projects} searchPlaceholder="Search projects..." />
     </div>
   );
 };

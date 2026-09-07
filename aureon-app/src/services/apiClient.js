@@ -4,7 +4,10 @@
 const API_BASE_URL = 'http://127.0.0.1:8000/api/v1';
 
 export const apiClient = async (endpoint, options = {}) => {
-  const token = sessionStorage.getItem('aureon_jwt_access_token');
+  const token = sessionStorage.getItem('aureon_jwt_access_token') || 
+                localStorage.getItem('aureon_jwt_access_token') || 
+                sessionStorage.getItem('aureon_access_token') || 
+                localStorage.getItem('aureon_access_token');
   const headers = {
     'Content-Type': 'application/json',
     ...(token ? { 'Authorization': `Bearer ${token}` } : {}),

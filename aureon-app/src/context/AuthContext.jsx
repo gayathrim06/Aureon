@@ -23,9 +23,20 @@ export const AuthProvider = ({ children }) => {
   const [activeSessions, setActiveSessions] = useState([]);
   const [toastMessage, setToastMessage] = useState(null);
 
-  // Restore user from sessionStorage on mount or set default
+  // Restore user and token from sessionStorage or localStorage on mount
   useEffect(() => {
-    const savedUser = sessionStorage.getItem(AUTH_USER_KEY);
+    const savedUser = sessionStorage.getItem(AUTH_USER_KEY) || localStorage.getItem(AUTH_USER_KEY);
+    const savedToken = sessionStorage.getItem('aureon_jwt_access_token') || 
+                       localStorage.getItem('aureon_jwt_access_token') || 
+                       sessionStorage.getItem('aureon_access_token') || 
+                       localStorage.getItem('aureon_access_token');
+    
+    if (savedToken) {
+      setAccessToken(savedToken);
+      sessionStorage.setItem('aureon_jwt_access_token', savedToken);
+      sessionStorage.setItem('aureon_access_token', savedToken);
+    }
+
     if (savedUser) {
       try {
         const parsed = JSON.parse(savedUser);
@@ -36,6 +47,7 @@ export const AuthProvider = ({ children }) => {
             parsed.role_code = 'ROLE_PM';
             parsed.designation = 'Project Manager';
             sessionStorage.setItem(AUTH_USER_KEY, JSON.stringify(parsed));
+            localStorage.setItem(AUTH_USER_KEY, JSON.stringify(parsed));
           }
 
           try {
@@ -60,8 +72,11 @@ export const AuthProvider = ({ children }) => {
           parsed.name = parsed.name || parsed.full_name || parsed.username || parsed.email;
         }
         setUser(parsed);
+        sessionStorage.setItem(AUTH_USER_KEY, JSON.stringify(parsed));
+        localStorage.setItem(AUTH_USER_KEY, JSON.stringify(parsed));
       } catch (e) {
         sessionStorage.removeItem(AUTH_USER_KEY);
+        localStorage.removeItem(AUTH_USER_KEY);
       }
     }
   }, []);
@@ -156,9 +171,17 @@ export const AuthProvider = ({ children }) => {
 
         sessionStorage.setItem(AUTH_USER_KEY, JSON.stringify(loggedUser));
         sessionStorage.setItem(TOKEN_KEY, drfData.access || drfData.token || 'aureon_token');
+        sessionStorage.setItem('aureon_jwt_access_token', drfData.access || drfData.token || 'aureon_token');
         sessionStorage.setItem('aureon_access_token', drfData.access || drfData.token || 'aureon_token');
         sessionStorage.setItem(REFRESH_TOKEN_KEY, drfData.refresh || '');
         sessionStorage.setItem(SESSION_TOKEN_KEY, newSessionToken);
+
+        localStorage.setItem(AUTH_USER_KEY, JSON.stringify(loggedUser));
+        localStorage.setItem(TOKEN_KEY, drfData.access || drfData.token || 'aureon_token');
+        localStorage.setItem('aureon_jwt_access_token', drfData.access || drfData.token || 'aureon_token');
+        localStorage.setItem('aureon_access_token', drfData.access || drfData.token || 'aureon_token');
+        localStorage.setItem(REFRESH_TOKEN_KEY, drfData.refresh || '');
+        localStorage.setItem(SESSION_TOKEN_KEY, newSessionToken);
 
         logAuditEvent({
           user: loggedUser,
@@ -230,9 +253,17 @@ export const AuthProvider = ({ children }) => {
 
     sessionStorage.setItem(AUTH_USER_KEY, JSON.stringify(foundUser));
     sessionStorage.setItem(TOKEN_KEY, newAccess);
+    sessionStorage.setItem('aureon_jwt_access_token', newAccess);
     sessionStorage.setItem('aureon_access_token', newAccess);
     sessionStorage.setItem(REFRESH_TOKEN_KEY, newRefresh);
     sessionStorage.setItem(SESSION_TOKEN_KEY, newSessToken);
+
+    localStorage.setItem(AUTH_USER_KEY, JSON.stringify(foundUser));
+    localStorage.setItem(TOKEN_KEY, newAccess);
+    localStorage.setItem('aureon_jwt_access_token', newAccess);
+    localStorage.setItem('aureon_access_token', newAccess);
+    localStorage.setItem(REFRESH_TOKEN_KEY, newRefresh);
+    localStorage.setItem(SESSION_TOKEN_KEY, newSessToken);
 
     logAuditEvent({
       user: foundUser,
@@ -334,9 +365,17 @@ export const AuthProvider = ({ children }) => {
 
     sessionStorage.removeItem(AUTH_USER_KEY);
     sessionStorage.removeItem(TOKEN_KEY);
+    sessionStorage.removeItem('aureon_jwt_access_token');
     sessionStorage.removeItem('aureon_access_token');
     sessionStorage.removeItem(REFRESH_TOKEN_KEY);
     sessionStorage.removeItem(SESSION_TOKEN_KEY);
+
+    localStorage.removeItem(AUTH_USER_KEY);
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem('aureon_jwt_access_token');
+    localStorage.removeItem('aureon_access_token');
+    localStorage.removeItem(REFRESH_TOKEN_KEY);
+    localStorage.removeItem(SESSION_TOKEN_KEY);
 
     showToast('Signed out successfully.', 'info');
   };
