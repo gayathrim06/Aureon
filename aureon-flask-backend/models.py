@@ -201,6 +201,21 @@ class Team(db.Model):
         return self.name or 'Team'
 
     def to_dict(self):
+        t_members = TeamMember.query.filter_by(team_id=self.id).all()
+        member_names = [m.user.full_name for m in t_members if m.user]
+        member_details = [
+            {
+                'id': str(m.user.id),
+                'name': m.user.full_name,
+                'email': m.user.email,
+                'role': m.user.role_name,
+                'designation': m.user.designation
+            } for m in t_members if m.user
+        ]
+
+        leader_name = self.leader.full_name if self.leader else None
+        proj_name = self.project.name if self.project else None
+
         return {
             'id': str(self.id),
             'name': self.display_name,
@@ -210,8 +225,15 @@ class Team(db.Model):
             'availability_status': self.availability_status or 'AVAILABLE',
             'status': self.status or 'ACTIVE',
             'project_id': str(self.project_id) if self.project_id else None,
+            'project_name': proj_name,
+            'projectCount': 1 if self.project_id else 0,
             'team_leader_id': str(self.team_leader_id or self.lead_id) if (self.team_leader_id or self.lead_id) else None,
-            'leader_name': self.leader.full_name if self.leader else None
+            'lead': leader_name,
+            'leader_name': leader_name,
+            'department': self.description or 'Engineering',
+            'capacity': '100%',
+            'members': member_names,
+            'member_details': member_details
         }
 
 class TeamMember(db.Model):
@@ -238,6 +260,7 @@ class Sprint(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     def to_dict(self):
+        proj = Project.query.get(self.project_id) if self.project_id else None
         return {
             'id': str(self.id),
             'name': self.name,
@@ -246,6 +269,8 @@ class Sprint(db.Model):
             'start_date': self.start_date.isoformat() if self.start_date else None,
             'end_date': self.end_date.isoformat() if self.end_date else None,
             'project_id': str(self.project_id) if self.project_id else None,
+            'project_name': proj.display_name if proj else 'Verona Organic',
+            'project': proj.display_name if proj else 'Verona Organic',
             'team_id': str(self.team_id) if self.team_id else None
         }
 
@@ -296,11 +321,12 @@ class Task(db.Model):
             'assignee_name': u.display_name if u else 'Unassigned',
             'assignee': u.display_name if u else 'Unassigned',
             'project_id': str(self.project_id) if self.project_id else None,
-            'project_name': proj.display_name if proj else 'General System',
+            'project_name': proj.display_name if proj else 'Verona Organic',
+            'project': proj.display_name if proj else 'Verona Organic',
             'team_id': str(self.team_id) if self.team_id else None,
-            'assigned_team': tm.name if tm else 'Frontend Development Team',
+            'assigned_team': tm.name if tm else 'Frontend UI Squad',
             'sprint_id': str(self.sprint_id) if self.sprint_id else None,
-            'sprint_name': spr.name if spr else 'Sprint Milestone'
+            'sprint_name': spr.name if spr else 'ui design'
         }
 
 class Notification(db.Model):

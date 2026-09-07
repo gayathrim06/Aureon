@@ -12,15 +12,15 @@ export const AdminDashboard = ({ onNavigate }) => {
   const userName = user?.name || user?.full_name || 'System Administrator';
 
   const [metrics, setMetrics] = useState({
-    total_users: 20,
-    active_users: 20,
-    total_projects: 5,
-    active_projects: 3,
-    completed_projects: 2,
+    total_users: 21,
+    active_users: 21,
+    total_projects: 1,
+    active_projects: 1,
+    completed_projects: 0,
     total_teams: 4,
-    pending_approvals: 1,
+    pending_approvals: 0,
     system_alerts: 0,
-    overall_project_health: 94.5
+    overall_project_health: 90
   });
 
   const [recentActivities, setRecentActivities] = useState([
@@ -34,25 +34,26 @@ export const AdminDashboard = ({ onNavigate }) => {
 
   const fetchAdminDashboard = async () => {
     setIsLoading(true);
-    const token = sessionStorage.getItem('aureon_jwt_access_token') || sessionStorage.getItem('aureon_access_token');
+    const rawToken = sessionStorage.getItem('aureon_jwt_access_token') || localStorage.getItem('aureon_jwt_access_token') || sessionStorage.getItem('aureon_access_token');
+    const isRealJwt = rawToken && rawToken.startsWith('ey') && rawToken.split('.').length === 3;
+    const headers = isRealJwt ? { 'Authorization': `Bearer ${rawToken}` } : {};
+
     try {
-      const res = await fetch('http://127.0.0.1:8000/api/v1/dashboards/admin', {
-        headers: {
-          'Authorization': token ? `Bearer ${token}` : ''
-        }
-      });
+      const res = await fetch('http://127.0.0.1:8000/api/v1/dashboards/admin', { headers });
       if (res.ok) {
         const data = await res.json();
         const metricsData = data.metrics || data.dashboard?.metrics || data;
         setMetrics(prev => ({
           ...prev,
-          total_users: metricsData.total_users || 20,
-          active_users: metricsData.active_users || 20,
-          total_projects: metricsData.total_projects || 5,
-          active_projects: metricsData.active_projects || 3,
-          completed_projects: metricsData.completed_projects || 2,
-          total_teams: metricsData.total_teams || 4,
-          overall_project_health: metricsData.overall_project_health || 94.5
+          total_users: metricsData.total_users ?? 21,
+          active_users: metricsData.active_users ?? 21,
+          total_projects: metricsData.total_projects ?? 1,
+          active_projects: metricsData.active_projects ?? 1,
+          completed_projects: metricsData.completed_projects ?? 0,
+          total_teams: metricsData.total_teams ?? 4,
+          pending_approvals: metricsData.pending_approvals ?? (metricsData.pending_tasks ?? 0),
+          system_alerts: metricsData.system_alerts ?? 0,
+          overall_project_health: metricsData.overall_project_health ?? 90
         }));
 
         if (data.recent_activities && data.recent_activities.length > 0) {
@@ -136,13 +137,16 @@ export const AdminDashboard = ({ onNavigate }) => {
         </div>
 
         {/* 2. Active Users */}
-        <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 warm:bg-[#e8dbbe] border border-slate-200 dark:border-slate-800 warm:border-[#cbb68e] shadow-sm">
+        <div 
+          onClick={() => onNavigate('Users')}
+          className="p-5 rounded-2xl bg-white dark:bg-slate-900 warm:bg-[#e8dbbe] border border-slate-200 dark:border-slate-800 warm:border-[#cbb68e] shadow-sm hover:border-emerald-500 transition-all cursor-pointer group"
+        >
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 warm:text-[#69523c]">Active Users</span>
-            <ShieldCheck className="w-5 h-5 text-emerald-500" />
+            <ShieldCheck className="w-5 h-5 text-emerald-500 group-hover:scale-110 transition-transform" />
           </div>
           <div className="text-3xl font-black text-emerald-600 dark:text-emerald-400 mt-3">{metrics.active_users}</div>
-          <p className="text-[11px] text-slate-500 dark:text-slate-400 warm:text-[#69523c] mt-1">Users marked ACTIVE status</p>
+          <p className="text-[11px] text-slate-500 dark:text-slate-400 warm:text-[#69523c] mt-1">Click to view active users</p>
         </div>
 
         {/* 3. Total Projects */}
@@ -159,20 +163,26 @@ export const AdminDashboard = ({ onNavigate }) => {
         </div>
 
         {/* 4. Active Projects */}
-        <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 warm:bg-[#e8dbbe] border border-slate-200 dark:border-slate-800 warm:border-[#cbb68e] shadow-sm">
+        <div 
+          onClick={() => onNavigate('Projects')}
+          className="p-5 rounded-2xl bg-white dark:bg-slate-900 warm:bg-[#e8dbbe] border border-slate-200 dark:border-slate-800 warm:border-[#cbb68e] shadow-sm hover:border-blue-500 transition-all cursor-pointer group"
+        >
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 warm:text-[#69523c]">Active Projects</span>
-            <Layers className="w-5 h-5 text-blue-500" />
+            <Layers className="w-5 h-5 text-blue-500 group-hover:scale-110 transition-transform" />
           </div>
           <div className="text-3xl font-black text-blue-600 dark:text-blue-400 mt-3">{metrics.active_projects}</div>
           <p className="text-[11px] text-slate-500 dark:text-slate-400 warm:text-[#69523c] mt-1">Status set to IN PROGRESS</p>
         </div>
 
         {/* 5. Completed Projects */}
-        <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 warm:bg-[#e8dbbe] border border-slate-200 dark:border-slate-800 warm:border-[#cbb68e] shadow-sm">
+        <div 
+          onClick={() => onNavigate('Projects')}
+          className="p-5 rounded-2xl bg-white dark:bg-slate-900 warm:bg-[#e8dbbe] border border-slate-200 dark:border-slate-800 warm:border-[#cbb68e] shadow-sm hover:border-emerald-500 transition-all cursor-pointer group"
+        >
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 warm:text-[#69523c]">Completed Projects</span>
-            <CheckSquare className="w-5 h-5 text-emerald-500" />
+            <CheckSquare className="w-5 h-5 text-emerald-500 group-hover:scale-110 transition-transform" />
           </div>
           <div className="text-3xl font-black text-emerald-600 dark:text-emerald-400 mt-3">{metrics.completed_projects}</div>
           <p className="text-[11px] text-slate-500 dark:text-slate-400 warm:text-[#69523c] mt-1">Projects successfully finished</p>
@@ -181,7 +191,7 @@ export const AdminDashboard = ({ onNavigate }) => {
         {/* 6. Total Teams */}
         <div 
           onClick={() => onNavigate('Teams')}
-          className="p-5 rounded-2xl bg-white dark:bg-slate-900 warm:bg-[#e8dbbe] border border-slate-200 dark:border-slate-800 warm:border-[#cbb68e] shadow-sm hover:border-indigo-500 transition-all cursor-pointer group"
+          className="p-5 rounded-2xl bg-white dark:bg-slate-900 warm:bg-[#e8dbbe] border border-slate-200 dark:border-slate-800 warm:border-[#cbb68e] shadow-sm hover:border-cyan-500 transition-all cursor-pointer group"
         >
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 warm:text-[#69523c]">Total Teams</span>
@@ -192,20 +202,26 @@ export const AdminDashboard = ({ onNavigate }) => {
         </div>
 
         {/* 7. Pending Approvals */}
-        <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 warm:bg-[#e8dbbe] border border-slate-200 dark:border-slate-800 warm:border-[#cbb68e] shadow-sm">
+        <div 
+          onClick={() => onNavigate('Tasks')}
+          className="p-5 rounded-2xl bg-white dark:bg-slate-900 warm:bg-[#e8dbbe] border border-slate-200 dark:border-slate-800 warm:border-[#cbb68e] shadow-sm hover:border-amber-500 transition-all cursor-pointer group"
+        >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 warm:text-[#69523c]">Pending Approvals</span>
-            <Cpu className="w-5 h-5 text-amber-500" />
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 warm:text-[#69523c]">Pending Tasks</span>
+            <Cpu className="w-5 h-5 text-amber-500 group-hover:scale-110 transition-transform" />
           </div>
           <div className="text-3xl font-black text-amber-600 dark:text-amber-400 mt-3">{metrics.pending_approvals}</div>
-          <p className="text-[11px] text-slate-500 dark:text-slate-400 warm:text-[#69523c] mt-1">Tasks requiring code verification</p>
+          <p className="text-[11px] text-slate-500 dark:text-slate-400 warm:text-[#69523c] mt-1">Click to view all tasks</p>
         </div>
 
         {/* 8. System Alerts */}
-        <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 warm:bg-[#e8dbbe] border border-slate-200 dark:border-slate-800 warm:border-[#cbb68e] shadow-sm">
+        <div 
+          onClick={() => onNavigate('Reports')}
+          className="p-5 rounded-2xl bg-white dark:bg-slate-900 warm:bg-[#e8dbbe] border border-slate-200 dark:border-slate-800 warm:border-[#cbb68e] shadow-sm hover:border-rose-500 transition-all cursor-pointer group"
+        >
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 warm:text-[#69523c]">System Alerts</span>
-            <AlertTriangle className="w-5 h-5 text-rose-500" />
+            <AlertTriangle className="w-5 h-5 text-rose-500 group-hover:scale-110 transition-transform" />
           </div>
           <div className="text-3xl font-black text-emerald-600 dark:text-emerald-400 mt-3">{metrics.system_alerts}</div>
           <p className="text-[11px] text-slate-500 dark:text-slate-400 warm:text-[#69523c] mt-1">Open security risk triggers</p>

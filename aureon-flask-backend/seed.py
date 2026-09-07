@@ -1,5 +1,5 @@
 from extensions import db
-from models import Role, User, Project, Team
+from models import Role, User, Project, Team, TeamMember
 from werkzeug.security import generate_password_hash
 import uuid
 
@@ -70,26 +70,61 @@ def seed_database():
             existing_user.employee_id = u_data['employee_id']
             existing_user.department = u_data['department']
             existing_user.designation = u_data['designation']
+            existing_user.account_status = 'ACTIVE'
+            existing_user.is_active = True
+            existing_user.failed_login_attempts = 0
+            existing_user.password = generate_password_hash('Aureon@123')
 
     # 3. Seed Baseline Projects (Empty by default)
     default_projects = []
 
-    # 4. Seed Baseline Teams
+    # 4. Seed Baseline Teams with designated Leads & Members
+    krish = User.query.filter_by(email='krish@aureon.com').first()
+    david = User.query.filter_by(email='david.c@aureon.com').first()
+    vikram = User.query.filter_by(email='vikram.p@aureon.com').first()
+    sainu = User.query.filter_by(email='sainu@aureon.com').first()
+    ram = User.query.filter_by(email='ram.kumar@aureon.com').first()
+    jiya = User.query.filter_by(email='jiya@aureon.com').first()
+    priya = User.query.filter_by(email='priya.s@aureon.com').first()
+    alex = User.query.filter_by(email='alex.r@aureon.com').first()
+    michael = User.query.filter_by(email='michael.b@aureon.com').first()
+    venu = User.query.filter_by(email='venu.qa@aureon.com').first()
+    feba = User.query.filter_by(email='feba@aureon.com').first()
+    ananya = User.query.filter_by(email='ananya.v@aureon.com').first()
+    proj = Project.query.filter_by(name='Verona Organic').first()
+
     default_teams = [
-        { 'name': 'Core Infrastructure Guild', 'description': 'Engineering' },
-        { 'name': 'Frontend UI Squad', 'description': 'User Experience' },
-        { 'name': 'Backend Data Engine', 'description': 'Database & Analytics' },
-        { 'name': 'QA & Compliance Automation', 'description': 'Quality Assurance' }
+        { 'name': 'Frontend UI Squad', 'description': 'User Experience', 'lead': krish, 'project': proj, 'members': [sainu, ram] },
+        { 'name': 'Backend Data Engine', 'description': 'Database & Analytics', 'lead': david, 'project': proj, 'members': [jiya, priya] },
+        { 'name': 'Core Infrastructure Guild', 'description': 'Engineering', 'lead': vikram, 'project': None, 'members': [alex, michael] },
+        { 'name': 'QA & Compliance Automation', 'description': 'Quality Assurance', 'lead': None, 'project': proj, 'members': [venu, feba, ananya] }
     ]
 
     for t_data in default_teams:
-        if not Team.query.filter_by(name=t_data['name']).first():
-            t = Team(
+        team = Team.query.filter_by(name=t_data['name']).first()
+        if not team:
+            team = Team(
                 name=t_data['name'],
                 description=t_data['description'],
-                availability_status='AVAILABLE'
+                availability_status='ASSIGNED' if t_data['project'] else 'AVAILABLE',
+                status='ACTIVE'
             )
-            db.session.add(t)
+            db.session.add(team)
+            db.session.flush()
+
+        if t_data['lead']:
+            team.lead_id = t_data['lead'].id
+            team.team_leader_id = t_data['lead'].id
+        if t_data['project']:
+            team.project_id = t_data['project'].id
+            team.availability_status = 'ASSIGNED'
+
+        # Ensure team members exist
+        for m in t_data['members']:
+            if m:
+                existing_member = TeamMember.query.filter_by(team_id=team.id, user_id=m.id).first()
+                if not existing_member:
+                    db.session.add(TeamMember(team_id=team.id, user_id=m.id))
 
     db.session.commit()
-    print("[DATABASE SEED] Successfully seeded 20 real PostgreSQL users, 5 projects, 4 teams into Aureon database tables.")
+    print("[DATABASE SEED] Successfully seeded 20 real PostgreSQL users, teams, and member allocations into Aureon database tables.")

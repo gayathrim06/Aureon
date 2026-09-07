@@ -8,6 +8,7 @@ import {
   User, Mail, Shield, Briefcase, Building, Edit3, Plus, X, Award, Phone, Calendar, Key, Hash,
   Activity, CheckSquare, GitCommit, Code2, Bug, TestTube2, Layers, Server, Sparkles, CheckCircle2, Save
 } from 'lucide-react';
+import { getAuthHeaders } from '../../services/apiClient';
 
 export const UserProfile = () => {
   const { user, updateProfile, showToast } = useAuth();
@@ -37,12 +38,9 @@ export const UserProfile = () => {
 
   useEffect(() => {
     const fetchStats = async () => {
-      const token = sessionStorage.getItem('aureon_jwt_access_token');
       try {
         const res = await fetch('http://127.0.0.1:8000/api/v1/users/me/stats', {
-          headers: {
-            'Authorization': token ? `Bearer ${token}` : ''
-          }
+          headers: getAuthHeaders()
         });
         if (res.ok) {
           const data = await res.json();
@@ -136,14 +134,13 @@ export const UserProfile = () => {
 
     updateProfile(payload);
 
-    const token = sessionStorage.getItem('aureon_jwt_access_token');
     try {
       const targetEmail = email || user?.email || '';
       await fetch(`http://127.0.0.1:8000/api/v1/users/me?email=${encodeURIComponent(targetEmail)}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': token ? `Bearer ${token}` : ''
+          ...getAuthHeaders()
         },
         body: JSON.stringify({ ...payload, email: targetEmail })
       });

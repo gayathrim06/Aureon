@@ -5,6 +5,7 @@ import { initialTasks } from '../../services/mockData';
 import { logAuditEvent } from '../../services/auditLogger';
 import { useAuth } from '../../context/AuthContext';
 import { CheckSquare, MessageSquare, Paperclip, Plus, ArrowRight, User } from 'lucide-react';
+import { getAuthHeaders } from '../../services/apiClient';
 
 export const MyTasksKanban = ({ onShowToast }) => {
   const { user } = useAuth();
@@ -27,8 +28,7 @@ export const MyTasksKanban = ({ onShowToast }) => {
 
   // Fetch developer tasks from PostgreSQL REST API backend
   const fetchTasks = async () => {
-    const token = sessionStorage.getItem('aureon_jwt_access_token');
-    const headers = { 'Authorization': token ? `Bearer ${token}` : '' };
+    const headers = getAuthHeaders();
 
     try {
       const res = await fetch('http://127.0.0.1:8000/api/v1/developer/my-tasks', { headers });

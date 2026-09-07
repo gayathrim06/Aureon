@@ -4,6 +4,7 @@ import { Modal } from '../../components/common/Modal';
 import { useAuth } from '../../context/AuthContext';
 import { logAuditEvent } from '../../services/auditLogger';
 import { Users, CheckSquare, Plus, Layers, ShieldCheck, UserCheck, CheckCircle2 } from 'lucide-react';
+import { getAuthHeaders } from '../../services/apiClient';
 
 export const DeveloperRoster = ({ onShowToast }) => {
   const { user } = useAuth();
@@ -45,8 +46,7 @@ export const DeveloperRoster = ({ onShowToast }) => {
 
   const fetchData = async () => {
     setLoading(true);
-    const token = sessionStorage.getItem('aureon_jwt_access_token');
-    const headers = { 'Authorization': token ? `Bearer ${token}` : '' };
+    const headers = getAuthHeaders();
 
     try {
       const [uRes, tRes, pRes] = await Promise.all([
@@ -132,7 +132,7 @@ export const DeveloperRoster = ({ onShowToast }) => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': token ? `Bearer ${token}` : ''
+          ...getAuthHeaders()
         },
         body: JSON.stringify(newTask)
       });
@@ -173,13 +173,12 @@ export const DeveloperRoster = ({ onShowToast }) => {
       status: 'PLANNING'
     };
 
-    const token = sessionStorage.getItem('aureon_jwt_access_token');
     try {
       await fetch('http://127.0.0.1:8000/api/v1/sprints/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': token ? `Bearer ${token}` : ''
+          ...getAuthHeaders()
         },
         body: JSON.stringify(newSprint)
       });

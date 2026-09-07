@@ -5,6 +5,7 @@ import { Modal } from '../../components/common/Modal';
 import { useAuth } from '../../context/AuthContext';
 import { logAuditEvent } from '../../services/auditLogger';
 import { CheckSquare, Plus, Filter, FolderKanban, Users, Clock, AlertCircle, GitBranch, Columns, List, Shield, Bug, Wrench, FileCode, CheckCircle2 } from 'lucide-react';
+import { getAuthHeaders } from '../../services/apiClient';
 
 export const TaskBreakdown = ({ onShowToast }) => {
   const { user } = useAuth();
@@ -58,8 +59,7 @@ export const TaskBreakdown = ({ onShowToast }) => {
   });
 
   const fetchData = async () => {
-    const token = sessionStorage.getItem('aureon_jwt_access_token');
-    const headers = { 'Authorization': token ? `Bearer ${token}` : '' };
+    const headers = getAuthHeaders();
 
     try {
       const [tRes, pRes, sRes] = await Promise.all([
@@ -150,16 +150,16 @@ export const TaskBreakdown = ({ onShowToast }) => {
 
     setTasks([newTask, ...tasks]);
 
-    const token = sessionStorage.getItem('aureon_jwt_access_token');
     try {
       await fetch('http://127.0.0.1:8000/api/v1/tasks/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': token ? `Bearer ${token}` : ''
+          ...getAuthHeaders()
         },
         body: JSON.stringify(newTask)
       });
+      fetchData();
     } catch (err) {}
 
     logAuditEvent({
@@ -176,13 +176,12 @@ export const TaskBreakdown = ({ onShowToast }) => {
 
   const handleUpdateTaskStatus = async (taskId, newStatus) => {
     setTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: newStatus } : t));
-    const token = sessionStorage.getItem('aureon_jwt_access_token');
     try {
       await fetch(`http://127.0.0.1:8000/api/v1/tasks/${taskId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': token ? `Bearer ${token}` : ''
+          ...getAuthHeaders()
         },
         body: JSON.stringify({ status: newStatus })
       });

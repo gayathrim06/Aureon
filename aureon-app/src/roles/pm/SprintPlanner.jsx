@@ -5,6 +5,7 @@ import { useAuth } from '../../context/AuthContext';
 import { logAuditEvent } from '../../services/auditLogger';
 import { Layers, Plus, CheckCircle2, Clock, Activity, FolderKanban, Users, Calendar, ShieldCheck, Filter, Target, Zap, TrendingUp, Flag } from 'lucide-react';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
+import { getAuthHeaders } from '../../services/apiClient';
 
 export const SprintPlanner = ({ onShowToast }) => {
   const { user } = useAuth();
@@ -23,9 +24,8 @@ export const SprintPlanner = ({ onShowToast }) => {
     projectId: '',
     projectName: '',
     assignedTeam: 'Frontend Development Team',
-    scrumMaster: 'Krishna Deepesh (Tech Lead)',
-    epicCategory: 'Core Architecture',
-    capacityStoryPoints: 40,
+    scrumMaster: 'Krishna Deepesh',
+    storyPoints: 40,
     startDate: '2026-09-01',
     endDate: '2026-09-15',
     goal: ''
@@ -39,8 +39,7 @@ export const SprintPlanner = ({ onShowToast }) => {
   ];
 
   const fetchSprintsAndProjects = async () => {
-    const token = sessionStorage.getItem('aureon_jwt_access_token');
-    const headers = { 'Authorization': token ? `Bearer ${token}` : '' };
+    const headers = getAuthHeaders();
 
     try {
       const [spRes, prRes] = await Promise.all([
@@ -125,16 +124,16 @@ export const SprintPlanner = ({ onShowToast }) => {
     setSprints([newSprint, ...sprints]);
     setSelectedSprint(newSprint);
 
-    const token = sessionStorage.getItem('aureon_jwt_access_token');
     try {
       await fetch('http://127.0.0.1:8000/api/v1/sprints/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': token ? `Bearer ${token}` : ''
+          ...getAuthHeaders()
         },
         body: JSON.stringify(newSprint)
       });
+      fetchSprintsAndProjects();
     } catch (err) {}
 
     logAuditEvent({

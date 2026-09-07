@@ -51,8 +51,9 @@ export const Projects = () => {
   ];
 
   const fetchProjectsAndTasks = async () => {
-    const token = sessionStorage.getItem('aureon_jwt_access_token');
-    const headers = { 'Authorization': token ? `Bearer ${token}` : '' };
+    const rawToken = sessionStorage.getItem('aureon_jwt_access_token') || localStorage.getItem('aureon_jwt_access_token') || sessionStorage.getItem('aureon_access_token');
+    const isRealJwt = rawToken && rawToken.startsWith('ey') && rawToken.split('.').length === 3;
+    const headers = isRealJwt ? { 'Authorization': `Bearer ${rawToken}` } : {};
 
     try {
       const [projRes, taskRes] = await Promise.all([

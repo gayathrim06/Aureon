@@ -5,6 +5,7 @@ import {
   Users, CheckSquare, Activity, Cpu, Clock, GitPullRequest, Layers, 
   GitBranch, CheckCircle2, AlertTriangle, ArrowRight, UserCheck, Code2, FolderKanban
 } from 'lucide-react';
+import { getAuthHeaders } from '../../services/apiClient';
 
 export const LeadDashboard = ({ onNavigate }) => {
   const { user } = useAuth();
@@ -17,8 +18,7 @@ export const LeadDashboard = ({ onNavigate }) => {
   });
 
   const fetchDashboardStats = async () => {
-    const token = sessionStorage.getItem('aureon_jwt_access_token');
-    const headers = { 'Authorization': token ? `Bearer ${token}` : '' };
+    const headers = getAuthHeaders();
 
     try {
       const [tRes, pRes] = await Promise.all([

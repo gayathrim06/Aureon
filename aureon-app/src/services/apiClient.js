@@ -3,14 +3,27 @@
 
 const API_BASE_URL = 'http://127.0.0.1:8000/api/v1';
 
-export const apiClient = async (endpoint, options = {}) => {
+export const isRealJwt = (token) => {
+  return Boolean(token && typeof token === 'string' && token.startsWith('ey') && token.split('.').length === 3);
+};
+
+export const getAuthToken = () => {
   const token = sessionStorage.getItem('aureon_jwt_access_token') || 
                 localStorage.getItem('aureon_jwt_access_token') || 
                 sessionStorage.getItem('aureon_access_token') || 
                 localStorage.getItem('aureon_access_token');
+  return isRealJwt(token) ? token : null;
+};
+
+export const getAuthHeaders = () => {
+  const token = getAuthToken();
+  return token ? { 'Authorization': `Bearer ${token}` } : {};
+};
+
+export const apiClient = async (endpoint, options = {}) => {
   const headers = {
     'Content-Type': 'application/json',
-    ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+    ...getAuthHeaders(),
     ...options.headers
   };
 

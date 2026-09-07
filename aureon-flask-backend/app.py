@@ -39,6 +39,17 @@ def create_app():
         app.config['SQLALCHEMY_DATABASE_URI'] = Config.FALLBACK_SQLITE_URI
         db.init_app(app)
 
+    # Sanitize invalid/mock Authorization headers before Flask-JWT processing
+    @app.before_request
+    def sanitize_auth_header():
+        auth = request.headers.get('Authorization')
+        if auth and auth.startswith('Bearer '):
+            token = auth.split(' ', 1)[1].strip()
+            parts = token.split('.')
+            if len(parts) != 3 or not token.startswith('ey'):
+                if 'HTTP_AUTHORIZATION' in request.environ:
+                    del request.environ['HTTP_AUTHORIZATION']
+
     # Ensure CORS headers on every response and preflight OPTIONS request
     @app.after_request
     def after_request(response):

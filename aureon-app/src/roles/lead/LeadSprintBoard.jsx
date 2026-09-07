@@ -3,6 +3,7 @@ import { Breadcrumb } from '../../components/common/Breadcrumb';
 import { useAuth } from '../../context/AuthContext';
 import { logAuditEvent } from '../../services/auditLogger';
 import { Layers, CheckCircle2, ArrowRight, GitBranch } from 'lucide-react';
+import { getAuthHeaders } from '../../services/apiClient';
 
 export const LeadSprintBoard = ({ onShowToast }) => {
   const { user } = useAuth();
@@ -11,8 +12,7 @@ export const LeadSprintBoard = ({ onShowToast }) => {
 
   const fetchSprintTasks = async () => {
     setLoading(true);
-    const token = sessionStorage.getItem('aureon_jwt_access_token');
-    const headers = { 'Authorization': token ? `Bearer ${token}` : '' };
+    const headers = getAuthHeaders();
 
     try {
       const res = await fetch('http://127.0.0.1:8000/api/v1/tasks/', { headers });
@@ -43,13 +43,12 @@ export const LeadSprintBoard = ({ onShowToast }) => {
   const moveTask = async (taskId, newStatus) => {
     setTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: newStatus } : t));
 
-    const token = sessionStorage.getItem('aureon_jwt_access_token');
     try {
       await fetch(`http://127.0.0.1:8000/api/v1/tasks/${taskId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': token ? `Bearer ${token}` : ''
+          ...getAuthHeaders()
         },
         body: JSON.stringify({ status: newStatus })
       });

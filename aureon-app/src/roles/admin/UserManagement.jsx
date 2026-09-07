@@ -3,7 +3,7 @@ import { Breadcrumb } from '../../components/common/Breadcrumb';
 import { DataTable } from '../../components/common/DataTable';
 import { Modal } from '../../components/common/Modal';
 import { useAuth } from '../../context/AuthContext';
-import { UserPlus, Trash2, RefreshCw } from 'lucide-react';
+import { getAuthHeaders } from '../../services/apiClient';
 
 const REAL_20_USERS = [
   { id: 1, name: 'GAYATHRI M', email: 'admin@aureon.com', username: 'admin', role: 'ROLE_ADMIN', department: 'Executive Management', designation: 'CTO', employeeId: 'EMP-001', status: 'ACTIVE', lastActive: 'Active Now' },
@@ -45,12 +45,9 @@ export const UserManagement = ({ onShowToast }) => {
 
   const fetchUsersList = async () => {
     setIsLoading(true);
-    const token = sessionStorage.getItem('aureon_jwt_access_token') || sessionStorage.getItem('aureon_access_token');
     try {
       const res = await fetch('http://127.0.0.1:8000/api/v1/users/', {
-        headers: {
-          'Authorization': token ? `Bearer ${token}` : ''
-        }
+        headers: getAuthHeaders()
       });
       if (res.ok) {
         const rawData = await res.json();

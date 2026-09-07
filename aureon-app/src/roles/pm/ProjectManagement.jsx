@@ -5,6 +5,7 @@ import { Modal } from '../../components/common/Modal';
 import { logAuditEvent } from '../../services/auditLogger';
 import { useAuth } from '../../context/AuthContext';
 import { FolderKanban, Plus, Edit2, Archive, Users, GitBranch, Cpu, Shield, UserCheck } from 'lucide-react';
+import { getAuthHeaders } from '../../services/apiClient';
 
 export const ProjectManagement = ({ onShowToast }) => {
   const { user } = useAuth();
@@ -21,10 +22,9 @@ export const ProjectManagement = ({ onShowToast }) => {
   });
 
   const fetchProjects = async () => {
-    const token = sessionStorage.getItem('aureon_jwt_access_token');
     try {
       const res = await fetch('http://127.0.0.1:8000/api/v1/projects/', {
-        headers: { 'Authorization': token ? `Bearer ${token}` : '' }
+        headers: getAuthHeaders()
       });
       if (res.ok) {
         const data = await res.json();
@@ -56,16 +56,16 @@ export const ProjectManagement = ({ onShowToast }) => {
 
     setProjects([newProj, ...projects]);
 
-    const token = sessionStorage.getItem('aureon_jwt_access_token');
     try {
       await fetch('http://127.0.0.1:8000/api/v1/projects/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': token ? `Bearer ${token}` : ''
+          ...getAuthHeaders()
         },
         body: JSON.stringify(newProj)
       });
+      fetchProjects();
     } catch (err) {}
 
     logAuditEvent({

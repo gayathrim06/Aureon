@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { KeyRound, ShieldAlert, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { getAuthHeaders } from '../../services/apiClient';
 
 export const ForceChangePasswordModal = ({ isOpen, onPasswordChanged }) => {
   const { user, updateProfile, showToast } = useAuth();
@@ -22,7 +23,7 @@ export const ForceChangePasswordModal = ({ isOpen, onPasswordChanged }) => {
     }
 
     if (newPassword.length < 8) {
-      setErrorMsg('New password must be at least 8 characters long.');
+      setErrorMsg('New password must be at least 8 characters.');
       return;
     }
 
@@ -37,14 +38,13 @@ export const ForceChangePasswordModal = ({ isOpen, onPasswordChanged }) => {
     }
 
     setIsSubmitting(true);
-    const token = sessionStorage.getItem('aureon_jwt_access_token') || sessionStorage.getItem('aureon_access_token');
 
     try {
       const res = await fetch('http://127.0.0.1:8000/api/v1/auth/change-password/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': token ? `Bearer ${token}` : ''
+          ...getAuthHeaders()
         },
         body: JSON.stringify({
           old_password: oldPassword,

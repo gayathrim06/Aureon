@@ -4,26 +4,21 @@ import { Badge } from '../components/common/Badge';
 import { Button } from '../components/common/Button';
 import { Modal } from '../components/common/Modal';
 import { CheckSquare, Plus, Filter, Search, UserCheck, Layers, ArrowRight, Code2, Bug } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
+import { getAuthHeaders } from '../services/apiClient';
 
 export const Tasks = () => {
   const { user, showToast } = useAuth();
-  const [taskList, setTaskList] = useState([
-    { id: 'TASK-201', title: 'Implement REST API OAuth2 Authentication', project: 'Aureon Core API Gateway', assignee: 'Jiya Thomas (Backend Dev)', assigned_by: 'David Chen (Tech Lead)', status: 'In Progress', priority: 'HIGH', module: 'Backend REST API' },
-    { id: 'TASK-202', title: 'Design High-Contrast Theme System in React', project: 'Aureon Core API Gateway', assignee: 'Sainu Anna Sajan (Frontend Dev)', assigned_by: 'David Chen (Tech Lead)', status: 'In Progress', priority: 'HIGH', module: 'Frontend UI/UX' },
-    { id: 'TASK-203', title: 'Automated Pytest & SonarQube Quality Scanner', project: 'SonarQube Scanner', assignee: 'Venu QA (QA Lead)', assigned_by: 'Krishna Deepesh (Tech Lead)', status: 'Completed', priority: 'HIGH', module: 'QA Test Automation' },
-    { id: 'TASK-204', title: 'Cloud Telemetry Prometheus Collector', project: 'Cloud Telemetry Mesh', assignee: 'Alex Rivera (DevOps)', assigned_by: 'Krishna Deepesh (Tech Lead)', status: 'In Progress', priority: 'MEDIUM', module: 'Infrastructure' }
-  ]);
+  const [taskList, setTaskList] = useState([]);
 
   const [filter, setFilter] = useState('All');
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   // Team Lead Work Distribution State
   const [taskTitle, setTaskTitle] = useState('');
-  const [taskProject, setTaskProject] = useState('Aureon Core API Gateway');
+  const [taskProject, setTaskProject] = useState('Verona Organic');
   const [selectedAssignee, setSelectedAssignee] = useState('');
   const [taskPriority, setTaskPriority] = useState('HIGH');
-  const [taskModule, setTaskModule] = useState('Backend API');
+  const [taskModule, setTaskModule] = useState('Frontend UI');
 
   const teamMembers = [
     { id: 'usr_dev_1', name: 'Sainu Anna Sajan (Frontend Dev)', role: 'Developer' },
@@ -35,10 +30,9 @@ export const Tasks = () => {
   ];
 
   const fetchTasks = async () => {
-    const token = sessionStorage.getItem('aureon_jwt_access_token');
     try {
       const res = await fetch('http://127.0.0.1:8000/api/v1/tasks/', {
-        headers: { 'Authorization': token ? `Bearer ${token}` : '' }
+        headers: getAuthHeaders()
       });
       if (res.ok) {
         const data = await res.json();
@@ -73,13 +67,12 @@ export const Tasks = () => {
       module: taskModule
     };
 
-    const token = sessionStorage.getItem('aureon_jwt_access_token');
     try {
       await fetch('http://127.0.0.1:8000/api/v1/tasks/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': token ? `Bearer ${token}` : ''
+          ...getAuthHeaders()
         },
         body: JSON.stringify({
           title: taskTitle,
@@ -89,11 +82,12 @@ export const Tasks = () => {
           module: taskModule
         })
       });
+      fetchTasks();
     } catch (err) {
       // Fallback
     }
 
-    setTaskList([newTask, ...taskList]);
+    setTaskList(prev => [newTask, ...prev]);
     showToast(`Task '${taskTitle}' assigned to ${selectedAssignee.split(' (')[0]}.`, 'success');
     
     setTaskTitle('');
@@ -109,59 +103,62 @@ export const Tasks = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-extrabold tracking-tight">Technical Work Distribution & Task Board</h2>
-          <p className="text-xs text-slate-500 dark:text-slate-400 warm:text-[#69523c] mt-1">
-            Team Leads assign technical work modules to Frontend Devs, Backend Devs, and QA Testers.
+          <p className="text-sm text-slate-500 dark:text-slate-400 warm:text-[#69523c] mt-1">
+            Engineering team execution board, ticket assignments, and workflow status.
           </p>
         </div>
         {isLeadOrAdmin && (
-          <Button variant="primary" icon={Plus} onClick={() => setIsModalOpen(true)}>
-            Team Lead: Distribute Technical Task
+          <Button variant="primary" onClick={() => setIsModalOpen(true)} className="flex items-center gap-2">
+            <Plus className="w-4 h-4" /> Assign New Technical Task
           </Button>
         )}
       </div>
 
-      <Card>
-        <CardHeader className="flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <CardTitle icon={CheckSquare}>Technical Task Allocation Matrix</CardTitle>
-          <div className="flex flex-wrap gap-2">
-            {['All', 'In Progress', 'Completed', 'Overdue'].map(tab => (
-              <button
-                key={tab}
-                onClick={() => setFilter(tab)}
-                className={`px-3 py-1 text-xs rounded-xl font-bold transition-all ${
-                  filter === tab
-                    ? 'bg-indigo-600 dark:bg-indigo-600 warm:bg-[#b45309] text-white shadow-sm'
-                    : 'bg-slate-100 dark:bg-slate-800 warm:bg-[#f3e8d2] text-slate-700 dark:text-slate-300 warm:text-[#342314]'
-                }`}
-              >
-                {tab}
-              </button>
-            ))}
-          </div>
-        </CardHeader>
+      {/* Task Filters */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-2">
+        {['All', 'TODO', 'In Progress', 'Completed'].map((status) => (
+          <Button
+            key={status}
+            variant={filter === status ? 'primary' : 'ghost'}
+            size="sm"
+            onClick={() => setFilter(status)}
+            className="rounded-full px-4"
+          >
+            {status}
+          </Button>
+        ))}
+      </div>
 
-        <div className="space-y-3 p-4">
-          {filtered.map(t => (
-            <div key={t.id} className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900 warm:bg-[#f3e8d2] border border-slate-200 dark:border-slate-800 warm:border-[#cbb68e] flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-xs">
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-mono font-bold text-indigo-600 dark:text-indigo-400 warm:text-[#b45309]">{t.id}</span>
-                  <h4 className="text-sm font-bold text-slate-900 dark:text-white warm:text-[#342314]">{t.title}</h4>
-                </div>
-                <p className="text-xs text-slate-500 dark:text-slate-400 warm:text-[#69523c] mt-1 flex flex-wrap items-center gap-2">
-                  <span>Project: <strong>{t.project}</strong></span>
-                  <span>•</span>
-                  <span>Assignee: <strong className="text-indigo-600 dark:text-indigo-400 warm:text-[#b45309]">{t.assignee}</strong></span>
-                  <span>•</span>
-                  <span>Lead: <strong>{t.assigned_by || 'David Chen (Tech Lead)'}</strong></span>
-                </p>
-              </div>
-              <div className="flex items-center gap-2 shrink-0">
-                <Badge variant={t.priority === 'HIGH' ? 'error' : 'warning'} size="sm">{t.priority}</Badge>
-                <Badge variant={t.status === 'Completed' ? 'success' : 'brand'} size="sm">{t.status}</Badge>
-              </div>
+      {/* Task List */}
+      <Card className="overflow-hidden border border-slate-200 dark:border-slate-800 warm:border-[#cbb68e]">
+        <div className="divide-y divide-slate-100 dark:divide-slate-800 warm:divide-[#d9cbb0]">
+          {filtered.length === 0 ? (
+            <div className="p-8 text-center text-slate-500 text-sm">
+              No tasks found. Click "Assign New Technical Task" to distribute work.
             </div>
-          ))}
+          ) : (
+            filtered.map((t) => (
+              <div key={t.id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-slate-50 dark:hover:bg-slate-800/40 warm:hover:bg-[#f3e8d2] transition-colors">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-mono font-bold text-indigo-600 dark:text-indigo-400 warm:text-[#b45309]">{t.id}</span>
+                    <h4 className="text-sm font-bold text-slate-900 dark:text-white warm:text-[#342314]">{t.title}</h4>
+                  </div>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 warm:text-[#69523c] mt-1 flex flex-wrap items-center gap-2">
+                    <span>Project: <strong>{t.project || t.project_name || 'Verona Organic'}</strong></span>
+                    <span>•</span>
+                    <span>Assignee: <strong className="text-indigo-600 dark:text-indigo-400 warm:text-[#b45309]">{t.assignee || t.assignee_name || 'Unassigned'}</strong></span>
+                    <span>•</span>
+                    <span>Lead: <strong>{t.assigned_by || t.assigned_team || 'David Chen (Tech Lead)'}</strong></span>
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <Badge variant={t.priority === 'HIGH' ? 'error' : 'warning'} size="sm">{t.priority}</Badge>
+                  <Badge variant={t.status === 'Completed' ? 'success' : 'brand'} size="sm">{t.status}</Badge>
+                </div>
+              </div>
+            ))
+          )}
         </div>
       </Card>
 
@@ -187,9 +184,9 @@ export const Tasks = () => {
               onChange={(e) => setTaskProject(e.target.value)}
               className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 warm:border-[#b8a074] bg-slate-50 dark:bg-slate-950 warm:bg-[#f3e8d2] text-xs font-sans text-slate-900 dark:text-white warm:text-[#342314]"
             >
+              <option value="Verona Organic">Verona Organic</option>
               <option value="Aureon Core API Gateway">Aureon Core API Gateway</option>
               <option value="Cloud Telemetry Mesh">Cloud Telemetry Mesh</option>
-              <option value="SonarQube Vulnerability Scanner">SonarQube Vulnerability Scanner</option>
             </select>
           </div>
 

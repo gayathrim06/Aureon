@@ -4,6 +4,7 @@ import { DataTable } from '../../components/common/DataTable';
 import { useAuth } from '../../context/AuthContext';
 import { logAuditEvent } from '../../services/auditLogger';
 import { ClipboardList, Plus, UserCheck, CheckCircle2, Clock } from 'lucide-react';
+import { getAuthHeaders } from '../../services/apiClient';
 
 export const LeadTaskAllocation = ({ onShowToast }) => {
   const { user } = useAuth();
@@ -25,8 +26,7 @@ export const LeadTaskAllocation = ({ onShowToast }) => {
 
   const fetchLeadTasks = async () => {
     setLoading(true);
-    const token = sessionStorage.getItem('aureon_jwt_access_token');
-    const headers = { 'Authorization': token ? `Bearer ${token}` : '' };
+    const headers = getAuthHeaders();
 
     try {
       const res = await fetch('http://127.0.0.1:8000/api/v1/tasks/', { headers });
@@ -55,13 +55,12 @@ export const LeadTaskAllocation = ({ onShowToast }) => {
     if (!taskId) return;
     setTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: newStatus } : t));
 
-    const token = sessionStorage.getItem('aureon_jwt_access_token');
     try {
       await fetch(`http://127.0.0.1:8000/api/v1/tasks/${taskId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': token ? `Bearer ${token}` : ''
+          ...getAuthHeaders()
         },
         body: JSON.stringify({ status: newStatus })
       });

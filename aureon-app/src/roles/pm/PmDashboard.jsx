@@ -8,6 +8,7 @@ import {
   CheckCircle2, Shield, UserCheck, Code2, AlertTriangle, Send, Edit3, ArrowRight,
   Filter, Sparkles, ChevronRight, Hash, Play, PauseCircle, CheckSquare2, XSquare
 } from 'lucide-react';
+import { getAuthHeaders } from '../../services/apiClient';
 
 export const PmDashboard = ({ onNavigate }) => {
   const { user, showToast } = useAuth();
@@ -64,10 +65,9 @@ export const PmDashboard = ({ onNavigate }) => {
 
   // Load Projects from Flask Backend API
   const fetchProjects = async () => {
-    const token = sessionStorage.getItem('aureon_jwt_access_token');
     try {
       const res = await fetch('http://127.0.0.1:8000/api/v1/projects/', {
-        headers: { 'Authorization': token ? `Bearer ${token}` : '' }
+        headers: getAuthHeaders()
       });
       if (res.ok) {
         const data = await res.json();
@@ -144,16 +144,16 @@ export const PmDashboard = ({ onNavigate }) => {
     setProjectsList(updatedProjects);
 
     // Save to Backend API
-    const token = sessionStorage.getItem('aureon_jwt_access_token');
     try {
       await fetch('http://127.0.0.1:8000/api/v1/projects/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': token ? `Bearer ${token}` : ''
+          ...getAuthHeaders()
         },
         body: JSON.stringify(newProject)
       });
+      fetchProjects();
     } catch (err) {
       // Fallback
     }

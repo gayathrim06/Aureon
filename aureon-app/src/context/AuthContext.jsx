@@ -32,9 +32,19 @@ export const AuthProvider = ({ children }) => {
                        localStorage.getItem('aureon_access_token');
     
     if (savedToken) {
-      setAccessToken(savedToken);
-      sessionStorage.setItem('aureon_jwt_access_token', savedToken);
-      sessionStorage.setItem('aureon_access_token', savedToken);
+      const isReal = typeof savedToken === 'string' && savedToken.startsWith('ey') && savedToken.split('.').length === 3;
+      if (isReal) {
+        setAccessToken(savedToken);
+        sessionStorage.setItem('aureon_jwt_access_token', savedToken);
+        sessionStorage.setItem('aureon_access_token', savedToken);
+      } else {
+        sessionStorage.removeItem('aureon_jwt_access_token');
+        sessionStorage.removeItem('aureon_access_token');
+        localStorage.removeItem('aureon_jwt_access_token');
+        localStorage.removeItem('aureon_access_token');
+        localStorage.removeItem(TOKEN_KEY);
+        sessionStorage.removeItem(TOKEN_KEY);
+      }
     }
 
     if (savedUser) {

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Breadcrumb } from '../../components/common/Breadcrumb';
 import { Users, Activity, AlertTriangle, CheckCircle2, GitCommit, ShieldCheck, CheckSquare, Clock } from 'lucide-react';
+import { getAuthHeaders } from '../../services/apiClient';
 
 export const TeamWorkload = () => {
   const [projectsList, setProjectsList] = useState([]);
@@ -13,10 +14,10 @@ export const TeamWorkload = () => {
     { id: 'usr_lead_3', name: 'Vikram Patel', role: 'Team Lead', title: 'Principal Backend Engineer', email: 'vikram.p@aureon.com' }
   ];
 
-  // Base Developers & QA (Clean baseline, stats calculated dynamically from backend database)
+  // Base Engineering Roster (Frontend Devs, Backend Devs, QA Testers)
   const baseMembers = [
     { id: 'usr_dev_1', name: 'Ram Kumar', role: 'Frontend UI Engineer', type: 'DEV' },
-    { id: 'usr_dev_2', name: 'Alex Rivera', role: 'DevOps & Cloud Architect', type: 'DEV' },
+    { id: 'usr_dev_2', name: 'Jiya Thomas', role: 'Backend API Developer', type: 'DEV' },
     { id: 'usr_dev_3', name: 'Priya Sharma', role: 'Database & Analytics Engineer', type: 'DEV' },
     { id: 'usr_dev_4', name: 'Michael Brown', role: 'Security Engineering Lead', type: 'DEV' },
     { id: 'usr_dev_5', name: 'Sneha Roy', role: 'Flutter & Mobile Engineer', type: 'DEV' },
@@ -27,8 +28,7 @@ export const TeamWorkload = () => {
 
   useEffect(() => {
     const fetchData = async () => {
-      const token = sessionStorage.getItem('aureon_jwt_access_token');
-      const headers = { 'Authorization': token ? `Bearer ${token}` : '' };
+      const headers = getAuthHeaders();
       try {
         const [projRes, taskRes] = await Promise.all([
           fetch('http://127.0.0.1:8000/api/v1/projects/', { headers }),

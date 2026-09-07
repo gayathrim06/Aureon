@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Breadcrumb } from '../../components/common/Breadcrumb';
 import { useAuth } from '../../context/AuthContext';
 import { FolderKanban, Activity, CheckCircle2, ShieldCheck, Users, CheckSquare, Layers } from 'lucide-react';
+import { getAuthHeaders } from '../../services/apiClient';
 
 export const LeadAssignedProjects = () => {
   const { user } = useAuth();
@@ -28,8 +29,7 @@ export const LeadAssignedProjects = () => {
 
   const fetchAssignedProjectsAndTasks = async () => {
     setLoading(true);
-    const token = sessionStorage.getItem('aureon_jwt_access_token');
-    const headers = { 'Authorization': token ? `Bearer ${token}` : '' };
+    const headers = getAuthHeaders();
 
     try {
       const [pRes, tRes] = await Promise.all([

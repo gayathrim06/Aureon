@@ -4,6 +4,7 @@ import { Modal } from '../../components/common/Modal';
 import { useAuth } from '../../context/AuthContext';
 import { logAuditEvent } from '../../services/auditLogger';
 import { Award, CheckCircle2, AlertTriangle, Clock, Plus, Filter, FolderKanban, Target, ShieldCheck, Flag } from 'lucide-react';
+import { getAuthHeaders } from '../../services/apiClient';
 
 export const MilestoneTracker = ({ onShowToast }) => {
   const { user } = useAuth();
@@ -23,8 +24,7 @@ export const MilestoneTracker = ({ onShowToast }) => {
   });
 
   const fetchProjectsAndMilestones = async () => {
-    const token = sessionStorage.getItem('aureon_jwt_access_token');
-    const headers = { 'Authorization': token ? `Bearer ${token}` : '' };
+    const headers = getAuthHeaders();
 
     try {
       const pRes = await fetch('http://127.0.0.1:8000/api/v1/projects/', { headers });

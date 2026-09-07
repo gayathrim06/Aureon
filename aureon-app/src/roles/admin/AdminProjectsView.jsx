@@ -8,11 +8,11 @@ export const AdminProjectsView = () => {
   const [projects, setProjects] = useState(initialProjects);
 
   const fetchLiveProjects = async () => {
-    const token = sessionStorage.getItem('aureon_jwt_access_token') || localStorage.getItem('aureon_jwt_access_token') || sessionStorage.getItem('aureon_access_token');
+    const rawToken = sessionStorage.getItem('aureon_jwt_access_token') || localStorage.getItem('aureon_jwt_access_token') || sessionStorage.getItem('aureon_access_token');
+    const isRealJwt = rawToken && rawToken.startsWith('ey') && rawToken.split('.').length === 3;
+    const headers = isRealJwt ? { 'Authorization': `Bearer ${rawToken}` } : {};
     try {
-      const res = await fetch('http://127.0.0.1:8000/api/v1/projects/', {
-        headers: { 'Authorization': token ? `Bearer ${token}` : '' }
-      });
+      const res = await fetch('http://127.0.0.1:8000/api/v1/projects/', { headers });
       if (res.ok) {
         const data = await res.json();
         const liveList = data.projects || [];
