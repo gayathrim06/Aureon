@@ -205,9 +205,12 @@ export const AppRouter = () => {
         case 'Users': return <UserManagement onShowToast={showToast} />;
         case 'AuditLogs': return <AuditLogsView />;
         case 'RolesPermissions': return <RolesPermissions />;
-        case 'Organizations': return <OrganizationView />;
+        case 'Organizations':
+        case 'Organization': return <OrganizationView />;
         case 'Teams': return <TeamsView />;
         case 'Projects': return <AdminProjectsView />;
+        case 'Sprints': return <SprintPlanner onShowToast={showToast} />;
+        case 'Tasks': return <TaskBreakdown onShowToast={showToast} />;
         case 'Repositories': return <RepositoriesHub />;
         case 'SonarQube': return <SonarQubeAdmin />;
         case 'SystemLogs': return <SystemLogsView />;

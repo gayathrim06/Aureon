@@ -188,11 +188,25 @@ export const DataTable = ({
                       className="rounded border-slate-300 dark:border-slate-700 text-indigo-600 focus:ring-indigo-500"
                     />
                   </td>
-                  {normalizedColumns.map(col => (
-                    <td key={col.key} className="p-3.5">
-                      {col.render ? col.render(row[col.key], row) : row[col.key]}
-                    </td>
-                  ))}
+                  {normalizedColumns.map(col => {
+                    let content = row[col.key];
+                    if (col.render) {
+                      try {
+                        content = col.render(row[col.key], row);
+                      } catch (e1) {
+                        try {
+                          content = col.render(row, row[col.key]);
+                        } catch (e2) {
+                          content = String(row[col.key] ?? '');
+                        }
+                      }
+                    }
+                    return (
+                      <td key={col.key} className="p-3.5">
+                        {content}
+                      </td>
+                    );
+                  })}
                 </tr>
               ))
             )}

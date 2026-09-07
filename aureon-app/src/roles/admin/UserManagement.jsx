@@ -121,60 +121,80 @@ export const UserManagement = ({ onShowToast }) => {
     {
       header: 'USER NAME',
       accessor: 'name',
-      cell: (row) => (
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-full bg-indigo-600 dark:bg-indigo-600 warm:bg-[#b45309] text-white font-bold text-xs flex items-center justify-center">
-            {row.name.charAt(0)}
+      key: 'name',
+      cell: (val, row) => {
+        const item = row || (typeof val === 'object' && val !== null ? val : {});
+        const name = (typeof val === 'string' && val ? val : item.name) || item.full_name || item.username || 'User';
+        const email = item.email || '';
+        return (
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-full bg-indigo-600 dark:bg-indigo-600 warm:bg-[#b45309] text-white font-bold text-xs flex items-center justify-center">
+              {(name || 'U').charAt(0).toUpperCase()}
+            </div>
+            <div>
+              <div className="font-bold text-slate-900 dark:text-white warm:text-[#342314] text-xs">{name}</div>
+              <div className="text-[11px] text-slate-500 dark:text-slate-400 warm:text-[#69523c] font-mono">{email}</div>
+            </div>
           </div>
-          <div>
-            <div className="font-bold text-slate-900 dark:text-white warm:text-[#342314] text-xs">{row.name}</div>
-            <div className="text-[11px] text-slate-500 dark:text-slate-400 warm:text-[#69523c] font-mono">{row.email}</div>
-          </div>
-        </div>
-      )
+        );
+      }
     },
     {
       header: 'RBAC ROLE',
       accessor: 'role',
-      cell: (row) => (
-        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-indigo-50 dark:bg-indigo-950/60 warm:bg-[#f3e8d2] text-indigo-600 dark:text-indigo-400 warm:text-[#b45309] border border-indigo-200 dark:border-indigo-800 warm:border-[#b8a074]">
-          {row.role.replace('ROLE_', '')}
-        </span>
-      )
+      key: 'role',
+      cell: (val, row) => {
+        const rStr = String((typeof val === 'string' && val ? val : row?.role) || 'ROLE_DEV').replace('ROLE_', '');
+        return (
+          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-indigo-50 dark:bg-indigo-950/60 warm:bg-[#f3e8d2] text-indigo-600 dark:text-indigo-400 warm:text-[#b45309] border border-indigo-200 dark:border-indigo-800 warm:border-[#b8a074]">
+            {rStr}
+          </span>
+        );
+      }
     },
     {
       header: 'DEPARTMENT',
       accessor: 'department',
-      cell: (row) => <span className="text-xs text-slate-700 dark:text-slate-300 warm:text-[#342314]">{row.department}</span>
+      key: 'department',
+      cell: (val, row) => <span className="text-xs text-slate-700 dark:text-slate-300 warm:text-[#342314]">{(typeof val === 'string' && val ? val : row?.department) || 'Engineering'}</span>
     },
     {
       header: 'STATUS',
       accessor: 'status',
-      cell: (row) => (
-        <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold ${row.status === 'ACTIVE' ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-500 border border-rose-500/20'}`}>
-          {row.status}
-        </span>
-      )
+      key: 'status',
+      cell: (val, row) => {
+        const st = (typeof val === 'string' && val ? val : row?.status) || 'ACTIVE';
+        return (
+          <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold ${st === 'ACTIVE' ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-500 border border-rose-500/20'}`}>
+            {st}
+          </span>
+        );
+      }
     },
     {
       header: 'LAST ACTIVE',
       accessor: 'lastActive',
-      cell: (row) => <span className="text-xs text-slate-500 dark:text-slate-400 warm:text-[#69523c] font-mono">{row.lastActive}</span>
+      key: 'lastActive',
+      cell: (val, row) => <span className="text-xs text-slate-500 dark:text-slate-400 warm:text-[#69523c] font-mono">{(typeof val === 'string' && val ? val : row?.lastActive) || 'Active Now'}</span>
     },
     {
       header: 'ADMIN ACTIONS',
       accessor: 'id',
-      cell: (row) => (
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => handleDeleteUser(row)}
-            className="p-1 text-rose-500 hover:bg-rose-500/10 rounded transition-colors"
-            title="Deprovision User"
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-          </button>
-        </div>
-      )
+      key: 'id',
+      cell: (val, row) => {
+        const targetRow = row || { id: val, name: 'User' };
+        return (
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => handleDeleteUser(targetRow)}
+              className="p-1 text-rose-500 hover:bg-rose-500/10 rounded transition-colors"
+              title="Deprovision User"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        );
+      }
     }
   ];
 

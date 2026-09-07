@@ -33,6 +33,8 @@ export const Sidebar = ({ activeTab, onSelectTab }) => {
       { id: 'RolesPermissions', label: 'Roles & Permissions', icon: Shield },
       { id: 'Teams', label: 'Teams', icon: Users2 },
       { id: 'Projects', label: 'Projects', icon: FolderKanban },
+      { id: 'Sprints', label: 'Sprints', icon: Layers },
+      { id: 'Tasks', label: 'Tasks', icon: CheckSquare },
       { id: 'Repositories', label: 'Repositories', icon: GitBranch },
       { id: 'SonarQube', label: 'SonarQube', icon: Cpu },
       { id: 'AuditLogs', label: 'Audit Logs', icon: FileText },
