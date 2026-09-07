@@ -87,6 +87,11 @@ class ViewErrorBoundary extends React.Component {
           <div className="w-12 h-12 rounded-full bg-rose-100 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 mx-auto flex items-center justify-center font-bold text-xl">!</div>
           <h2 className="text-lg font-extrabold text-slate-900 dark:text-white">Workspace Module Render Error</h2>
           <p className="text-xs text-slate-500 dark:text-slate-400">An unexpected component error occurred while rendering this module view.</p>
+          {this.state.error && (
+            <div className="p-2 bg-rose-50 dark:bg-rose-950/40 rounded text-rose-600 dark:text-rose-400 text-[11px] font-mono text-left max-h-32 overflow-y-auto border border-rose-200 dark:border-rose-900/40">
+              {this.state.error.message || String(this.state.error)}
+            </div>
+          )}
           <button
             onClick={() => { this.setState({ hasError: false }); this.props.onReset && this.props.onReset(); }}
             className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-md transition-all"

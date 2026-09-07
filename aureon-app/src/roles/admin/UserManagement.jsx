@@ -3,6 +3,7 @@ import { Breadcrumb } from '../../components/common/Breadcrumb';
 import { DataTable } from '../../components/common/DataTable';
 import { Modal } from '../../components/common/Modal';
 import { useAuth } from '../../context/AuthContext';
+import { UserPlus, Trash2, RefreshCw } from 'lucide-react';
 import { getAuthHeaders } from '../../services/apiClient';
 
 const REAL_20_USERS = [
