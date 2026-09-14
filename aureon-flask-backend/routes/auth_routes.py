@@ -13,7 +13,12 @@ def login():
     identifier = (data.get('email') or data.get('username') or '').strip().lower()
     password = data.get('password', '')
 
-    user = User.query.filter((User.email == identifier) | (User.username == identifier)).first()
+    user = User.query.filter(
+        db.or_(
+            db.func.lower(User.email) == identifier,
+            db.func.lower(User.username) == identifier
+        )
+    ).first()
     if not user or not user.check_password(password):
         if user:
             user.failed_login_attempts = (user.failed_login_attempts or 0) + 1
@@ -65,6 +70,62 @@ def login():
         'user': user.to_dict()
     }), 200
 
+@auth_bp.route('/check-email', methods=['GET', 'POST'])
+@auth_bp.route('/check-email/', methods=['GET', 'POST'])
+def check_email():
+    if request.method == 'POST':
+        data = request.get_json() or {}
+        email = (data.get('email') or data.get('identifier') or '').strip().lower()
+    else:
+        email = (request.args.get('email') or request.args.get('identifier') or '').strip().lower()
+
+    if not email:
+        return jsonify({
+            'success': False,
+            'exists': False,
+            'available': False,
+            'is_corporate': False,
+            'message': 'Corporate email is required.'
+        }), 400
+
+    is_corporate = email.endswith('@aureon.com')
+    user = User.query.filter(
+        db.or_(
+            db.func.lower(User.email) == email,
+            db.func.lower(User.username) == email
+        )
+    ).first()
+
+    if user:
+        return jsonify({
+            'success': True,
+            'exists': True,
+            'available': False,
+            'is_corporate': is_corporate,
+            'email': user.email,
+            'user': {
+                'id': str(user.id),
+                'full_name': user.full_name,
+                'role_name': user.role_name,
+                'role_code': user.role.code if user.role else 'ROLE_DEV',
+                'department': user.department,
+                'designation': user.designation,
+                'account_status': user.account_status or 'ACTIVE',
+                'is_active': user.is_active
+            },
+            'message': f"Account registered to {user.full_name} ({user.role_name})."
+        }), 200
+    else:
+        return jsonify({
+            'success': True,
+            'exists': False,
+            'available': is_corporate,
+            'is_corporate': is_corporate,
+            'email': email,
+            'user': None,
+            'message': 'Email is available for registration.' if is_corporate else 'Unauthorized corporate domain.'
+        }), 200
+
 @auth_bp.route('/register', methods=['POST'])
 @auth_bp.route('/register/', methods=['POST'])
 def register():
@@ -90,7 +151,10 @@ def register():
     if not email or not password or not full_name:
         return jsonify({'success': False, 'message': 'Full name, email, and password are required.'}), 400
 
-    if User.query.filter_by(email=email).first():
+    if not email.endswith('@aureon.com'):
+        return jsonify({'success': False, 'message': 'Only corporate email addresses ending with @aureon.com are permitted.'}), 400
+
+    if User.query.filter(db.func.lower(User.email) == email).first():
         return jsonify({'success': False, 'message': 'User with this email already exists.'}), 400
 
     # Look up Role ID in tbl_role (e.g. ROLE_PM, ROLE_LEAD, ROLE_DEV, ROLE_QA)
@@ -158,6 +222,9 @@ def forgot_password():
 
     if not email or not dob_str or not best_friend or not new_password:
         return jsonify({'success': False, 'message': 'Email, date of birth, best friend name, and new password are required.'}), 400
+
+    if not email.endswith('@aureon.com'):
+        return jsonify({'success': False, 'message': 'Only @aureon.com corporate email addresses are permitted.'}), 400
 
     user = User.query.filter_by(email=email).first()
     if not user:

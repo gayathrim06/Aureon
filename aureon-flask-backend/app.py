@@ -35,9 +35,12 @@ def create_app():
             db.engine.connect()
             print(f"Connected to Primary Database: {Config.SQLALCHEMY_DATABASE_URI.split('@')[-1] if '@' in Config.SQLALCHEMY_DATABASE_URI else Config.SQLALCHEMY_DATABASE_URI}")
     except Exception as e:
-        print(f"PostgreSQL connection offline ({str(e)}). Using local SQLite fallback database...")
-        app.config['SQLALCHEMY_DATABASE_URI'] = Config.FALLBACK_SQLITE_URI
         db.init_app(app)
+
+    # Automatically synchronize schema across PostgreSQL and SQLite
+    from services.schema_sync import sync_db_schema
+    with app.app_context():
+        sync_db_schema()
 
     # Sanitize invalid/mock Authorization headers before Flask-JWT processing
     @app.before_request
@@ -87,8 +90,9 @@ def create_app():
 
     return app
 
+app = create_app()
+
 if __name__ == '__main__':
-    app = create_app()
     with app.app_context():
         seed_database()
     print("[AUREON BACKEND] Starting Aureon Flask REST API Backend on http://127.0.0.1:8000 ...")

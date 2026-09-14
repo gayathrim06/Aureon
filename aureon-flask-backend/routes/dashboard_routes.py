@@ -1,4 +1,5 @@
-from flask import Blueprint, jsonify
+import uuid
+from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from datetime import datetime
 from extensions import db
@@ -6,11 +7,22 @@ from models import User, Project, Team, Task, Risk, Repository, Commit, CodeAnal
 
 dashboard_bp = Blueprint('dashboards', __name__, url_prefix='/api/v1/dashboards')
 
+def _parse_uuid(val):
+    if not val:
+        return None
+    if isinstance(val, uuid.UUID):
+        return val
+    try:
+        return uuid.UUID(str(val))
+    except Exception:
+        return None
+
 def _get_jwt_user():
     user_id = get_jwt_identity()
     user = None
     if user_id:
-        user = User.query.get(user_id)
+        u_uuid = _parse_uuid(user_id)
+        user = User.query.get(u_uuid or user_id)
     return user
 
 @dashboard_bp.route('/admin', methods=['GET'])
@@ -182,7 +194,21 @@ def get_lead_dashboard():
 @jwt_required(optional=True)
 def get_dev_dashboard():
     today_str = datetime.utcnow().strftime('%Y-%m-%d')
-    user = _get_jwt_user()
+    user = None
+    email_param = request.args.get('email')
+    user_id_param = request.args.get('user_id')
+    name_param = request.args.get('name')
+
+    if email_param:
+        user = User.query.filter(User.email.ilike(email_param.strip())).first()
+    elif user_id_param:
+        u_uuid = _parse_uuid(user_id_param)
+        user = User.query.get(u_uuid or user_id_param)
+    elif name_param:
+        user = User.query.filter((User.full_name.ilike(f"%{name_param.strip()}%")) | (User.username.ilike(f"%{name_param.strip()}%"))).first()
+
+    if not user:
+        user = _get_jwt_user()
     if not user:
         dev_role = Role.query.filter_by(code='ROLE_DEV').first()
         if dev_role:
@@ -190,7 +216,9 @@ def get_dev_dashboard():
         if not user:
             user = User.query.first()
 
-    assigned_tasks = Task.query.filter_by(assigned_to_id=user.id).all() if user else []
+    assigned_tasks = Task.query.filter(
+        (Task.assigned_to_id == user.id) | (Task.created_by_id == user.id)
+    ).all() if user else []
     completed_tasks = [t for t in assigned_tasks if t.status in ('COMPLETED', 'DONE')]
     pending_tasks = [t for t in assigned_tasks if t.status in ('TODO', 'IN_PROGRESS')]
     overdue_tasks = [t for t in assigned_tasks if t.status not in ('COMPLETED', 'DONE') and t.due_date and str(t.due_date) < today_str]

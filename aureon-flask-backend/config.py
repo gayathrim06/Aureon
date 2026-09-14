@@ -1,10 +1,20 @@
 import os
 from datetime import timedelta
 
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
+
 class Config:
     SECRET_KEY = os.getenv('SECRET_KEY', 'aureon_enterprise_secret_key_super_secure_32bytes_2026_prod')
     JWT_SECRET_KEY = os.getenv('JWT_SECRET_KEY', 'aureon_jwt_secret_key_super_secure_32bytes_2026_prod')
     JWT_ACCESS_TOKEN_EXPIRES = timedelta(hours=24)
+
+    # GitHub REST API Integration Configuration
+    GITHUB_TOKEN = os.getenv('GITHUB_TOKEN', '').strip()
+    GITHUB_API_URL = os.getenv('GITHUB_API_URL', 'https://api.github.com').rstrip('/')
 
     # Database Configuration: PostgreSQL default with SQLite fallback for instant local dev
     POSTGRES_USER = os.getenv('POSTGRES_USER', 'postgres')
@@ -22,3 +32,4 @@ class Config:
     # Enable fallback to SQLite if PostgreSQL connection fails during init
     FALLBACK_SQLITE_URI = 'sqlite:///aureon_flask.db'
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+

@@ -135,10 +135,12 @@ class Project(db.Model):
         manager_user = User.query.get(self.manager_id) if self.manager_id else None
 
         members_query = ProjectMember.query.filter_by(project_id=self.id).all()
+        seen_user_ids = set()
         member_users = []
         for m in members_query:
             u = User.query.get(m.user_id)
-            if u:
+            if u and u.id not in seen_user_ids:
+                seen_user_ids.add(u.id)
                 member_users.append({
                     'id': str(u.id),
                     'name': u.display_name,
@@ -146,6 +148,20 @@ class Project(db.Model):
                     'role': u.role_name,
                     'designation': u.designation
                 })
+
+        # Also dynamically include members from any squads/teams assigned to this project
+        teams_query = Team.query.filter_by(project_id=self.id).all()
+        for t in teams_query:
+            for tm in TeamMember.query.filter_by(team_id=t.id).all():
+                if tm.user and tm.user.id not in seen_user_ids:
+                    seen_user_ids.add(tm.user.id)
+                    member_users.append({
+                        'id': str(tm.user.id),
+                        'name': tm.user.display_name,
+                        'email': tm.user.email,
+                        'role': tm.user.role_name,
+                        'designation': tm.user.designation
+                    })
 
         return {
             'id': str(self.id),
@@ -251,27 +267,95 @@ class Sprint(db.Model):
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name = db.Column(db.String(100), nullable=False)
     goal = db.Column(db.Text)
-    status = db.Column(db.String(30), default='PLANNED')
+    status = db.Column(db.String(30), default='PLANNED')  # PLANNED, ACTIVE, COMPLETED, CANCELLED
     start_date = db.Column(db.Date)
     end_date = db.Column(db.Date)
     project_id = db.Column(UUID(as_uuid=True), db.ForeignKey('tbl_project.id'), nullable=True)
     team_id = db.Column(UUID(as_uuid=True), db.ForeignKey('tbl_team.id'), nullable=True)
     created_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey('tbl_user.id'), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    completion_date = db.Column(db.Date, nullable=True)
+    completion_notes = db.Column(db.Text, nullable=True)
+    carry_forward_tasks_count = db.Column(db.Integer, default=0)
+
+    project = db.relationship('Project', foreign_keys=[project_id])
+    team = db.relationship('Team', foreign_keys=[team_id])
+    creator = db.relationship('User', foreign_keys=[created_by_id])
 
     def to_dict(self):
-        proj = Project.query.get(self.project_id) if self.project_id else None
+        proj = self.project or (Project.query.get(self.project_id) if self.project_id else None)
+        tm = self.team or (Team.query.get(self.team_id) if self.team_id else None)
+        creator_user = self.creator or (User.query.get(self.created_by_id) if self.created_by_id else None)
+
+        sprint_tasks = Task.query.filter_by(sprint_id=self.id).all() if self.id else []
+        total_tasks = len(sprint_tasks)
+        completed_tasks = len([t for t in sprint_tasks if t.status in ('COMPLETED', 'DONE')])
+        in_progress_tasks = len([t for t in sprint_tasks if t.status == 'IN_PROGRESS'])
+        to_do_tasks = len([t for t in sprint_tasks if t.status == 'TODO'])
+        review_tasks = len([t for t in sprint_tasks if t.status in ('REVIEW', 'CODE_REVIEW', 'IN_REVIEW')])
+        testing_tasks = len([t for t in sprint_tasks if t.status == 'TESTING'])
+        blocked_tasks = len([t for t in sprint_tasks if t.status == 'BLOCKED'])
+        overdue_tasks = len([t for t in sprint_tasks if t.is_overdue])
+
+        completion_pct = round((completed_tasks / total_tasks * 100), 1) if total_tasks > 0 else 0.0
+
+        # Developer task distribution
+        dev_dist = {}
+        for t in sprint_tasks:
+            dev_name = t.assignee_display_name
+            if dev_name not in dev_dist:
+                dev_dist[dev_name] = {'developer': dev_name, 'total': 0, 'completed': 0, 'in_progress': 0, 'overdue': 0}
+            dev_dist[dev_name]['total'] += 1
+            if t.status in ('COMPLETED', 'DONE'):
+                dev_dist[dev_name]['completed'] += 1
+            elif t.status == 'IN_PROGRESS':
+                dev_dist[dev_name]['in_progress'] += 1
+            if t.is_overdue:
+                dev_dist[dev_name]['overdue'] += 1
+
         return {
             'id': str(self.id),
+            'sprint_id': str(self.id),
             'name': self.name,
+            'sprint_name': self.name,
             'goal': self.goal or '',
+            'sprint_goal': self.goal or '',
             'status': self.status or 'PLANNED',
             'start_date': self.start_date.isoformat() if self.start_date else None,
+            'startDate': self.start_date.isoformat() if self.start_date else None,
             'end_date': self.end_date.isoformat() if self.end_date else None,
+            'endDate': self.end_date.isoformat() if self.end_date else None,
             'project_id': str(self.project_id) if self.project_id else None,
+            'projectId': str(self.project_id) if self.project_id else None,
             'project_name': proj.display_name if proj else 'Verona Organic',
+            'projectName': proj.display_name if proj else 'Verona Organic',
             'project': proj.display_name if proj else 'Verona Organic',
-            'team_id': str(self.team_id) if self.team_id else None
+            'team_id': str(self.team_id) if self.team_id else None,
+            'teamId': str(self.team_id) if self.team_id else None,
+            'team_name': tm.display_name if tm else 'Development Team',
+            'team': tm.display_name if tm else 'Development Team',
+            'created_by': creator_user.display_name if creator_user else 'Team Lead',
+            'created_by_id': str(self.created_by_id) if self.created_by_id else None,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'completion_date': self.completion_date.isoformat() if self.completion_date else None,
+            'completion_notes': self.completion_notes or '',
+            'carry_forward_tasks_count': self.carry_forward_tasks_count or 0,
+            # Dynamic calculations
+            'total_tasks': total_tasks,
+            'totalTasks': total_tasks,
+            'completed_tasks': completed_tasks,
+            'completedTasks': completed_tasks,
+            'in_progress_tasks': in_progress_tasks,
+            'to_do_tasks': to_do_tasks,
+            'review_tasks': review_tasks,
+            'testing_tasks': testing_tasks,
+            'blocked_tasks': blocked_tasks,
+            'overdue_tasks': overdue_tasks,
+            'overdueTasks': overdue_tasks,
+            'completion_percentage': completion_pct,
+            'completionPercentage': completion_pct,
+            'progress': completion_pct,
+            'developer_distribution': list(dev_dist.values())
         }
 
 class Task(db.Model):
@@ -279,20 +363,43 @@ class Task(db.Model):
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     title = db.Column(db.String(150), nullable=True)
     description = db.Column(db.Text)
-    priority = db.Column(db.String(30), default='MEDIUM')
-    status = db.Column(db.String(30), default='TODO')
+    ticket_type = db.Column(db.String(50), default='Task')  # Feature, User Story, Task, Bug, Improvement
+    parent_task_id = db.Column(UUID(as_uuid=True), db.ForeignKey('tbl_task.id'), nullable=True)
+    priority = db.Column(db.String(30), default='MEDIUM')   # LOW, MEDIUM, HIGH, CRITICAL
+    status = db.Column(db.String(30), default='TODO')       # TODO, IN_PROGRESS, CODE_REVIEW, TESTING, DONE, BLOCKED
+    start_date = db.Column(db.Date, nullable=True)
     due_date = db.Column(db.Date)
+    original_due_date = db.Column(db.Date, nullable=True)
+    due_date_changed_at = db.Column(db.DateTime, nullable=True)
+    due_date_changed_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey('tbl_user.id'), nullable=True)
+    due_date_change_reason = db.Column(db.Text, nullable=True)
     estimated_hours = db.Column(db.Float, default=0.0)
     actual_hours = db.Column(db.Float, default=0.0)
+    progress = db.Column(db.Integer, default=0)              # 0 to 100%
     assigned_to_id = db.Column(UUID(as_uuid=True), db.ForeignKey('tbl_user.id'), nullable=True)
     assigned_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey('tbl_user.id'), nullable=True)
     created_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey('tbl_user.id'), nullable=True)
     project_id = db.Column(UUID(as_uuid=True), db.ForeignKey('tbl_project.id'), nullable=True)
     team_id = db.Column(UUID(as_uuid=True), db.ForeignKey('tbl_team.id'), nullable=True)
     sprint_id = db.Column(UUID(as_uuid=True), db.ForeignKey('tbl_sprint.id'), nullable=True)
+    delay_reason = db.Column(db.String(100), nullable=True)
+    delay_remark = db.Column(db.Text, nullable=True)
+    delay_remark_added_at = db.Column(db.DateTime, nullable=True)
+    delay_remark_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey('tbl_user.id'), nullable=True)
+    team_leader_review = db.Column(db.Text, nullable=True)
+    team_leader_reviewed_at = db.Column(db.DateTime, nullable=True)
+    team_leader_reviewed_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey('tbl_user.id'), nullable=True)
+    escalation_level = db.Column(db.Integer, default=0)     # 0=None, 1=Lead Notified, 2=PM Escalated, 3=Project Risk Alert
+    escalation_reason = db.Column(db.Text, nullable=True)
+    escalated_at = db.Column(db.DateTime, nullable=True)
+    overdue_notified_lead = db.Column(db.Boolean, default=False)
+    overdue_notified_pm = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     assigned_user = db.relationship('User', foreign_keys=[assigned_to_id])
+    due_date_changer = db.relationship('User', foreign_keys=[due_date_changed_by_id])
+    tl_reviewer = db.relationship('User', foreign_keys=[team_leader_reviewed_by_id])
 
     @property
     def display_title(self):
@@ -302,31 +409,114 @@ class Task(db.Model):
     def display_status(self):
         return self.status or 'TODO'
 
+    @property
+    def assignee_display_name(self):
+        u = self.assigned_user or (User.query.get(self.assigned_to_id) if self.assigned_to_id else None)
+        return u.display_name if u else 'Unassigned'
+
+    @property
+    def is_overdue(self):
+        if self.status in ('COMPLETED', 'DONE'):
+            return False
+        if not self.due_date:
+            return False
+        from datetime import date
+        return date.today() > self.due_date
+
+    @property
+    def days_overdue(self):
+        if not self.is_overdue or not self.due_date:
+            return 0
+        from datetime import date
+        delta = date.today() - self.due_date
+        return max(0, delta.days)
+
     def to_dict(self):
         proj = Project.query.get(self.project_id) if self.project_id else None
         spr = Sprint.query.get(self.sprint_id) if self.sprint_id else None
-        tm = Team.query.get(self.team_id) if self.team_id else None
+        tm = Team.query.get(self.team_id) if self.team_id else (spr.team if spr else None)
         u = self.assigned_user or (User.query.get(self.assigned_to_id) if self.assigned_to_id else None)
+        due_changer = self.due_date_changer or (User.query.get(self.due_date_changed_by_id) if self.due_date_changed_by_id else None)
+        reviewer = self.tl_reviewer or (User.query.get(self.team_leader_reviewed_by_id) if self.team_leader_reviewed_by_id else None)
+
+        att_query = TaskAttachment.query.filter_by(task_id=self.id, is_deleted=False).all() if self.id else []
+        attachments_data = [a.to_dict() for a in att_query]
+
+        comments_query = TaskComment.query.filter_by(task_id=self.id).order_by(TaskComment.created_at.asc()).all() if self.id else []
+        comments_data = [c.to_dict() for c in comments_query]
+
+        commits_query = Commit.query.filter((Commit.task_id == self.id) | (Commit.commit_message.ilike(f"%{self.title[:20]}%"))).all() if self.id and self.title else []
+        commits_data = [c.to_dict() for c in commits_query]
 
         return {
             'id': str(self.id),
+            'realId': str(self.id),
             'title': self.display_title,
             'description': self.description or '',
+            'ticket_type': self.ticket_type or 'Task',
+            'parent_task_id': str(self.parent_task_id) if self.parent_task_id else None,
             'priority': self.priority or 'MEDIUM',
             'status': self.display_status,
+            'start_date': self.start_date.isoformat() if self.start_date else None,
             'due_date': self.due_date.isoformat() if self.due_date else None,
+            'dueDate': self.due_date.isoformat() if self.due_date else None,
+            'original_due_date': self.original_due_date.isoformat() if self.original_due_date else (self.due_date.isoformat() if self.due_date else None),
+            'due_date_changed_at': self.due_date_changed_at.isoformat() if self.due_date_changed_at else None,
+            'due_date_changed_by': due_changer.display_name if due_changer else None,
+            'due_date_change_reason': self.due_date_change_reason or '',
             'estimated_hours': self.estimated_hours or 0.0,
             'actual_hours': self.actual_hours or 0.0,
+            'progress': self.progress if self.progress is not None else (100 if self.display_status in ('DONE', 'COMPLETED') else 0),
             'assigned_to_id': str(self.assigned_to_id) if self.assigned_to_id else None,
             'assignee_name': u.display_name if u else 'Unassigned',
             'assignee': u.display_name if u else 'Unassigned',
-            'project_id': str(self.project_id) if self.project_id else None,
-            'project_name': proj.display_name if proj else 'Verona Organic',
-            'project': proj.display_name if proj else 'Verona Organic',
-            'team_id': str(self.team_id) if self.team_id else None,
-            'assigned_team': tm.name if tm else 'Frontend UI Squad',
+            'project_id': str(self.project_id) if self.project_id else (str(spr.project_id) if spr and spr.project_id else None),
+            'project_name': proj.display_name if proj else (spr.project_name if spr else 'Verona Organic'),
+            'project': proj.display_name if proj else (spr.project_name if spr else 'Verona Organic'),
+            'team_id': str(self.team_id) if self.team_id else (str(spr.team_id) if spr and spr.team_id else None),
+            'assigned_team': tm.name if tm else 'Development Team',
             'sprint_id': str(self.sprint_id) if self.sprint_id else None,
-            'sprint_name': spr.name if spr else 'ui design'
+            'sprint_name': spr.name if spr else ('Product Backlog' if not self.sprint_id else 'ui design'),
+            # Overdue & Delay Fields
+            'is_overdue': self.is_overdue,
+            'days_overdue': self.days_overdue,
+            'delay_reason': self.delay_reason or '',
+            'delay_remark': self.delay_remark or '',
+            'delay_remark_added_at': self.delay_remark_added_at.isoformat() if self.delay_remark_added_at else None,
+            'team_leader_review': self.team_leader_review or '',
+            'team_leader_reviewed_at': self.team_leader_reviewed_at.isoformat() if self.team_leader_reviewed_at else None,
+            'team_leader_reviewer': reviewer.display_name if reviewer else None,
+            'escalation_level': self.escalation_level or 0,
+            'escalation_reason': self.escalation_reason or '',
+            'escalated_at': self.escalated_at.isoformat() if self.escalated_at else None,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+            'attachments': attachments_data,
+            'comments': comments_data,
+            'commits': commits_data
+        }
+
+class TaskAttachment(db.Model):
+    __tablename__ = 'tbl_task_attachment'
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    file = db.Column(db.String(255), nullable=True)
+    filename = db.Column(db.String(255), nullable=False)
+    task_id = db.Column(UUID(as_uuid=True), db.ForeignKey('tbl_task.id'), nullable=False)
+    created_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey('tbl_user.id'), nullable=True)
+    updated_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey('tbl_user.id'), nullable=True)
+    is_active = db.Column(db.Boolean, default=True)
+    is_deleted = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            'id': str(self.id),
+            'name': self.filename,
+            'filename': self.filename,
+            'file': self.file or '',
+            'task_id': str(self.task_id),
+            'created_at': self.created_at.isoformat() if self.created_at else None
         }
 
 class Notification(db.Model):
@@ -351,10 +541,78 @@ class Notification(db.Model):
             'created_at': self.created_at.isoformat() if self.created_at else ''
         }
 
+class TaskComment(db.Model):
+    __tablename__ = 'tbl_task_comment'
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    task_id = db.Column(UUID(as_uuid=True), db.ForeignKey('tbl_task.id'), nullable=False)
+    user_id = db.Column(UUID(as_uuid=True), db.ForeignKey('tbl_user.id'), nullable=True)
+    comment = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    user = db.relationship('User', foreign_keys=[user_id])
+
+    def to_dict(self):
+        u = self.user or (User.query.get(self.user_id) if self.user_id else None)
+        return {
+            'id': str(self.id),
+            'task_id': str(self.task_id),
+            'user_id': str(self.user_id) if self.user_id else None,
+            'author': u.display_name if u else 'Developer',
+            'author_name': u.display_name if u else 'Developer',
+            'text': self.comment,
+            'comment': self.comment,
+            'time': self.created_at.strftime('%Y-%m-%d %H:%M') if self.created_at else 'Just now',
+            'created_at': self.created_at.isoformat() if self.created_at else None
+        }
+
 class TaskStatusHistory(db.Model):
     __tablename__ = 'tbl_task_history'
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     task_id = db.Column(UUID(as_uuid=True), db.ForeignKey('tbl_task.id'), nullable=False)
+    user_id = db.Column(UUID(as_uuid=True), db.ForeignKey('tbl_user.id'), nullable=True)
+    actor_id = db.Column(UUID(as_uuid=True), nullable=True)
+    created_by_id = db.Column(UUID(as_uuid=True), nullable=True)
+    updated_by_id = db.Column(UUID(as_uuid=True), nullable=True)
+    action = db.Column(db.String(100), nullable=True, default='STATUS_CHANGE')
+    action_type = db.Column(db.String(50), nullable=True, default='STATUS_CHANGE')
+    old_value = db.Column(db.String(255), nullable=True)
+    new_value = db.Column(db.String(255), nullable=True)
+    details = db.Column(db.Text, nullable=True)
+    is_active = db.Column(db.Boolean, default=True)
+    is_deleted = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    user = db.relationship('User', foreign_keys=[user_id])
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        if not getattr(self, 'action', None):
+            self.action = getattr(self, 'action_type', None) or 'STATUS_CHANGE'
+        if not getattr(self, 'action_type', None):
+            self.action_type = getattr(self, 'action', None) or 'STATUS_CHANGE'
+        if not getattr(self, 'created_at', None):
+            self.created_at = datetime.utcnow()
+        if not getattr(self, 'updated_at', None):
+            self.updated_at = datetime.utcnow()
+        if getattr(self, 'is_active', None) is None:
+            self.is_active = True
+        if getattr(self, 'is_deleted', None) is None:
+            self.is_deleted = False
+
+    def to_dict(self):
+        u = self.user or (User.query.get(self.user_id) if self.user_id else None)
+        return {
+            'id': str(self.id),
+            'task_id': str(self.task_id),
+            'user_id': str(self.user_id) if self.user_id else None,
+            'user_name': u.display_name if u else 'System',
+            'action_type': self.action_type or self.action or '',
+            'old_value': self.old_value or '',
+            'new_value': self.new_value or '',
+            'details': self.details or '',
+            'created_at': self.created_at.isoformat() if self.created_at else None
+        }
 
 class Risk(db.Model):
     __tablename__ = 'tbl_risk'
@@ -376,6 +634,33 @@ class Risk(db.Model):
             'status': self.status or 'OPEN',
             'created_at': self.created_at.isoformat() if self.created_at else ''
         }
+class ProjectHealthHistory(db.Model):
+    __tablename__ = 'tbl_project_health_history'
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    project_id = db.Column(UUID(as_uuid=True), db.ForeignKey('tbl_project.id'), nullable=False, index=True)
+    overall_score = db.Column(db.Integer, nullable=True)
+    health_status = db.Column(db.String(30), nullable=True)  # HEALTHY, WARNING, AT_RISK, NO_DATA
+    sprint_task_score = db.Column(db.Float, nullable=True)
+    github_score = db.Column(db.Float, nullable=True)
+    code_quality_score = db.Column(db.Float, nullable=True)
+    engineering_risk_score = db.Column(db.Float, nullable=True)
+    metrics_breakdown = db.Column(db.Text, nullable=True)  # JSON string
+    calculated_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+
+    def to_dict(self):
+        return {
+            'id': str(self.id),
+            'project_id': str(self.project_id),
+            'overall_score': self.overall_score,
+            'health_status': self.health_status,
+            'sprint_task_score': self.sprint_task_score,
+            'github_score': self.github_score,
+            'code_quality_score': self.code_quality_score,
+            'engineering_risk_score': self.engineering_risk_score,
+            'metrics_breakdown': self.metrics_breakdown,
+            'calculated_at': self.calculated_at.isoformat() if self.calculated_at else None,
+        }
+
 
 class AuditLog(db.Model):
     __tablename__ = 'tbl_audit_log'
@@ -407,6 +692,7 @@ class Commit(db.Model):
     __tablename__ = 'tbl_commit'
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     repository_id = db.Column(UUID(as_uuid=True), db.ForeignKey('tbl_repository.id'), nullable=True)
+    task_id = db.Column(UUID(as_uuid=True), db.ForeignKey('tbl_task.id'), nullable=True)
     user_id = db.Column(UUID(as_uuid=True), db.ForeignKey('tbl_user.id'), nullable=True)
     commit_hash = db.Column(db.String(100), nullable=True)
     author_name = db.Column(db.String(100), nullable=True)
@@ -421,6 +707,7 @@ class Commit(db.Model):
         return {
             'id': str(self.id),
             'repository_id': str(self.repository_id) if self.repository_id else None,
+            'task_id': str(self.task_id) if self.task_id else None,
             'user_id': str(self.user_id) if self.user_id else None,
             'commit_hash': self.commit_hash or '',
             'author_name': self.author_name or 'Developer',
@@ -571,4 +858,152 @@ class CodeMetrics(db.Model):
             'metric_value': self.metric_value or 0.0,
             'created_at': self.created_at.isoformat() if self.created_at else ''
         }
+
+
+# ==========================================
+# GITHUB REST API INTEGRATION MODELS
+# ==========================================
+
+class GitHubRepository(db.Model):
+    __tablename__ = 'tbl_github_repository'
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    project_id = db.Column(UUID(as_uuid=True), db.ForeignKey('tbl_project.id'), nullable=True)
+    github_repository_id = db.Column(db.BigInteger, nullable=True)
+    owner = db.Column(db.String(150), nullable=False)
+    repository_name = db.Column(db.String(150), nullable=False)
+    repository_url = db.Column(db.String(255), nullable=False)
+    default_branch = db.Column(db.String(100), default='main')
+    description = db.Column(db.Text, nullable=True)
+    visibility = db.Column(db.String(50), default='public')
+    language = db.Column(db.String(100), nullable=True)
+    stars = db.Column(db.Integer, default=0)
+    forks = db.Column(db.Integer, default=0)
+    open_issues = db.Column(db.Integer, default=0)
+    last_synced_at = db.Column(db.DateTime, default=datetime.utcnow)
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Normalized Relationships
+    commits = db.relationship('GitHubCommit', backref='repository', cascade='all, delete-orphan', lazy=True, order_by='desc(GitHubCommit.commit_date)')
+    pull_requests = db.relationship('GitHubPullRequest', backref='repository', cascade='all, delete-orphan', lazy=True, order_by='desc(GitHubPullRequest.created_at)')
+    contributors = db.relationship('GitHubContributor', backref='repository', cascade='all, delete-orphan', lazy=True, order_by='desc(GitHubContributor.contributions)')
+
+    @property
+    def full_name(self):
+        return f"{self.owner}/{self.repository_name}" if self.owner else self.repository_name
+
+    def to_dict(self):
+        return {
+            'id': str(self.id),
+            'project_id': str(self.project_id) if self.project_id else None,
+            'github_repository_id': self.github_repository_id,
+            'owner': self.owner,
+            'repository_name': self.repository_name,
+            'name': self.repository_name,
+            'full_name': self.full_name,
+            'repository_url': self.repository_url,
+            'url': self.repository_url,
+            'default_branch': self.default_branch or 'main',
+            'description': self.description or '',
+            'visibility': self.visibility or 'public',
+            'language': self.language or 'Other',
+            'stars': self.stars or 0,
+            'forks': self.forks or 0,
+            'open_issues': self.open_issues or 0,
+            'last_synced_at': self.last_synced_at.isoformat() if self.last_synced_at else None,
+            'is_active': bool(self.is_active),
+            'commits_count': len(self.commits) if self.commits else 0,
+            'pull_requests_count': len(self.pull_requests) if self.pull_requests else 0,
+            'contributors_count': len(self.contributors) if self.contributors else 0,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None
+        }
+
+class GitHubCommit(db.Model):
+    __tablename__ = 'tbl_github_commit'
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    repository_id = db.Column(UUID(as_uuid=True), db.ForeignKey('tbl_github_repository.id'), nullable=False)
+    github_commit_id = db.Column(db.String(100), nullable=True)
+    commit_sha = db.Column(db.String(100), nullable=False, index=True)
+    author_name = db.Column(db.String(150), nullable=True)
+    author_email = db.Column(db.String(255), nullable=True)
+    commit_message = db.Column(db.Text, nullable=True)
+    commit_date = db.Column(db.DateTime, nullable=True)
+    commit_url = db.Column(db.String(255), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            'id': str(self.id),
+            'repository_id': str(self.repository_id) if self.repository_id else None,
+            'github_commit_id': self.github_commit_id or self.commit_sha,
+            'commit_sha': self.commit_sha,
+            'short_sha': self.commit_sha[:7] if self.commit_sha else '',
+            'author_name': self.author_name or 'Unknown Author',
+            'author_email': self.author_email or '',
+            'commit_message': self.commit_message or '',
+            'commit_date': self.commit_date.isoformat() if self.commit_date else '',
+            'commit_url': self.commit_url or (f"https://github.com/{self.repository.full_name}/commit/{self.commit_sha}" if self.repository else f"https://github.com/{self.commit_sha}"),
+            'created_at': self.created_at.isoformat() if self.created_at else ''
+        }
+
+class GitHubPullRequest(db.Model):
+    __tablename__ = 'tbl_github_pull_request'
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    repository_id = db.Column(UUID(as_uuid=True), db.ForeignKey('tbl_github_repository.id'), nullable=False)
+    github_pr_id = db.Column(db.BigInteger, nullable=True)
+    pr_number = db.Column(db.Integer, nullable=False)
+    title = db.Column(db.String(255), nullable=False)
+    author = db.Column(db.String(150), nullable=True)
+    state = db.Column(db.String(50), default='open')
+    source_branch = db.Column(db.String(100), nullable=True)
+    target_branch = db.Column(db.String(100), nullable=True)
+    created_at = db.Column(db.DateTime, nullable=True)
+    updated_at = db.Column(db.DateTime, nullable=True)
+    merged_at = db.Column(db.DateTime, nullable=True)
+    closed_at = db.Column(db.DateTime, nullable=True)
+    review_status = db.Column(db.String(50), default='PENDING')
+
+    def to_dict(self):
+        return {
+            'id': str(self.id),
+            'repository_id': str(self.repository_id) if self.repository_id else None,
+            'github_pr_id': self.github_pr_id,
+            'pr_number': self.pr_number,
+            'title': self.title or '',
+            'author': self.author or 'Contributor',
+            'state': self.state or 'open',
+            'source_branch': self.source_branch or 'feature',
+            'target_branch': self.target_branch or 'main',
+            'created_at': self.created_at.isoformat() if self.created_at else '',
+            'updated_at': self.updated_at.isoformat() if self.updated_at else '',
+            'merged_at': self.merged_at.isoformat() if self.merged_at else None,
+            'closed_at': self.closed_at.isoformat() if self.closed_at else None,
+            'review_status': self.review_status or 'PENDING'
+        }
+
+class GitHubContributor(db.Model):
+    __tablename__ = 'tbl_github_contributor'
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    repository_id = db.Column(UUID(as_uuid=True), db.ForeignKey('tbl_github_repository.id'), nullable=False)
+    github_user_id = db.Column(db.String(50), nullable=True)
+    username = db.Column(db.String(150), nullable=False)
+    display_name = db.Column(db.String(150), nullable=True)
+    contributions = db.Column(db.Integer, default=0)
+    profile_url = db.Column(db.String(255), nullable=True)
+    avatar_url = db.Column(db.String(255), nullable=True)
+
+    def to_dict(self):
+        return {
+            'id': str(self.id),
+            'repository_id': str(self.repository_id) if self.repository_id else None,
+            'github_user_id': self.github_user_id or '',
+            'username': self.username,
+            'display_name': self.display_name or self.username,
+            'contributions': self.contributions or 0,
+            'profile_url': self.profile_url or f"https://github.com/{self.username}",
+            'avatar_url': self.avatar_url or ''
+        }
+
 
