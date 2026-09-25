@@ -1,7 +1,14 @@
 // Aureon REST API Client Service
 // Integrates React Frontend with Node/Express REST Backend API on port 5000
 
-const API_BASE_URL = 'http://127.0.0.1:8000/api/v1';
+export const getApiBaseUrl = () => {
+  const host = typeof window !== 'undefined' && window.location.hostname && window.location.hostname !== 'localhost'
+    ? window.location.hostname 
+    : '127.0.0.1';
+  return `http://${host}:8000/api/v1`;
+};
+
+export const API_BASE_URL = getApiBaseUrl();
 
 export const isRealJwt = (token) => {
   return Boolean(token && typeof token === 'string' && token.startsWith('ey') && token.split('.').length === 3);

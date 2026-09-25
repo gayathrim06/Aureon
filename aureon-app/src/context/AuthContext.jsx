@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { initialUsers } from '../services/mockData';
 import { logAuditEvent } from '../services/auditLogger';
-import { apiClient } from '../services/apiClient';
+import { apiClient, getApiBaseUrl } from '../services/apiClient';
 
 const AuthContext = createContext();
 
@@ -140,7 +140,8 @@ export const AuthProvider = ({ children }) => {
 
     // 1. Try Flask REST API Backend (Port 8000)
     try {
-      const drfRes = await fetch('http://127.0.0.1:8000/api/v1/auth/login/', {
+      const apiBase = getApiBaseUrl();
+      const drfRes = await fetch(`${apiBase}/auth/login/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: cleanInput, password })
@@ -287,13 +288,35 @@ export const AuthProvider = ({ children }) => {
     return { success: true, user: foundUser };
   };
 
-  const register = (data) => {
+  const register = async (data) => {
     const isPM = data.role === 'ROLE_PM' || (data.email && data.email.toLowerCase() === 'gopika@aureon.com');
+    const cleanEmail = (data.email || '').trim().toLowerCase();
+
+    // Disallow repeated email check against backend
+    try {
+      const apiBase = getApiBaseUrl();
+      const checkRes = await fetch(`${apiBase}/auth/check-email/?email=${encodeURIComponent(cleanEmail)}`);
+      if (checkRes.ok) {
+        const checkData = await checkRes.json();
+        if (checkData.exists) {
+          return { success: false, message: `Email "${cleanEmail}" is already registered. Repeated email registration is not allowed.` };
+        }
+      }
+    } catch (e) {}
+
+    // Disallow repeated email check against local stored users
+    try {
+      const regList = JSON.parse(localStorage.getItem('aureon_registered_users') || '[]');
+      if (regList.some(u => u.email && u.email.toLowerCase() === cleanEmail) || initialUsers.some(u => u.email && u.email.toLowerCase() === cleanEmail)) {
+        return { success: false, message: `Email "${cleanEmail}" is already registered. Repeated email registration is not allowed.` };
+      }
+    } catch (e) {}
+
     const newUser = {
       id: `usr_${Date.now()}`,
       name: data.fullName || 'New User',
       full_name: data.fullName || 'New User',
-      email: data.email,
+      email: cleanEmail,
       role: isPM ? 'ROLE_PM' : (data.role || 'ROLE_DEV'),
       role_name: isPM ? 'ROLE_PM' : (data.role || 'ROLE_DEV'),
       role_code: isPM ? 'ROLE_PM' : (data.role || 'ROLE_DEV'),
@@ -304,21 +327,16 @@ export const AuthProvider = ({ children }) => {
       avatar: data.fullName ? data.fullName.split(' ').map(n=>n[0]).join('') : 'NU',
     };
 
-    const existingIndex = initialUsers.findIndex(u => u.email.toLowerCase() === data.email.toLowerCase());
-    if (existingIndex >= 0) {
-      initialUsers[existingIndex] = { ...initialUsers[existingIndex], ...newUser };
-    } else {
-      initialUsers.push(newUser);
-    }
+    initialUsers.push(newUser);
 
     try {
       let regList = JSON.parse(localStorage.getItem('aureon_registered_users') || '[]');
-      regList = regList.filter(u => u.email && u.email.toLowerCase() !== data.email.toLowerCase());
+      regList = regList.filter(u => u.email && u.email.toLowerCase() !== cleanEmail);
       regList.push(newUser);
       localStorage.setItem('aureon_registered_users', JSON.stringify(regList));
     } catch (e) {}
 
-    return newUser;
+    return { success: true, user: newUser };
   };
 
   const updateProfile = (updatedFields) => {

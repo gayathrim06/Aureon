@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
+import { getApiBaseUrl } from '../services/apiClient';
 import { 
   Shield, Key, Lock, AlertTriangle, ArrowRight, CheckCircle2, 
-  ArrowLeft, Sun, Moon, Coffee, Eye, EyeOff
+  ArrowLeft, Sun, Moon, Coffee, Eye, EyeOff, Loader2, XCircle, AlertCircle
 } from 'lucide-react';
 
 export const Login = ({ onNavigateHome }) => {
@@ -23,6 +24,14 @@ export const Login = ({ onNavigateHome }) => {
   const [errorMsg, setErrorMsg] = useState('');
   const [regSuccessMsg, setRegSuccessMsg] = useState('');
 
+  // Live Validation for Sign In (Login)
+  const [loginEmailStatus, setLoginEmailStatus] = useState({
+    checking: false,
+    valid: null,
+    error: '',
+    accountInfo: ''
+  });
+
   // Registration Form State
   const [regData, setRegData] = useState({
     fullName: '',
@@ -36,6 +45,15 @@ export const Login = ({ onNavigateHome }) => {
     bestFriendName: ''
   });
 
+  // Live Validation for Registration
+  const [regEmailStatus, setRegEmailStatus] = useState({
+    checking: false,
+    valid: null,
+    isDuplicate: false,
+    error: '',
+    message: ''
+  });
+
   // Forgot Password State
   const [forgotData, setForgotData] = useState({
     email: '',
@@ -44,6 +62,136 @@ export const Login = ({ onNavigateHome }) => {
     newPassword: '',
     confirmNewPassword: ''
   });
+
+  // Live Validation Effect for Sign In Email
+  useEffect(() => {
+    const cleanEmail = (email || '').trim().toLowerCase();
+    if (!cleanEmail) {
+      setLoginEmailStatus({ checking: false, valid: null, error: '', accountInfo: '' });
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(cleanEmail)) {
+      setLoginEmailStatus({
+        checking: false,
+        valid: false,
+        error: 'Please enter a valid corporate email format (e.g. admin@aureon.com)',
+        accountInfo: ''
+      });
+      return;
+    }
+
+    setLoginEmailStatus(prev => ({ ...prev, checking: true, error: '', accountInfo: '' }));
+
+    const timer = setTimeout(async () => {
+      try {
+        const apiBase = getApiBaseUrl();
+        const res = await fetch(`${apiBase}/auth/check-email/?email=${encodeURIComponent(cleanEmail)}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.exists) {
+            const userName = data.user?.full_name || 'Verified User';
+            const userRole = data.user?.role_name || data.user?.role_code || 'Corporate Account';
+            setLoginEmailStatus({
+              checking: false,
+              valid: true,
+              error: '',
+              accountInfo: `${userName} • ${userRole}`
+            });
+          } else {
+            setLoginEmailStatus({
+              checking: false,
+              valid: false,
+              error: 'No account registered with this corporate email. Please register or verify spelling.',
+              accountInfo: ''
+            });
+          }
+        } else {
+          setLoginEmailStatus({ checking: false, valid: true, error: '', accountInfo: '' });
+        }
+      } catch (e) {
+        setLoginEmailStatus({ checking: false, valid: true, error: '', accountInfo: '' });
+      }
+    }, 350);
+
+    return () => clearTimeout(timer);
+  }, [email]);
+
+  // Live Validation Effect for Registration Email (Disallows Repeated Emails)
+  useEffect(() => {
+    const cleanEmail = (regData.email || '').trim().toLowerCase();
+    if (!cleanEmail) {
+      setRegEmailStatus({ checking: false, valid: null, isDuplicate: false, error: '', message: '' });
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(cleanEmail)) {
+      setRegEmailStatus({
+        checking: false,
+        valid: false,
+        isDuplicate: false,
+        error: 'Enter a valid corporate email address (e.g. name@aureon.com)',
+        message: ''
+      });
+      return;
+    }
+
+    if (!cleanEmail.endsWith('@aureon.com')) {
+      setRegEmailStatus({
+        checking: false,
+        valid: false,
+        isDuplicate: false,
+        error: 'Registration is restricted to official @aureon.com corporate email addresses.',
+        message: ''
+      });
+      return;
+    }
+
+    setRegEmailStatus(prev => ({ ...prev, checking: true, error: '', message: '' }));
+
+    const timer = setTimeout(async () => {
+      try {
+        const apiBase = getApiBaseUrl();
+        const res = await fetch(`${apiBase}/auth/check-email/?email=${encodeURIComponent(cleanEmail)}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.exists) {
+            setRegEmailStatus({
+              checking: false,
+              valid: false,
+              isDuplicate: true,
+              error: `Email "${cleanEmail}" is already registered (${data.user?.full_name || 'existing account'}). Repeated emails are not permitted!`,
+              message: ''
+            });
+          } else if (data.available) {
+            setRegEmailStatus({
+              checking: false,
+              valid: true,
+              isDuplicate: false,
+              error: '',
+              message: 'Corporate email is available for registration.'
+            });
+          } else {
+            setRegEmailStatus({
+              checking: false,
+              valid: false,
+              isDuplicate: false,
+              error: data.message || 'Email is not available.',
+              message: ''
+            });
+          }
+        } else {
+          setRegEmailStatus({ checking: false, valid: true, isDuplicate: false, error: '', message: 'Email format valid.' });
+        }
+      } catch (err) {
+        setRegEmailStatus({ checking: false, valid: true, isDuplicate: false, error: '', message: 'Email format valid.' });
+      }
+    }, 350);
+
+    return () => clearTimeout(timer);
+  }, [regData.email]);
 
   const handleLoginSubmit = async (e) => {
     e.preventDefault();
@@ -60,13 +208,23 @@ export const Login = ({ onNavigateHome }) => {
     setErrorMsg('');
     setRegSuccessMsg('');
 
+    if (regEmailStatus.isDuplicate) {
+      setErrorMsg(`Cannot register: Email "${regData.email}" is already registered in the system. Repeated email registration is not allowed.`);
+      return;
+    }
+
+    if (!regEmailStatus.valid && regEmailStatus.error) {
+      setErrorMsg(regEmailStatus.error);
+      return;
+    }
+
     if (!regData.fullName || !regData.email || !regData.password || !regData.confirmPassword) {
       setErrorMsg('Please fill in all required account fields.');
       return;
     }
 
-    if (!regData.dateOfBirth && !regData.bestFriendName) {
-      setErrorMsg('Please answer at least one security question (Date of Birth OR Best Friend Name) for account recovery.');
+    if (regData.password.length < 6) {
+      setErrorMsg('Password must be at least 6 characters long.');
       return;
     }
 
@@ -75,13 +233,19 @@ export const Login = ({ onNavigateHome }) => {
       return;
     }
 
+    if (!regData.dateOfBirth && !regData.bestFriendName) {
+      setErrorMsg('Please answer at least one security question (Date of Birth OR Best Friend Name) for account recovery.');
+      return;
+    }
+
     try {
-      const res = await fetch('http://127.0.0.1:8000/api/v1/auth/register/', {
+      const apiBase = getApiBaseUrl();
+      const res = await fetch(`${apiBase}/auth/register/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           fullName: regData.fullName,
-          email: regData.email,
+          email: regData.email.trim().toLowerCase(),
           password: regData.password,
           role: regData.role,
           department: regData.department,
@@ -90,47 +254,36 @@ export const Login = ({ onNavigateHome }) => {
           bestFriendName: regData.bestFriendName
         })
       });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.success) {
-          if (register) {
-            register(regData);
-          }
-          setRegSuccessMsg(`Registration successful for ${regData.fullName}! Account created. Please sign in with your password.`);
-          setEmail(regData.email);
-          setPassword('');
-          setRegData({
-            fullName: '', email: '', password: '', confirmPassword: '',
-            role: 'ROLE_DEV', department: 'Engineering', designation: 'Full Stack Developer',
-            dateOfBirth: '', bestFriendName: ''
-          });
-          setTimeout(() => {
-            setActiveTab('login');
-            setRegSuccessMsg('');
-          }, 2000);
-          return;
+
+      const data = await res.json().catch(() => ({}));
+
+      if (res.ok && data.success) {
+        if (register) {
+          await register(regData);
         }
+        setRegSuccessMsg(`Registration successful for ${regData.fullName}! Account created. Please sign in with your password.`);
+        setEmail(regData.email);
+        setPassword('');
+        setRegData({
+          fullName: '', email: '', password: '', confirmPassword: '',
+          role: 'ROLE_DEV', department: 'Engineering', designation: 'Full Stack Developer',
+          dateOfBirth: '', bestFriendName: ''
+        });
+        setTimeout(() => {
+          setActiveTab('login');
+          setRegSuccessMsg('');
+        }, 2000);
+        return;
+      } else {
+        // Backend rejected registration (e.g. duplicate email)
+        setErrorMsg(data.message || 'Registration failed: email may already be in use.');
+        return; // NEVER fall through to local fallback registration if rejected!
       }
     } catch (err) {
-      console.warn("Backend API unreachable. Registering account locally for smooth user access.");
+      console.warn("Backend API unreachable:", err);
+      setErrorMsg("Authentication server unreachable. Please verify backend service.");
+      return;
     }
-
-    // Seamless Fallback Registration
-    if (register) {
-      register(regData);
-    }
-    setRegSuccessMsg(`Registration successful for ${regData.fullName}! Account created. Please sign in with your password.`);
-    setEmail(regData.email);
-    setPassword('');
-    setRegData({
-      fullName: '', email: '', password: '', confirmPassword: '',
-      role: 'ROLE_DEV', department: 'Engineering', designation: 'Full Stack Developer',
-      dateOfBirth: '', bestFriendName: ''
-    });
-    setTimeout(() => {
-      setActiveTab('login');
-      setRegSuccessMsg('');
-    }, 2000);
   };
 
   const handleForgotSubmit = async (e) => {
@@ -286,15 +439,58 @@ export const Login = ({ onNavigateHome }) => {
             <form onSubmit={handleLoginSubmit} autoComplete="off" className="space-y-4">
               <div>
                 <label className="block text-xs font-bold mb-1.5">Corporate Email</label>
-                <input
-                  type="email"
-                  required
-                  autoComplete="off"
-                  placeholder="admin@aureon.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-800 warm:border-[#b8a074] bg-slate-50 dark:bg-slate-950 warm:bg-[#f3e8d2] text-xs font-mono text-slate-900 dark:text-white warm:text-[#342314] focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
+                <div className="relative">
+                  <input
+                    type="email"
+                    required
+                    autoComplete="off"
+                    placeholder="admin@aureon.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className={`w-full p-3 pr-10 rounded-xl border ${
+                      loginEmailStatus.valid === true
+                        ? 'border-emerald-500 focus:ring-emerald-500'
+                        : loginEmailStatus.valid === false
+                        ? 'border-rose-500 focus:ring-rose-500'
+                        : 'border-slate-200 dark:border-slate-800 warm:border-[#b8a074]'
+                    } bg-slate-50 dark:bg-slate-950 warm:bg-[#f3e8d2] text-xs font-mono text-slate-900 dark:text-white warm:text-[#342314] focus:outline-none focus:ring-2`}
+                  />
+                  {loginEmailStatus.checking && (
+                    <div className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400">
+                      <Loader2 className="w-4 h-4 animate-spin text-indigo-500" />
+                    </div>
+                  )}
+                  {loginEmailStatus.valid === true && !loginEmailStatus.checking && (
+                    <div className="absolute right-3.5 top-1/2 -translate-y-1/2 text-emerald-500">
+                      <CheckCircle2 className="w-4 h-4" />
+                    </div>
+                  )}
+                  {loginEmailStatus.valid === false && !loginEmailStatus.checking && (
+                    <div className="absolute right-3.5 top-1/2 -translate-y-1/2 text-rose-500">
+                      <XCircle className="w-4 h-4" />
+                    </div>
+                  )}
+                </div>
+
+                {/* Live Feedback for Login Email */}
+                {loginEmailStatus.checking && (
+                  <div className="flex items-center gap-1.5 mt-1 text-[11px] text-slate-500 dark:text-slate-400">
+                    <Loader2 className="w-3 h-3 animate-spin text-indigo-500" />
+                    <span>Verifying corporate registry...</span>
+                  </div>
+                )}
+                {loginEmailStatus.valid === true && loginEmailStatus.accountInfo && (
+                  <div className="flex items-center gap-1.5 mt-1 text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold">
+                    <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                    <span>Verified: {loginEmailStatus.accountInfo}</span>
+                  </div>
+                )}
+                {loginEmailStatus.valid === false && loginEmailStatus.error && (
+                  <div className="flex items-center gap-1.5 mt-1 text-[11px] text-rose-500 font-semibold">
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                    <span>{loginEmailStatus.error}</span>
+                  </div>
+                )}
               </div>
 
               <div>
@@ -307,7 +503,13 @@ export const Login = ({ onNavigateHome }) => {
                     placeholder="••••••••"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full p-3 pr-10 rounded-xl border border-slate-200 dark:border-slate-800 warm:border-[#b8a074] bg-slate-50 dark:bg-slate-950 warm:bg-[#f3e8d2] text-xs font-mono text-slate-900 dark:text-white warm:text-[#342314] focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className={`w-full p-3 pr-10 rounded-xl border ${
+                      password && password.length < 6
+                        ? 'border-amber-500'
+                        : password && password.length >= 6
+                        ? 'border-emerald-500/60'
+                        : 'border-slate-200 dark:border-slate-800 warm:border-[#b8a074]'
+                    } bg-slate-50 dark:bg-slate-950 warm:bg-[#f3e8d2] text-xs font-mono text-slate-900 dark:text-white warm:text-[#342314] focus:outline-none focus:ring-2 focus:ring-indigo-500`}
                   />
                   <button
                     type="button"
@@ -318,6 +520,12 @@ export const Login = ({ onNavigateHome }) => {
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
+                {password && password.length < 6 && (
+                  <div className="flex items-center gap-1 mt-1 text-[11px] text-amber-500 font-medium">
+                    <AlertCircle className="w-3 h-3" />
+                    <span>Password must be at least 6 characters</span>
+                  </div>
+                )}
                 <div className="flex justify-end mt-1.5">
                   <button
                     type="button"
@@ -331,8 +539,8 @@ export const Login = ({ onNavigateHome }) => {
 
               <button
                 type="submit"
-                disabled={isLocked}
-                className="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 dark:bg-indigo-600 warm:bg-[#b45309] warm:hover:bg-[#92400e] text-white font-bold text-xs shadow-md transition-all flex items-center justify-center gap-2 mt-2"
+                disabled={isLocked || loginEmailStatus.valid === false || loginEmailStatus.checking || !email || !password}
+                className="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-indigo-600 warm:bg-[#b45309] warm:hover:bg-[#92400e] text-white font-bold text-xs shadow-md transition-all flex items-center justify-center gap-2 mt-2"
               >
                 Sign In to Portal <ArrowRight className="w-4 h-4" />
               </button>
@@ -353,20 +561,80 @@ export const Login = ({ onNavigateHome }) => {
                     placeholder="e.g. Alex Rivera"
                     value={regData.fullName}
                     onChange={(e) => setRegData({ ...regData, fullName: e.target.value })}
-                    className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 warm:border-[#b8a074] bg-slate-50 dark:bg-slate-950 warm:bg-[#f3e8d2]"
+                    className={`w-full p-2.5 rounded-xl border ${
+                      regData.fullName && regData.fullName.trim().length >= 2
+                        ? 'border-emerald-500/60'
+                        : regData.fullName
+                        ? 'border-amber-500'
+                        : 'border-slate-200 dark:border-slate-800 warm:border-[#b8a074]'
+                    } bg-slate-50 dark:bg-slate-950 warm:bg-[#f3e8d2]`}
                   />
+                  {regData.fullName && regData.fullName.trim().length < 2 && (
+                    <span className="text-[10px] text-amber-500 font-medium">Min 2 characters</span>
+                  )}
                 </div>
 
                 <div>
                   <label className="block font-bold mb-1">Corporate Email</label>
-                  <input
-                    type="email"
-                    required
-                    placeholder="alex.rivera@aureon.com"
-                    value={regData.email}
-                    onChange={(e) => setRegData({ ...regData, email: e.target.value })}
-                    className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 warm:border-[#b8a074] bg-slate-50 dark:bg-slate-950 warm:bg-[#f3e8d2]"
-                  />
+                  <div className="relative">
+                    <input
+                      type="email"
+                      required
+                      placeholder="alex.rivera@aureon.com"
+                      value={regData.email}
+                      onChange={(e) => setRegData({ ...regData, email: e.target.value })}
+                      className={`w-full p-2.5 pr-8 rounded-xl border ${
+                        regEmailStatus.isDuplicate
+                          ? 'border-rose-500 bg-rose-50/40 dark:bg-rose-950/20'
+                          : regEmailStatus.valid === true
+                          ? 'border-emerald-500 bg-emerald-50/20 dark:bg-emerald-950/20'
+                          : regEmailStatus.valid === false
+                          ? 'border-amber-500'
+                          : 'border-slate-200 dark:border-slate-800 warm:border-[#b8a074]'
+                      } bg-slate-50 dark:bg-slate-950 warm:bg-[#f3e8d2]`}
+                    />
+                    {regEmailStatus.checking && (
+                      <div className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400">
+                        <Loader2 className="w-3.5 h-3.5 animate-spin text-indigo-500" />
+                      </div>
+                    )}
+                    {regEmailStatus.valid === true && !regEmailStatus.checking && (
+                      <div className="absolute right-2.5 top-1/2 -translate-y-1/2 text-emerald-500">
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                      </div>
+                    )}
+                    {regEmailStatus.isDuplicate && !regEmailStatus.checking && (
+                      <div className="absolute right-2.5 top-1/2 -translate-y-1/2 text-rose-500">
+                        <XCircle className="w-3.5 h-3.5" />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Live Feedback for Registration Email */}
+                  {regEmailStatus.checking && (
+                    <div className="flex items-center gap-1.5 mt-1 text-[11px] text-slate-400">
+                      <Loader2 className="w-3 h-3 animate-spin text-indigo-500" />
+                      <span>Checking email availability...</span>
+                    </div>
+                  )}
+                  {regEmailStatus.isDuplicate && (
+                    <div className="flex items-center gap-1.5 mt-1 p-1.5 rounded-lg bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900/40 text-[11px] text-rose-600 dark:text-rose-400 font-bold">
+                      <XCircle className="w-3.5 h-3.5 shrink-0" />
+                      <span>{regEmailStatus.error}</span>
+                    </div>
+                  )}
+                  {!regEmailStatus.isDuplicate && regEmailStatus.error && !regEmailStatus.checking && (
+                    <div className="flex items-center gap-1.5 mt-1 text-[11px] text-amber-600 dark:text-amber-400 font-medium">
+                      <AlertCircle className="w-3 h-3 shrink-0" />
+                      <span>{regEmailStatus.error}</span>
+                    </div>
+                  )}
+                  {regEmailStatus.valid === true && regEmailStatus.message && (
+                    <div className="flex items-center gap-1.5 mt-1 text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold">
+                      <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                      <span>{regEmailStatus.message}</span>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -380,7 +648,13 @@ export const Login = ({ onNavigateHome }) => {
                       placeholder="••••••••"
                       value={regData.password}
                       onChange={(e) => setRegData({ ...regData, password: e.target.value })}
-                      className="w-full p-2.5 pr-9 rounded-xl border border-slate-200 dark:border-slate-800 warm:border-[#b8a074] bg-slate-50 dark:bg-slate-950 warm:bg-[#f3e8d2]"
+                      className={`w-full p-2.5 pr-9 rounded-xl border ${
+                        regData.password && regData.password.length < 6
+                          ? 'border-amber-500'
+                          : regData.password && regData.password.length >= 6
+                          ? 'border-emerald-500/60'
+                          : 'border-slate-200 dark:border-slate-800 warm:border-[#b8a074]'
+                      } bg-slate-50 dark:bg-slate-950 warm:bg-[#f3e8d2]`}
                     />
                     <button
                       type="button"
@@ -390,6 +664,12 @@ export const Login = ({ onNavigateHome }) => {
                       {showRegPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                     </button>
                   </div>
+                  {regData.password && regData.password.length < 6 && (
+                    <span className="text-[10px] text-amber-500 font-medium">Min 6 characters required</span>
+                  )}
+                  {regData.password && regData.password.length >= 6 && (
+                    <span className="text-[10px] text-emerald-500 font-medium">✓ Valid password length</span>
+                  )}
                 </div>
 
                 <div>
@@ -401,7 +681,13 @@ export const Login = ({ onNavigateHome }) => {
                       placeholder="••••••••"
                       value={regData.confirmPassword}
                       onChange={(e) => setRegData({ ...regData, confirmPassword: e.target.value })}
-                      className="w-full p-2.5 pr-9 rounded-xl border border-slate-200 dark:border-slate-800 warm:border-[#b8a074] bg-slate-50 dark:bg-slate-950 warm:bg-[#f3e8d2]"
+                      className={`w-full p-2.5 pr-9 rounded-xl border ${
+                        regData.confirmPassword && regData.confirmPassword !== regData.password
+                          ? 'border-rose-500'
+                          : regData.confirmPassword && regData.confirmPassword === regData.password
+                          ? 'border-emerald-500'
+                          : 'border-slate-200 dark:border-slate-800 warm:border-[#b8a074]'
+                      } bg-slate-50 dark:bg-slate-950 warm:bg-[#f3e8d2]`}
                     />
                     <button
                       type="button"
@@ -411,6 +697,16 @@ export const Login = ({ onNavigateHome }) => {
                       {showRegConfirmPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                     </button>
                   </div>
+                  {regData.confirmPassword && regData.confirmPassword !== regData.password && (
+                    <div className="flex items-center gap-1 mt-1 text-[11px] text-rose-500 font-semibold">
+                      <XCircle className="w-3 h-3" /> Passwords do not match
+                    </div>
+                  )}
+                  {regData.confirmPassword && regData.confirmPassword === regData.password && regData.password.length >= 6 && (
+                    <div className="flex items-center gap-1 mt-1 text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold">
+                      <CheckCircle2 className="w-3 h-3" /> Passwords match
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -449,13 +745,44 @@ export const Login = ({ onNavigateHome }) => {
                   onChange={(e) => setRegData({ ...regData, bestFriendName: e.target.value })}
                   className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 warm:border-[#b8a074] bg-slate-50 dark:bg-slate-950 warm:bg-[#f3e8d2]"
                 />
+                {!regData.dateOfBirth && !regData.bestFriendName && (
+                  <span className="text-[10px] text-slate-400 mt-1 block">
+                    * Provide Date of Birth OR Best Friend Name for identity verification during password recovery.
+                  </span>
+                )}
+                {(regData.dateOfBirth || regData.bestFriendName) && (
+                  <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold mt-1 flex items-center gap-1">
+                    <CheckCircle2 className="w-3 h-3" /> Recovery security question set
+                  </span>
+                )}
               </div>
 
               <button
                 type="submit"
-                className="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 dark:bg-indigo-600 warm:bg-[#b45309] warm:hover:bg-[#92400e] text-white font-bold text-xs shadow-md transition-all mt-2"
+                disabled={
+                  regEmailStatus.isDuplicate ||
+                  regEmailStatus.checking ||
+                  regEmailStatus.valid === false ||
+                  !regData.email ||
+                  !regData.fullName ||
+                  !regData.password ||
+                  regData.password.length < 6 ||
+                  regData.password !== regData.confirmPassword ||
+                  (!regData.dateOfBirth && !regData.bestFriendName)
+                }
+                className="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-indigo-600 warm:bg-[#b45309] warm:hover:bg-[#92400e] text-white font-bold text-xs shadow-md transition-all mt-2 flex items-center justify-center gap-2"
               >
-                Register Account
+                {regEmailStatus.isDuplicate ? (
+                  <>
+                    <XCircle className="w-4 h-4" /> Email Already Registered
+                  </>
+                ) : regEmailStatus.checking ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" /> Verifying Email Availability...
+                  </>
+                ) : (
+                  'Register Account'
+                )}
               </button>
             </form>
           </div>
