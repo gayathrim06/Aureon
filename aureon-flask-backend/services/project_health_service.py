@@ -1,12 +1,13 @@
 from extensions import db
-from models import Project, Task, Risk, CodeAnalysis, Sprint, Notification, ProjectHealthHistory
+from models import Project, Task, Risk, CodeAnalysis, Sprint, Notification, ProjectHealthHistory, Repository, CodeQualityReport
+from services.github_risk_service import GitHubRiskService
 from datetime import date, datetime
 
 class HealthCalculator:
     """
     Deterministic, Rule-Based Project Health Score Calculator (0-100).
     Strictly Non-AI. Aggregates:
-    - Sprint completion rate
+    - Sprint completion rate & deterministic sprint scores
     - Overdue tasks and critical overdue tasks
     - Carry-forward tasks
     - Task completion ratio
@@ -78,17 +79,69 @@ class HealthCalculator:
     @staticmethod
     def _calculate_sprint_task_score(project_id):
         sprints = Sprint.query.filter_by(project_id=project_id).all()
-        if not sprints:
-            return {'score': None, 'available': False}
-        # Sprint ratio and carry‑forward penalty (reuse existing logic)
-        completed = [s for s in sprints if s.status == 'COMPLETED']
-        sprint_ratio = len(completed) / len(sprints)
+        tasks = Task.query.filter_by(project_id=project_id).all()
+
+        if not sprints and not tasks:
+            return {'score': None, 'available': False, 'risks': []}
+
+        risks = []
+
+        # 1. Deterministic Sprint Scores
+        sprint_scores = []
+        for s in sprints:
+            s_dict = s.to_dict()
+            s_score = s_dict.get('sprint_score', 100)
+            sprint_scores.append(s_score)
+            if s_score < 50:
+                risks.append(f"Sprint '{s.name}' has low sprint health score ({s_score}/100)")
+
+        avg_sprint_score = (sum(sprint_scores) / len(sprint_scores)) if sprint_scores else 100.0
+
+        # 2. Project Tasks Metrics
+        total_tasks = len(tasks)
+        completed_tasks = [t for t in tasks if t.status in ('COMPLETED', 'DONE')]
+        overdue_tasks = [t for t in tasks if t.is_overdue]
+        blocked_tasks = [t for t in tasks if t.status == 'BLOCKED']
+
+        task_comp_rate = (len(completed_tasks) / total_tasks * 100.0) if total_tasks > 0 else 100.0
+
+        if len(overdue_tasks) > 0:
+            risks.append(f"{len(overdue_tasks)} task(s) currently overdue in project")
+        if len(blocked_tasks) > 0:
+            risks.append(f"{len(blocked_tasks)} task(s) currently blocked in project")
+
+        # 3. Carry-Forward Tasks
         total_carry_forward = sum((s.carry_forward_tasks_count or 0) for s in sprints)
-        score = 100.0
-        score -= min(15.0, total_carry_forward * 2.0)
-        if sprint_ratio < 0.5:
-            score -= (0.5 - sprint_ratio) * 10.0
-        return {'score': round(score), 'available': True}
+        if total_carry_forward > 0:
+            risks.append(f"{total_carry_forward} incomplete task(s) carried forward across sprints")
+
+        # 4. Composite Formula
+        if sprints and tasks:
+            raw_score = 0.50 * avg_sprint_score + 0.50 * task_comp_rate
+        elif sprints:
+            raw_score = avg_sprint_score
+        else:
+            raw_score = task_comp_rate
+
+        overdue_penalty = min(20.0, len(overdue_tasks) * 2.0)
+        carry_penalty = min(15.0, total_carry_forward * 2.0)
+        blocked_penalty = min(15.0, len(blocked_tasks) * 3.0)
+
+        final_score = max(0, min(100, round(raw_score - overdue_penalty - carry_penalty - blocked_penalty)))
+
+        return {
+            'score': final_score,
+            'available': True,
+            'avg_sprint_score': round(avg_sprint_score, 1),
+            'task_completion_rate': round(task_comp_rate, 1),
+            'total_sprints': len(sprints),
+            'total_tasks': total_tasks,
+            'completed_tasks': len(completed_tasks),
+            'overdue_tasks': len(overdue_tasks),
+            'blocked_tasks': len(blocked_tasks),
+            'carry_forward_tasks': total_carry_forward,
+            'risks': risks
+        }
 
     @staticmethod
     def _calculate_github_score(project_id):

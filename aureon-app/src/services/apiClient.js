@@ -50,15 +50,36 @@ export const apiClient = async (endpoint, options = {}) => {
     }
 
     const data = await response.json();
+    const normalizedData = (data && typeof data === 'object') ? (
+      data.data !== undefined ? data.data :
+      data.projects !== undefined ? data.projects :
+      data.tasks !== undefined ? data.tasks :
+      data.sprints !== undefined ? data.sprints :
+      data.teams !== undefined ? data.teams :
+      data.bugs !== undefined ? data.bugs :
+      data.users !== undefined ? data.users :
+      data.roles !== undefined ? data.roles :
+      data.commits !== undefined ? data.commits :
+      data.pull_requests !== undefined ? data.pull_requests :
+      data.reports !== undefined ? data.reports :
+      data
+    ) : data;
+
     if (!response.ok) {
-      return { ok: false, status: response.status, data };
+      return { ok: false, success: false, status: response.status, data: normalizedData, raw: data };
     }
-    return { ok: true, status: response.status, data };
+    return { ok: true, success: true, status: response.status, data: normalizedData, ...data };
   } catch (error) {
     console.warn(`[API CLIENT] Backend server offline or fallback mode: ${endpoint}`, error.message);
-    return { ok: false, status: 500, error: 'BACKEND_OFFLINE' };
+    return { ok: false, success: false, status: 500, error: 'BACKEND_OFFLINE', data: [] };
   }
 };
+
+apiClient.get = (endpoint, options = {}) => apiClient(endpoint, { ...options, method: 'GET' });
+apiClient.post = (endpoint, body, options = {}) => apiClient(endpoint, { ...options, method: 'POST', body: JSON.stringify(body) });
+apiClient.patch = (endpoint, body, options = {}) => apiClient(endpoint, { ...options, method: 'PATCH', body: JSON.stringify(body) });
+apiClient.put = (endpoint, body, options = {}) => apiClient(endpoint, { ...options, method: 'PUT', body: JSON.stringify(body) });
+apiClient.delete = (endpoint, options = {}) => apiClient(endpoint, { ...options, method: 'DELETE' });
 
 export const refreshJwtToken = async () => {
   const refreshToken = sessionStorage.getItem('aureon_jwt_refresh_token');

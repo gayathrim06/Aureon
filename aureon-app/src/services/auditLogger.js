@@ -1,27 +1,55 @@
 // Enterprise Audit Logging Engine
-import { initialAuditLogs } from './mockData';
+import { getAuthHeaders } from './apiClient';
 
 const AUDIT_STORAGE_KEY = 'aureon_audit_logs';
+
+export const fetchLiveAuditLogs = async (perPage = 100) => {
+  try {
+    const res = await fetch(`http://127.0.0.1:8000/api/v1/audit-logs/?per_page=${perPage}`, {
+      headers: { 'Content-Type': 'application/json', ...getAuthHeaders() }
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data.success && data.logs) {
+        const formatted = data.logs.map(l => ({
+          id: l.id,
+          timestamp: l.timestamp ? l.timestamp.replace('T', ' ').substring(0, 19) : '',
+          user: l.user_email || 'System',
+          role: l.role_name || 'SYSTEM',
+          ip: l.ip || '127.0.0.1',
+          device: `${l.browser || 'Chrome'} / ${l.operating_system || 'Windows'}`,
+          action: l.action,
+          resource: l.details || '',
+          status: l.status || 'SUCCESS'
+        }));
+        localStorage.setItem(AUDIT_STORAGE_KEY, JSON.stringify(formatted));
+        return formatted;
+      }
+    }
+  } catch (err) {
+    console.error('Failed to fetch live audit logs from backend:', err);
+  }
+  return getAuditLogs();
+};
 
 export const getAuditLogs = () => {
   const stored = localStorage.getItem(AUDIT_STORAGE_KEY);
   if (!stored) {
-    localStorage.setItem(AUDIT_STORAGE_KEY, JSON.stringify(initialAuditLogs));
-    return initialAuditLogs;
+    return [];
   }
   try {
     return JSON.parse(stored);
   } catch (e) {
-    return initialAuditLogs;
+    return [];
   }
 };
 
-export const logAuditEvent = ({ user, role, action, resource, status = 'SUCCESS', ip = '192.168.1.105', device = 'Chrome 127 / Windows 11' }) => {
+export const logAuditEvent = ({ user, role, action, resource, status = 'SUCCESS', ip = '127.0.0.1', device = 'Chrome / Windows' }) => {
   const currentLogs = getAuditLogs();
   const newLog = {
     id: `log_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
     timestamp: new Date().toISOString().replace('T', ' ').substring(0, 19),
-    user: user ? `${user.name} (${user.email})` : 'System / Unauthenticated',
+    user: user ? `${user.name || user.display_name || user.email} (${user.email || ''})` : 'System / Unauthenticated',
     role: role || (user ? user.role : 'UNKNOWN'),
     ip,
     device,
@@ -35,8 +63,8 @@ export const logAuditEvent = ({ user, role, action, resource, status = 'SUCCESS'
   return newLog;
 };
 
-export const exportAuditLogsCSV = () => {
-  const logs = getAuditLogs();
+export const exportAuditLogsCSV = (logsToExport) => {
+  const logs = (Array.isArray(logsToExport) && logsToExport.length > 0) ? logsToExport : getAuditLogs();
   const headers = ['Timestamp', 'User', 'Role', 'IP Address', 'Device', 'Action', 'Resource', 'Status'];
   const rows = logs.map(l => [
     `"${l.timestamp}"`,

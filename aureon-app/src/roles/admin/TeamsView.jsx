@@ -1,35 +1,36 @@
 import React, { useState, useEffect } from 'react';
 import { Breadcrumb } from '../../components/common/Breadcrumb';
 import { DataTable } from '../../components/common/DataTable';
-import { initialTeams } from '../../services/mockData';
 import { Users2, UserCheck, FolderKanban, Activity } from 'lucide-react';
+import { getAuthHeaders } from '../../services/apiClient';
 
 export const TeamsView = () => {
-  const [teams, setTeams] = useState(initialTeams);
+  const [teams, setTeams] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   const fetchLiveTeams = async () => {
-    const rawToken = sessionStorage.getItem('aureon_jwt_access_token') || localStorage.getItem('aureon_jwt_access_token') || sessionStorage.getItem('aureon_access_token');
-    const isRealJwt = rawToken && rawToken.startsWith('ey') && rawToken.split('.').length === 3;
-    const headers = isRealJwt ? { 'Authorization': `Bearer ${rawToken}` } : {};
     try {
-      const res = await fetch('http://127.0.0.1:8000/api/v1/teams/', { headers });
+      const res = await fetch('http://127.0.0.1:8000/api/v1/teams/', {
+        headers: getAuthHeaders()
+      });
       if (res.ok) {
         const data = await res.json();
         const liveTeams = data.teams || [];
-        if (liveTeams.length > 0) {
-          const formatted = liveTeams.map(t => ({
-            name: t.name || t.team_name,
-            lead: t.leader_name || (t.name.includes('Frontend') ? 'Krishna Deepesh' : t.name.includes('Backend') ? 'David Chen' : 'Vikram Patel'),
-            members: t.members || (t.name.includes('Frontend') ? ['Sainu Anna Sajan', 'Ram Kumar'] : t.name.includes('Backend') ? ['Jiya Thomas', 'Priya Sharma'] : ['Venu QA', 'Feba Biju']),
-            department: t.description || 'Engineering',
-            projectCount: t.project_id ? 1 : (t.name.includes('Frontend') ? 1 : 0),
-            capacity: '100%'
-          }));
-          setTeams(formatted);
-        }
+        const formatted = liveTeams.map(t => ({
+          id: t.id,
+          name: t.name || t.team_name || 'Engineering Squad',
+          lead: t.lead || t.leader_name || 'Unassigned Lead',
+          members: Array.isArray(t.members) ? t.members : [],
+          department: t.department || t.description || 'Engineering',
+          projectCount: t.projectCount !== undefined ? t.projectCount : (t.project_id ? 1 : 0),
+          capacity: t.capacity || '100%'
+        }));
+        setTeams(formatted);
       }
     } catch (err) {
-      // Fallback
+      console.warn('Failed to fetch teams:', err);
+    } finally {
+      setLoading(false);
     }
   };
 

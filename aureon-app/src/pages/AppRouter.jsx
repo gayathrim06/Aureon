@@ -231,8 +231,8 @@ export const AppRouter = () => {
       switch (activeTab) {
         case 'Dashboard': return <PmDashboard onNavigate={navigateTab} />;
         case 'Projects': return <Projects />;
-        case 'Sprints': return <SprintPlanner onShowToast={showToast} />;
-        case 'Tasks': return <TaskBreakdown />;
+        case 'Sprints':
+        case 'Tasks': return <SprintPlanner onShowToast={showToast} />;
         case 'Milestones': return <MilestoneTracker />;
         case 'TeamMembers': return <TeamWorkload />;
         case 'Repository': return <PmRepositoryView />;
@@ -249,8 +249,8 @@ export const AppRouter = () => {
       switch (activeTab) {
         case 'Dashboard': return <LeadDashboard onNavigate={navigateTab} />;
         case 'AssignedProjects': return <LeadAssignedProjects />;
-        case 'SprintBoard': return <LeadSprintBoard onShowToast={showToast} />;
-        case 'Tasks': return <LeadTaskAllocation onShowToast={showToast} />;
+        case 'SprintBoard':
+        case 'Tasks': return <LeadSprintBoard onShowToast={showToast} initialView={activeTab === 'Tasks' ? 'table' : 'kanban'} />;
         case 'Developers': return <DeveloperRoster onShowToast={showToast} />;
         case 'Repository': return <LeadRepositoryView />;
         case 'CodeQuality': return <CodeQualityHub />;

@@ -1,5 +1,56 @@
-// Role-Based Access Control (RBAC) & Security Service
-import { initialRoles } from './mockData';
+export const SYSTEM_ROLES = [
+  {
+    id: 'ROLE_ADMIN',
+    name: 'System Admin',
+    description: 'Full administrative access to manage platform, organizations, users, and system configuration.',
+    level: 1,
+    permissions: [
+      'admin:all', 'users:manage', 'org:manage', 'rbac:manage', 'audit:view', 'system:manage',
+      'projects:all', 'reports:all', 'settings:all', 'integrations:manage'
+    ]
+  },
+  {
+    id: 'ROLE_PM',
+    name: 'Project Manager',
+    description: 'Manages software projects, sprints, milestones, workloads, and team allocations.',
+    level: 2,
+    permissions: [
+      'projects:create', 'projects:edit', 'projects:archive', 'projects:view',
+      'sprints:manage', 'tasks:manage', 'milestones:manage', 'reports:projects',
+      'team:assign', 'repository:view', 'sonarqube:view'
+    ]
+  },
+  {
+    id: 'ROLE_LEAD',
+    name: 'Team Lead',
+    description: 'Coordinates developers, reviews code quality, approves completed tasks, and tracks sprint boards.',
+    level: 3,
+    permissions: [
+      'projects:assigned_view', 'sprintboard:manage', 'tasks:assign', 'tasks:approve',
+      'developers:monitor', 'codequality:view', 'repository:view', 'sonarqube:reports'
+    ]
+  },
+  {
+    id: 'ROLE_DEV',
+    name: 'Developer',
+    description: 'Executes development tasks, commits code, creates pull requests, and updates Kanban cards.',
+    level: 4,
+    permissions: [
+      'tasks:my_update', 'kanban:move', 'code:commit', 'pr:create', 'repository:view',
+      'codequality:view', 'tasks:comment', 'attachments:upload', 'profile:update'
+    ]
+  },
+  {
+    id: 'ROLE_QA',
+    name: 'QA Engineer',
+    description: 'Runs test cases, logs bugs, uploads evidence, and verifies bug fixes.',
+    level: 5,
+    permissions: [
+      'testcases:manage', 'bugs:create', 'bugs:assign', 'bugs:update', 'bugs:verify',
+      'evidence:upload', 'reports:bugs', 'repository:view'
+    ]
+  }
+];
 
 export const ROLES = {
   SYSTEM_ADMIN: 'ROLE_ADMIN',
@@ -10,7 +61,7 @@ export const ROLES = {
 };
 
 export const getRoleDefinition = (roleId) => {
-  return initialRoles.find(r => r.id === roleId) || null;
+  return SYSTEM_ROLES.find(r => r.id === roleId) || null;
 };
 
 export const hasPermission = (userRole, requiredPermission) => {

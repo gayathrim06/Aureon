@@ -1,14 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { Breadcrumb } from '../../components/common/Breadcrumb';
 import { DataTable } from '../../components/common/DataTable';
-import { getAuditLogs, exportAuditLogsCSV } from '../../services/auditLogger';
-import { FileText, Download, ShieldCheck, RefreshCw, Smartphone } from 'lucide-react';
+import { fetchLiveAuditLogs, exportAuditLogsCSV } from '../../services/auditLogger';
+import { Download, ShieldCheck, RefreshCw } from 'lucide-react';
 
 export const AuditLogsView = () => {
   const [logs, setLogs] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const refresh = () => {
-    setLogs(getAuditLogs());
+  const refresh = async () => {
+    setLoading(true);
+    const data = await fetchLiveAuditLogs(100);
+    setLogs(data);
+    setLoading(false);
   };
 
   useEffect(() => {
@@ -44,22 +48,25 @@ export const AuditLogsView = () => {
           <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
             <ShieldCheck className="w-5 h-5 text-emerald-500" /> System Audit Trail & Security Event Logs
           </h1>
-          <p className="text-xs text-gray-500">Immutable ledger of logins, role updates, permission changes, and project actions.</p>
+          <p className="text-xs text-gray-500">Live immutable ledger of logins, role updates, permission changes, and project actions from PostgreSQL.</p>
         </div>
 
         <div className="flex items-center gap-2">
           <button
             onClick={refresh}
-            className="p-2 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            disabled={loading}
+            className="flex items-center gap-1.5 p-2 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-xs font-medium"
             title="Refresh Logs"
           >
-            <RefreshCw className="w-4 h-4 text-gray-500" />
+            <RefreshCw className={`w-4 h-4 text-gray-500 ${loading ? 'animate-spin' : ''}`} />
+            <span>Refresh</span>
           </button>
           <button
-            onClick={exportAuditLogsCSV}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-md transition-colors"
+            onClick={() => exportAuditLogsCSV(logs)}
+            disabled={logs.length === 0}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-md transition-colors disabled:opacity-50"
           >
-            <Download className="w-4 h-4" /> Export CSV Log Report
+            <Download className="w-4 h-4" /> Export CSV Log Report ({logs.length})
           </button>
         </div>
       </div>

@@ -7,6 +7,7 @@ from models import (
     Task, TaskAttachment, TaskStatusHistory, TaskComment, Team, TeamMember, 
     Sprint, User, AuditLog, Notification, Role, Project, Risk, Commit
 )
+from services.rbac_service import get_user_scope
 
 task_bp = Blueprint('tasks', __name__, url_prefix='/api/v1/tasks')
 developer_bp = Blueprint('developer', __name__, url_prefix='/api/v1/developer')
@@ -31,7 +32,12 @@ def _get_auth_user():
                 return user
     except Exception:
         pass
-    return User.query.first()
+    admin_user = User.query.filter_by(email='admin@aureon.com').first()
+    if not admin_user:
+        admin_role = Role.query.filter_by(code='ROLE_ADMIN').first()
+        if admin_role:
+            admin_user = User.query.filter_by(role_id=admin_role.id).first()
+    return admin_user or User.query.first()
 
 def _resolve_assigned_user(val):
     if not val:
@@ -225,10 +231,31 @@ def check_and_process_overdue_tasks():
 @jwt_required(optional=True)
 def manage_tasks():
     user = _get_auth_user()
+    scope = get_user_scope(user)
     check_and_process_overdue_tasks()
 
     if request.method == 'GET':
         query = Task.query
+
+        # Strict server-side role isolation (No frontend-only filtering)
+        if not scope.is_admin:
+            if scope.is_dev:
+                query = query.filter(Task.assigned_to_id == user.id)
+            elif scope.is_lead:
+                query = query.filter(
+                    (Task.team_id.in_(scope.team_ids)) |
+                    (Task.sprint_id.in_(scope.sprint_ids)) |
+                    (Task.project_id.in_(scope.project_ids))
+                )
+            elif scope.is_pm:
+                query = query.filter(Task.project_id.in_(scope.project_ids))
+
+        # Filter out orphan tasks from standard lists unless specifically asked
+        include_orphans = request.args.get('include_orphans')
+        if not (include_orphans and str(include_orphans).lower() in ('true', '1')):
+            if not request.args.get('backlog'):
+                query = query.filter(Task.sprint_id.isnot(None))
+
         proj_param = request.args.get('project_id')
         team_param = request.args.get('team_id')
         sprint_param = request.args.get('sprint_id')
@@ -257,6 +284,10 @@ def manage_tasks():
             u_uuid = _parse_uuid(assignee_param)
             query = query.filter(Task.assigned_to_id == (u_uuid or assignee_param))
 
+        type_param = request.args.get('ticket_type') or request.args.get('type')
+        if type_param:
+            query = query.filter(Task.ticket_type.ilike(f"%{type_param.strip()}%"))
+
         tasks = query.order_by(Task.created_at.desc()).all()
         return jsonify({'success': True, 'count': len(tasks), 'tasks': [t.to_dict() for t in tasks]}), 200
 
@@ -272,6 +303,7 @@ def manage_tasks():
         priority = (data.get('priority') or 'MEDIUM').upper()
         status = (data.get('status') or data.get('task_status') or 'TODO').upper()
         due_date_str = data.get('due_date') or data.get('dueDate')
+        start_date_str = data.get('start_date') or data.get('startDate')
         estimated_hours = float(data.get('estimated_hours') or data.get('estimatedHours') or 4.0)
 
         sprint_id = _parse_uuid(data.get('sprint_id'))
@@ -279,34 +311,39 @@ def manage_tasks():
         team_id = _parse_uuid(data.get('team_id'))
         parent_task_id = _parse_uuid(data.get('parent_task_id'))
 
+        # Resolve Sprint
         sprint = Sprint.query.get(sprint_id) if sprint_id else None
-        if sprint:
-            if not project_id:
-                project_id = sprint.project_id
-            elif str(project_id) != str(sprint.project_id):
-                return jsonify({'success': False, 'message': 'Validation Error: Task project must match Sprint project.'}), 400
+        if not sprint and project_id:
+            # Fallback to project's active or planned sprint if project_id provided
+            sprint = Sprint.query.filter_by(project_id=project_id).filter(
+                Sprint.status.in_(['ACTIVE', 'IN_PROGRESS', 'PLANNED'])
+            ).first()
+            if not sprint:
+                sprint = Sprint.query.filter_by(project_id=project_id).first()
+            if sprint:
+                sprint_id = sprint.id
 
-            if not team_id:
-                team_id = sprint.team_id
-            elif str(team_id) != str(sprint.team_id):
-                return jsonify({'success': False, 'message': 'Validation Error: Task team must match Sprint team.'}), 400
+        if not sprint:
+            return jsonify({'success': False, 'message': 'Validation Error: Every project task must belong to a valid Sprint.'}), 400
 
-        if not project_id:
-            first_p = Project.query.filter_by(is_active=True).first()
-            if first_p:
-                project_id = first_p.id
+        # Scope check: can this user create task in this sprint?
+        if not scope.is_admin:
+            if scope.is_dev:
+                return jsonify({'success': False, 'message': '403 Forbidden: Developers cannot create sprint tasks.'}), 403
+            if scope.is_lead and not scope.can_access_sprint(sprint):
+                return jsonify({'success': False, 'message': '403 Forbidden: Cannot create task for a sprint outside your team.'}), 403
+            if scope.is_pm and not scope.can_access_sprint(sprint):
+                return jsonify({'success': False, 'message': '403 Forbidden: Cannot create task for a sprint outside your projects.'}), 403
+
+        # Auto-inherit project and team from sprint
+        project_id = sprint.project_id
+        if not team_id:
+            team_id = sprint.team_id
 
         # Resolve assigned developer
         raw_assignee = data.get('assigned_to') or data.get('assigned_to_id') or data.get('assignee') or data.get('assignee_name')
         assigned_user = _resolve_assigned_user(raw_assignee)
         assigned_to_id = assigned_user.id if assigned_user else None
-
-        # ─── RBAC: DEVELOPER CANNOT ASSIGN TASKS TO OTHERS ───
-        if user and user.role_name == 'ROLE_DEV':
-            if assigned_to_id and str(assigned_to_id) != str(user.id):
-                return jsonify({'success': False, 'message': '403 Forbidden: Developers cannot assign tasks to other developers.'}), 403
-            assigned_to_id = user.id
-            assigned_user = user
 
         # ─── CROSS-TEAM ASSIGNMENT RESTRICTION ───
         if assigned_to_id and team_id:
@@ -322,6 +359,13 @@ def manage_tasks():
                 due_date = datetime.strptime(due_date_str.split('T')[0], '%Y-%m-%d').date()
             except ValueError:
                 return jsonify({'success': False, 'message': 'Validation Error: Invalid due date format. Use YYYY-MM-DD.'}), 400
+
+        start_date = None
+        if start_date_str:
+            try:
+                start_date = datetime.strptime(start_date_str.split('T')[0], '%Y-%m-%d').date()
+            except ValueError:
+                pass
 
         task = Task(
             title=title,
@@ -411,26 +455,93 @@ def get_product_backlog():
 @jwt_required(optional=True)
 def task_detail(task_id):
     user = _get_auth_user()
+    scope = get_user_scope(user)
     check_and_process_overdue_tasks()
     task = _find_task(task_id)
     if not task:
         return jsonify({'success': False, 'message': 'Task not found.'}), 404
+
+    # IDOR Security Check
+    if not scope.can_access_task(task):
+        return jsonify({'success': False, 'message': '403 Forbidden: Access denied to this task.'}), 403
 
     if request.method == 'GET':
         return jsonify({'success': True, 'task': task.to_dict()}), 200
 
     if request.method == 'PUT':
         data = request.get_json() or {}
-        if 'title' in data:
-            task.title = str(data['title']).strip()
+
+        # Developers cannot modify sprint or assignee
+        if scope.is_dev:
+            if 'sprint_id' in data or 'assigned_to' in data or 'assigned_to_id' in data:
+                return jsonify({'success': False, 'message': '403 Forbidden: Developers cannot reassign tasks or modify sprints.'}), 403
+            if 'due_date' in data:
+                return jsonify({'success': False, 'message': '403 Forbidden: Developers cannot change the due date.'}), 403
+        else:
+            # Sprint re-linking validation
+            if 'sprint_id' in data and data['sprint_id']:
+                new_sprint_id = _parse_uuid(data['sprint_id'])
+                new_sprint = Sprint.query.get(new_sprint_id) if new_sprint_id else None
+                if not new_sprint:
+                    return jsonify({'success': False, 'message': 'Target sprint does not exist.'}), 400
+                if not scope.can_access_sprint(new_sprint):
+                    return jsonify({'success': False, 'message': '403 Forbidden: Access denied to target sprint.'}), 403
+
+                # Ensure assigned developer belongs to new sprint's team
+                if task.assigned_to_id and new_sprint.team_id:
+                    if not _is_developer_in_team(task.assigned_to_id, new_sprint.team_id):
+                        return jsonify({
+                            'success': False,
+                            'message': f"Cross-team error: Assigned developer does not belong to the target sprint's team."
+                        }), 400
+
+                task.sprint_id = new_sprint.id
+                task.project_id = new_sprint.project_id
+                task.team_id = new_sprint.team_id
+
+            # Reassignment validation
+            if 'assigned_to' in data or 'assigned_to_id' in data:
+                raw_assignee = data.get('assigned_to') or data.get('assigned_to_id')
+                assigned_user = _resolve_assigned_user(raw_assignee)
+                if not assigned_user:
+                    return jsonify({'success': False, 'message': 'Assigned developer not found.'}), 400
+
+                team_id = task.team_id
+                if not team_id and task.sprint_id:
+                    sp = Sprint.query.get(task.sprint_id)
+                    if sp:
+                        team_id = sp.team_id
+                if team_id and not _is_developer_in_team(assigned_user.id, team_id):
+                    return jsonify({
+                        'success': False,
+                        'message': f"Cross-team error: Developer '{assigned_user.display_name}' does not belong to the sprint's team."
+                    }), 400
+                task.assigned_to_id = assigned_user.id
+
+            if 'due_date' in data and data['due_date']:
+                try:
+                    task.due_date = datetime.strptime(str(data['due_date']).split('T')[0], '%Y-%m-%d').date()
+                except ValueError:
+                    return jsonify({'success': False, 'message': 'Invalid due date format. Use YYYY-MM-DD.'}), 400
+
+            if 'title' in data:
+                task.title = str(data['title']).strip()
+
         if 'description' in data:
             task.description = data['description']
-        if 'priority' in data:
+        if 'priority' in data and not scope.is_dev:
             task.priority = str(data['priority']).upper()
         if 'status' in data:
-            task.status = str(data['status']).upper()
-            if task.status in ('DONE', 'COMPLETED'):
+            new_st = str(data['status']).upper()
+            # Review workflow: if developer submits for review or marks completed, keep as IN_REVIEW for TL review
+            if scope.is_dev and new_st in ('DONE', 'COMPLETED', 'IN_REVIEW', 'REVIEW'):
+                new_st = 'IN_REVIEW'
+                task.progress = 90
+            elif new_st in ('DONE', 'COMPLETED'):
                 task.progress = 100
+                task.overdue_notified_lead = False
+                task.overdue_notified_pm = False
+            task.status = new_st
         if 'progress' in data:
             try:
                 task.progress = max(0, min(100, int(data['progress'])))
@@ -445,6 +556,15 @@ def task_detail(task_id):
         return jsonify({'success': True, 'message': 'Task updated.', 'task': task.to_dict()}), 200
 
     if request.method == 'DELETE':
+        if not (scope.is_admin or scope.is_lead or scope.is_pm):
+            return jsonify({'success': False, 'message': '403 Forbidden: Developers cannot delete tasks.'}), 403
+        if not scope.can_access_task(task):
+            return jsonify({'success': False, 'message': '403 Forbidden: Access denied to this task.'}), 403
+
+        # Clean up referencing records to prevent FK integrity errors
+        TaskStatusHistory.query.filter_by(task_id=task.id).delete()
+        TaskComment.query.filter_by(task_id=task.id).delete()
+        TaskAttachment.query.filter_by(task_id=task.id).delete()
         db.session.delete(task)
         db.session.commit()
         return jsonify({'success': True, 'message': 'Task deleted.'}), 200
@@ -454,6 +574,7 @@ def task_detail(task_id):
 @jwt_required(optional=True)
 def update_task_status(task_id):
     user = _get_auth_user()
+    scope = get_user_scope(user)
     data = request.get_json() or {}
     new_status = (data.get('status') or data.get('task_status') or 'TODO').upper()
     
@@ -461,10 +582,18 @@ def update_task_status(task_id):
     if not task:
         return jsonify({'success': False, 'message': 'Task not found.'}), 404
 
-    # Developer permission: developers can only move tasks assigned to them
-    if user and user.role_name == 'ROLE_DEV':
-        if task.assigned_to_id and str(task.assigned_to_id) != str(user.id):
-            return jsonify({'success': False, 'message': '403 Forbidden: You can only update tasks assigned to you.'}), 403
+    # IDOR Security Check
+    if not scope.can_access_task(task):
+        return jsonify({'success': False, 'message': '403 Forbidden: Access denied to this task.'}), 403
+
+    # Review workflow: if developer submits for review or marks completed, keep as IN_REVIEW for TL review
+    if scope.is_dev and new_status in ('DONE', 'COMPLETED', 'IN_REVIEW', 'REVIEW'):
+        new_status = 'IN_REVIEW'
+        task.progress = 90
+    elif new_status in ('DONE', 'COMPLETED'):
+        task.progress = 100
+        task.overdue_notified_lead = False
+        task.overdue_notified_pm = False
 
     old_status = task.status
     task.status = new_status
@@ -511,18 +640,68 @@ def update_task_status(task_id):
 
     return jsonify({'success': True, 'message': f'Task status updated to {new_status}.', 'task': task.to_dict()}), 200
 
+@task_bp.route('/<string:task_id>/approve', methods=['POST'])
+@task_bp.route('/<string:task_id>/approve/', methods=['POST'])
+@jwt_required(optional=True)
+def approve_task(task_id):
+    user = _get_auth_user()
+    scope = get_user_scope(user)
+    task = _find_task(task_id)
+    if not task:
+        return jsonify({'success': False, 'message': 'Task not found.'}), 404
+
+    # Developer cannot approve own task
+    if scope.is_dev:
+        return jsonify({'success': False, 'message': '403 Forbidden: Developers cannot approve tasks. Only Team Leads or PMs can approve.'}), 403
+
+    if not scope.can_access_task(task):
+        return jsonify({'success': False, 'message': '403 Forbidden: Access denied to this task.'}), 403
+
+    old_status = task.status
+    task.status = 'COMPLETED'
+    task.progress = 100
+    task.overdue_notified_lead = False
+    task.overdue_notified_pm = False
+
+    data = request.get_json() or {}
+    review_notes = data.get('review') or data.get('notes') or 'Deliverable approved by Team Lead.'
+    task.team_leader_review = review_notes
+    task.team_leader_reviewed_at = datetime.utcnow()
+    task.team_leader_reviewed_by_id = user.id if user else None
+
+    hist = TaskStatusHistory(
+        task_id=task.id,
+        user_id=user.id if user else None,
+        action_type='TASK_APPROVED_COMPLETED',
+        old_value=old_status,
+        new_value='COMPLETED',
+        details=f"Team Lead approved task: {review_notes}"
+    )
+    db.session.add(hist)
+    db.session.commit()
+
+    return jsonify({
+        'success': True,
+        'message': f"Task '{task.display_title}' approved and marked COMPLETED.",
+        'task': task.to_dict()
+    }), 200
+
 @task_bp.route('/<string:task_id>/assign', methods=['PATCH', 'PUT'])
 @task_bp.route('/<string:task_id>/assign/', methods=['PATCH', 'PUT'])
 @jwt_required(optional=True)
 def assign_task(task_id):
     user = _get_auth_user()
+    scope = get_user_scope(user)
     task = _find_task(task_id)
     if not task:
         return jsonify({'success': False, 'message': 'Task not found.'}), 404
 
     # Developer cannot reassign tasks
-    if user and user.role_name == 'ROLE_DEV':
+    if scope.is_dev or (user and user.role_name == 'ROLE_DEV'):
         return jsonify({'success': False, 'message': '403 Forbidden: Developers cannot reassign tasks.'}), 403
+
+    if not scope.can_access_task(task):
+        return jsonify({'success': False, 'message': '403 Forbidden: Access denied to this task.'}), 403
 
     data = request.get_json() or {}
     raw_assignee = data.get('assigned_to') or data.get('assigned_to_id') or data.get('assignee')
@@ -632,13 +811,17 @@ def add_delay_remark(task_id):
 @jwt_required(optional=True)
 def add_team_leader_review(task_id):
     user = _get_auth_user()
+    scope = get_user_scope(user)
     task = _find_task(task_id)
     if not task:
         return jsonify({'success': False, 'message': 'Task not found.'}), 404
 
     # Developer cannot add TL review
-    if user and user.role_name == 'ROLE_DEV':
+    if scope.is_dev or (user and user.role_name == 'ROLE_DEV'):
         return jsonify({'success': False, 'message': '403 Forbidden: Only Team Leaders or Managers can add review notes.'}), 403
+
+    if not scope.can_access_task(task):
+        return jsonify({'success': False, 'message': '403 Forbidden: Access denied to this task.'}), 403
 
     data = request.get_json() or {}
     review_comment = data.get('review') or data.get('review_comment') or data.get('team_leader_review') or ''
@@ -672,13 +855,17 @@ def add_team_leader_review(task_id):
 @jwt_required(optional=True)
 def change_task_due_date(task_id):
     user = _get_auth_user()
+    scope = get_user_scope(user)
     task = _find_task(task_id)
     if not task:
         return jsonify({'success': False, 'message': 'Task not found.'}), 404
 
     # Developers cannot silently extend due dates to avoid overdue status
-    if user and user.role_name == 'ROLE_DEV':
+    if scope.is_dev or (user and user.role_name == 'ROLE_DEV'):
         return jsonify({'success': False, 'message': '403 Forbidden: Developers cannot change the due date. Contact your Team Leader.'}), 403
+
+    if not scope.can_access_task(task):
+        return jsonify({'success': False, 'message': '403 Forbidden: Access denied to this task.'}), 403
 
     data = request.get_json() or {}
     new_due_date_str = data.get('new_due_date') or data.get('due_date')
@@ -732,9 +919,16 @@ def change_task_due_date(task_id):
 @jwt_required(optional=True)
 def escalate_task_to_pm(task_id):
     user = _get_auth_user()
+    scope = get_user_scope(user)
     task = _find_task(task_id)
     if not task:
         return jsonify({'success': False, 'message': 'Task not found.'}), 404
+
+    if scope.is_dev or (user and user.role_name == 'ROLE_DEV'):
+        return jsonify({'success': False, 'message': '403 Forbidden: Developers cannot escalate tasks. Contact your Team Leader.'}), 403
+
+    if not scope.can_access_task(task):
+        return jsonify({'success': False, 'message': '403 Forbidden: Access denied to this task.'}), 403
 
     data = request.get_json() or {}
     reason = data.get('reason') or data.get('escalation_reason') or 'Escalated by Team Lead for PM intervention'

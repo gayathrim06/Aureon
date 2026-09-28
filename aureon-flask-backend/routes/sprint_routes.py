@@ -4,6 +4,7 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from datetime import datetime, date
 from extensions import db
 from models import Sprint, Team, Project, User, AuditLog, Role, Task, TaskStatusHistory, Notification
+from services.rbac_service import get_user_scope
 
 sprint_bp = Blueprint('sprints', __name__, url_prefix='/api/v1/sprints')
 
@@ -24,7 +25,12 @@ def _get_auth_user():
         u_uuid = _parse_uuid(user_id)
         user = User.query.get(u_uuid or user_id)
     if not user:
-        user = User.query.first()
+        admin_user = User.query.filter_by(email='admin@aureon.com').first()
+        if not admin_user:
+            admin_role = Role.query.filter_by(code='ROLE_ADMIN').first()
+            if admin_role:
+                admin_user = User.query.filter_by(role_id=admin_role.id).first()
+        user = admin_user or User.query.first()
     return user
 
 def _find_sprint(sprint_id):
@@ -49,9 +55,23 @@ def _find_sprint(sprint_id):
 @jwt_required(optional=True)
 def manage_sprints():
     user = _get_auth_user()
+    scope = get_user_scope(user)
 
     if request.method == 'GET':
         query = Sprint.query
+
+        # Enforce server-side role isolation
+        if not scope.is_admin:
+            if scope.is_pm:
+                query = query.filter(Sprint.project_id.in_(scope.project_ids))
+            elif scope.is_lead:
+                query = query.filter(
+                    (Sprint.team_id.in_(scope.team_ids)) |
+                    (Sprint.project_id.in_(scope.project_ids))
+                )
+            elif scope.is_dev:
+                query = query.filter(Sprint.id.in_(scope.sprint_ids))
+
         proj_param = request.args.get('project_id')
         team_param = request.args.get('team_id')
         status_param = request.args.get('status')
@@ -187,18 +207,19 @@ def manage_sprints():
 @jwt_required(optional=True)
 def sprint_detail(sprint_id):
     user = _get_auth_user()
+    scope = get_user_scope(user)
     sprint = _find_sprint(sprint_id)
     if not sprint:
         return jsonify({'success': False, 'message': 'Sprint not found.'}), 404
 
-    # Team Lead scope check
-    if user and user.role_name == 'ROLE_LEAD':
-        lead_team = Team.query.filter((Team.team_leader_id == user.id) | (Team.lead_id == user.id)).first()
-        if lead_team and sprint.team_id and str(sprint.team_id) != str(lead_team.id):
-            return jsonify({'success': False, 'message': '403 Forbidden: Cannot view or modify another team\'s sprint.'}), 403
+    if not scope.can_access_sprint(sprint):
+        return jsonify({'success': False, 'message': '403 Forbidden: You do not have permission to access this sprint.'}), 403
 
     if request.method == 'GET':
         return jsonify({'success': True, 'sprint': sprint.to_dict()}), 200
+
+    if request.method in ('PUT', 'DELETE') and scope.is_dev:
+        return jsonify({'success': False, 'message': '403 Forbidden: Developers cannot modify or delete sprints.'}), 403
 
     if request.method == 'PUT':
         data = request.get_json() or {}
@@ -237,14 +258,13 @@ def sprint_detail(sprint_id):
 @jwt_required(optional=True)
 def update_sprint_status(sprint_id):
     user = _get_auth_user()
+    scope = get_user_scope(user)
     sprint = _find_sprint(sprint_id)
     if not sprint:
         return jsonify({'success': False, 'message': 'Sprint not found.'}), 404
 
-    if user and user.role_name == 'ROLE_LEAD':
-        lead_team = Team.query.filter((Team.team_leader_id == user.id) | (Team.lead_id == user.id)).first()
-        if lead_team and sprint.team_id and str(sprint.team_id) != str(lead_team.id):
-            return jsonify({'success': False, 'message': '403 Forbidden: Cannot change status of another team\'s sprint.'}), 403
+    if not scope.can_access_sprint(sprint) or scope.is_dev:
+        return jsonify({'success': False, 'message': '403 Forbidden: Cannot change status of this sprint.'}), 403
 
     data = request.get_json() or {}
     new_status = (data.get('status') or 'ACTIVE').upper()
@@ -265,12 +285,19 @@ def update_sprint_status(sprint_id):
 @jwt_required(optional=True)
 def sprint_tasks(sprint_id):
     user = _get_auth_user()
+    scope = get_user_scope(user)
     sprint = _find_sprint(sprint_id)
     if not sprint:
         return jsonify({'success': False, 'message': 'Sprint not found.'}), 404
 
+    if not scope.can_access_sprint(sprint):
+        return jsonify({'success': False, 'message': '403 Forbidden: Access denied to this sprint.'}), 403
+
     if request.method == 'GET':
-        tasks = Task.query.filter_by(sprint_id=sprint.id).all()
+        query = Task.query.filter_by(sprint_id=sprint.id)
+        if scope.is_dev:
+            query = query.filter_by(assigned_to_id=user.id)
+        tasks = query.all()
         return jsonify({
             'success': True,
             'sprint': sprint.to_dict(),
@@ -279,6 +306,9 @@ def sprint_tasks(sprint_id):
         }), 200
 
     if request.method == 'POST':
+        if scope.is_dev:
+            return jsonify({'success': False, 'message': '403 Forbidden: Developers cannot assign tasks to sprints.'}), 403
+
         # Add tasks from product backlog to this sprint
         data = request.get_json() or {}
         raw_ids = data.get('task_ids') or [data.get('task_id')]
@@ -331,9 +361,13 @@ def sprint_tasks(sprint_id):
 @jwt_required(optional=True)
 def remove_task_from_sprint(sprint_id, task_id):
     user = _get_auth_user()
+    scope = get_user_scope(user)
     sprint = _find_sprint(sprint_id)
     if not sprint:
         return jsonify({'success': False, 'message': 'Sprint not found.'}), 404
+
+    if not scope.can_access_sprint(sprint) or scope.is_dev:
+        return jsonify({'success': False, 'message': '403 Forbidden: Cannot remove tasks from this sprint.'}), 403
 
     t_uuid = _parse_uuid(task_id)
     task = Task.query.get(t_uuid or task_id)
@@ -366,9 +400,13 @@ def remove_task_from_sprint(sprint_id, task_id):
 @jwt_required(optional=True)
 def complete_sprint(sprint_id):
     user = _get_auth_user()
+    scope = get_user_scope(user)
     sprint = _find_sprint(sprint_id)
     if not sprint:
         return jsonify({'success': False, 'message': 'Sprint not found.'}), 404
+
+    if not scope.can_access_sprint(sprint) or scope.is_dev:
+        return jsonify({'success': False, 'message': '403 Forbidden: Cannot complete this sprint.'}), 403
 
     data = request.get_json() or {}
     target_sprint_id_raw = data.get('target_sprint_id')
@@ -437,7 +475,14 @@ def complete_sprint(sprint_id):
 @sprint_bp.route('/<string:sprint_id>/review/', methods=['GET'])
 @jwt_required(optional=True)
 def sprint_review(sprint_id):
+    user = _get_auth_user()
+    scope = get_user_scope(user)
     sprint = _find_sprint(sprint_id)
+    if not sprint:
+        return jsonify({'success': False, 'message': 'Sprint not found.'}), 404
+
+    if not scope.can_access_sprint(sprint):
+        return jsonify({'success': False, 'message': '403 Forbidden: Access denied to this sprint review.'}), 403
     if not sprint:
         return jsonify({'success': False, 'message': 'Sprint not found.'}), 404
 

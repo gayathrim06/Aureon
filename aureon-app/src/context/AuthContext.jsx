@@ -1,5 +1,4 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { initialUsers } from '../services/mockData';
 import { logAuditEvent } from '../services/auditLogger';
 import { apiClient, getApiBaseUrl } from '../services/apiClient';
 
@@ -215,11 +214,10 @@ export const AuthProvider = ({ children }) => {
       registeredUsersList = JSON.parse(localStorage.getItem('aureon_registered_users') || '[]');
     } catch (e) {}
 
-    let foundUser = registeredUsersList.find(u => u.email.toLowerCase() === cleanInput) ||
-      initialUsers.find(u => 
-        u.email.toLowerCase() === cleanInput ||
-        u.email.split('@')[0].toLowerCase() === cleanInput
-      );
+    let foundUser = registeredUsersList.find(u => 
+      u.email.toLowerCase() === cleanInput ||
+      u.email.split('@')[0].toLowerCase() === cleanInput
+    );
     
     if (!foundUser) {
       const namePart = cleanInput.split('@')[0].replace('.', ' ').replace('_', ' ');
@@ -307,7 +305,7 @@ export const AuthProvider = ({ children }) => {
     // Disallow repeated email check against local stored users
     try {
       const regList = JSON.parse(localStorage.getItem('aureon_registered_users') || '[]');
-      if (regList.some(u => u.email && u.email.toLowerCase() === cleanEmail) || initialUsers.some(u => u.email && u.email.toLowerCase() === cleanEmail)) {
+      if (regList.some(u => u.email && u.email.toLowerCase() === cleanEmail)) {
         return { success: false, message: `Email "${cleanEmail}" is already registered. Repeated email registration is not allowed.` };
       }
     } catch (e) {}
@@ -326,8 +324,6 @@ export const AuthProvider = ({ children }) => {
       best_friend_name: data.bestFriendName,
       avatar: data.fullName ? data.fullName.split(' ').map(n=>n[0]).join('') : 'NU',
     };
-
-    initialUsers.push(newUser);
 
     try {
       let regList = JSON.parse(localStorage.getItem('aureon_registered_users') || '[]');

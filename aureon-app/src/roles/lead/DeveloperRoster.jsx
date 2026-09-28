@@ -11,6 +11,7 @@ export const DeveloperRoster = ({ onShowToast }) => {
   const [usersList, setUsersList] = useState([]);
   const [tasksList, setTasksList] = useState([]);
   const [projectsList, setProjectsList] = useState([]);
+  const [sprintsList, setSprintsList] = useState([]);
   const [loading, setLoading] = useState(true);
 
   // Modal States
@@ -22,6 +23,7 @@ export const DeveloperRoster = ({ onShowToast }) => {
     title: '',
     description: '',
     projectId: '',
+    sprintId: '',
     priority: 'HIGH',
     gitBranch: 'feature/auth-module',
     dueDate: '2026-09-15'
@@ -37,63 +39,71 @@ export const DeveloperRoster = ({ onShowToast }) => {
     endDate: '2026-09-15'
   });
 
-  const defaultTeamDevelopers = [
-    { id: '22222222-2222-2222-2222-222222222222', full_name: 'Sainu Anna Sajan', email: 'sainu@aureon.com', designation: 'React UI Developer', role_name: 'ROLE_DEV' },
-    { id: '44444444-4444-4444-4444-444444444444', full_name: 'Ram Kumar', email: 'ram@aureon.com', designation: 'Full Stack Engineer', role_name: 'ROLE_DEV' },
-    { id: '55555555-5555-5555-5555-555555555555', full_name: 'Priya Sharma', email: 'priya@aureon.com', designation: 'Database Engineer', role_name: 'ROLE_DEV' },
-    { id: '66666666-6666-6666-6666-666666666666', full_name: 'Venu QA', email: 'venu@aureon.com', designation: 'Lead QA Engineer', role_name: 'ROLE_QA' }
-  ];
-
   const fetchData = async () => {
     setLoading(true);
     const headers = getAuthHeaders();
 
     try {
-      const [uRes, tRes, pRes] = await Promise.all([
+      const [availRes, uRes, tRes, pRes, sRes] = await Promise.all([
+        fetch('http://127.0.0.1:8000/api/v1/team-lead/my-team/availability', { headers }),
         fetch('http://127.0.0.1:8000/api/v1/users/', { headers }),
         fetch('http://127.0.0.1:8000/api/v1/tasks/', { headers }),
-        fetch('http://127.0.0.1:8000/api/v1/projects/', { headers })
+        fetch('http://127.0.0.1:8000/api/v1/projects/', { headers }),
+        fetch('http://127.0.0.1:8000/api/v1/sprints/', { headers })
       ]);
 
-      let realUsers = [];
-      let realTasks = [];
-      let realProjs = [];
-
-      if (uRes.ok) {
-        const uData = await uRes.json();
-        realUsers = uData.users || [];
-      }
-
-      if (tRes.ok) {
-        const tData = await tRes.json();
-        realTasks = tData.tasks || [];
-        setTasksList(realTasks);
-      }
-
-      if (pRes.ok) {
-        const pData = await pRes.json();
-        realProjs = pData.projects || [];
-        setProjectsList(realProjs);
-        if (realProjs.length > 0) {
-          setTaskFormData(prev => ({ ...prev, projectId: realProjs[0].id }));
-          setSprintFormData(prev => ({ ...prev, projectId: realProjs[0].id }));
+      let devs = [];
+      if (availRes.ok) {
+        const aData = await availRes.json();
+        if (Array.isArray(aData.developers) && aData.developers.length > 0) {
+          devs = aData.developers;
         }
       }
 
-      // Filter out Project Managers (PMs like Gopika Manoj should NOT be listed in developer team roster)
-      const teamDevsOnly = realUsers.filter(u => {
-        const rName = (u.role_name || u.role || u.role_code || '').toUpperCase();
-        const desig = (u.designation || '').toLowerCase();
-        return rName !== 'ROLE_PM' && !desig.includes('project manager') && !desig.includes('manager');
-      });
+      if (devs.length === 0 && uRes.ok) {
+        const uData = await uRes.json();
+        const rawUsers = uData.users || [];
+        devs = rawUsers.filter(u => {
+          const rName = (u.role_name || u.role || '').toUpperCase();
+          return rName !== 'ROLE_PM' && rName !== 'ROLE_ADMIN';
+        }).map(u => ({
+          ...u,
+          active_tasks_count: 0,
+          status: 'Available',
+          is_available: true,
+          ready_for_next_task: true,
+          active_tasks: []
+        }));
+      }
 
-      if (teamDevsOnly.length > 0) {
-        setUsersList(teamDevsOnly);
-      } else {
-        setUsersList(defaultTeamDevelopers);
+      setUsersList(devs);
+
+      if (tRes.ok) {
+        const tData = await tRes.json();
+        setTasksList(tData.tasks || []);
+      }
+
+      let loadedProjs = [];
+      if (pRes.ok) {
+        const pData = await pRes.json();
+        loadedProjs = pData.projects || [];
+        setProjectsList(loadedProjs);
+        if (loadedProjs.length > 0) {
+          setTaskFormData(prev => ({ ...prev, projectId: loadedProjs[0].id }));
+          setSprintFormData(prev => ({ ...prev, projectId: loadedProjs[0].id }));
+        }
+      }
+
+      if (sRes.ok) {
+        const sData = await sRes.json();
+        const spr = sData.sprints || [];
+        setSprintsList(spr);
+        if (spr.length > 0) {
+          setTaskFormData(prev => ({ ...prev, sprintId: spr[0].id }));
+        }
       }
     } catch (err) {
-      setUsersList(defaultTeamDevelopers);
+      setUsersList([]);
     } finally {
       setLoading(false);
     }
@@ -113,6 +123,12 @@ export const DeveloperRoster = ({ onShowToast }) => {
   const handleAssignTaskSubmit = async (e) => {
     e.preventDefault();
     if (!taskFormData.title.trim() || !taskModalDev) return;
+    if (!taskFormData.sprintId) {
+      if (typeof onShowToast === 'function') {
+        onShowToast({ type: 'error', title: 'Sprint Required', message: 'A sprint is required for task creation.' });
+      }
+      return;
+    }
 
     const newTask = {
       title: taskFormData.title,
@@ -120,13 +136,13 @@ export const DeveloperRoster = ({ onShowToast }) => {
       priority: taskFormData.priority,
       status: 'TODO',
       project_id: taskFormData.projectId,
+      sprint_id: taskFormData.sprintId,
       assigned_to: taskModalDev.full_name || taskModalDev.name,
-      assigned_to_id: taskModalDev.id,
+      assigned_to_id: taskModalDev.id || taskModalDev.user_id,
       dueDate: taskFormData.dueDate,
       git_branch: taskFormData.gitBranch
     };
 
-    const token = sessionStorage.getItem('aureon_jwt_access_token');
     try {
       await fetch('http://127.0.0.1:8000/api/v1/tasks/', {
         method: 'POST',
@@ -165,7 +181,7 @@ export const DeveloperRoster = ({ onShowToast }) => {
       goal: sprintFormData.goal,
       story_points: Number(sprintFormData.storyPoints) || 40,
       project_id: sprintFormData.projectId,
-      project_name: foundProj ? foundProj.name : 'Verona Organic',
+      project_name: foundProj ? foundProj.name : 'Engineering Project',
       scrum_master: sprintModalDev.full_name || sprintModalDev.name,
       assigned_team: 'Engineering Team',
       start_date: sprintFormData.startDate,
@@ -209,7 +225,7 @@ export const DeveloperRoster = ({ onShowToast }) => {
           Virtual Team Developers & Engineer Allocation
         </h1>
         <p className="text-xs text-slate-500 mt-0.5">
-          Engineering team members assisting Tech Lead Krishna Deepesh on project deliverables, live task execution metrics, and direct work allocation.
+          Engineering team members, live task execution metrics, developer availability, and sprint assignments.
         </p>
       </div>
 
@@ -217,7 +233,9 @@ export const DeveloperRoster = ({ onShowToast }) => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
         {usersList.map((u) => {
           const uName = u.full_name || u.name || u.username || 'Team Member';
+          const devId = u.id || u.user_id;
           const userTasks = tasksList.filter(t => {
+            if (t.assigned_to_id && devId && String(t.assigned_to_id) === String(devId)) return true;
             const assigneeStr = (t.assignee_name || t.assignee || '').toLowerCase();
             const searchStr = uName.toLowerCase();
             return assigneeStr.includes(searchStr) || searchStr.includes(assigneeStr);
@@ -226,9 +244,11 @@ export const DeveloperRoster = ({ onShowToast }) => {
           const totalAssigned = userTasks.length;
           const completedCount = doneTasks.length;
           const completionRate = totalAssigned > 0 ? Math.round((completedCount / totalAssigned) * 100) : 0;
+          const activeTasksCount = u.active_tasks_count !== undefined ? u.active_tasks_count : (totalAssigned - completedCount);
+          const isAvailable = u.is_available !== undefined ? u.is_available : (activeTasksCount === 0);
 
           return (
-            <div key={u.id} className="p-5 rounded-3xl bg-white dark:bg-slate-900 warm:bg-[#e8dbbe] border border-slate-200 dark:border-slate-800 warm:border-[#cbb68e] shadow-sm space-y-4 hover:shadow-md transition-all">
+            <div key={devId} className="p-5 rounded-3xl bg-white dark:bg-slate-900 warm:bg-[#e8dbbe] border border-slate-200 dark:border-slate-800 warm:border-[#cbb68e] shadow-sm space-y-4 hover:shadow-md transition-all">
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 rounded-2xl bg-indigo-600 dark:bg-indigo-600 text-white font-black text-sm flex items-center justify-center shrink-0 shadow-sm">
                   {getInitials(uName)}
@@ -238,6 +258,25 @@ export const DeveloperRoster = ({ onShowToast }) => {
                   <p className="text-[11px] text-slate-500 font-bold truncate">{u.designation || u.role_name || u.role || 'Software Engineer'}</p>
                   <p className="text-[10px] text-indigo-600 dark:text-indigo-400 font-mono truncate">{u.email}</p>
                 </div>
+              </div>
+
+              {/* Developer Availability Badge */}
+              <div className="pt-1">
+                {isAvailable ? (
+                  <div className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 flex items-center justify-between">
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-600 text-white flex items-center gap-1">
+                      <CheckCircle2 className="w-3 h-3" /> Available
+                    </span>
+                    <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-300">Ready for next task: YES</span>
+                  </div>
+                ) : (
+                  <div className="p-2 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 flex items-center justify-between">
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-500 text-white flex items-center gap-1">
+                      <Clock className="w-3 h-3" /> Busy ({activeTasksCount} active)
+                    </span>
+                    <span className="text-[10px] font-bold text-amber-700 dark:text-amber-300">Ready for next task: NO</span>
+                  </div>
+                )}
               </div>
 
               {/* Real Task Metrics */}
@@ -312,6 +351,23 @@ export const DeveloperRoster = ({ onShowToast }) => {
             </div>
 
             <div>
+              <label className="block font-bold mb-1">Target Sprint *</label>
+              <select
+                required
+                value={taskFormData.sprintId}
+                onChange={(e) => setTaskFormData({ ...taskFormData, sprintId: e.target.value })}
+                className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 font-bold text-slate-900 dark:text-white"
+              >
+                <option value="">-- Select Sprint --</option>
+                {sprintsList.map(s => (
+                  <option key={s.id} value={s.id}>{s.name} ({s.status})</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
               <label className="block font-bold mb-1">Priority</label>
               <select
                 value={taskFormData.priority}
@@ -323,6 +379,16 @@ export const DeveloperRoster = ({ onShowToast }) => {
                 <option value="HIGH">High Priority</option>
                 <option value="CRITICAL">Critical Priority</option>
               </select>
+            </div>
+
+            <div>
+              <label className="block font-bold mb-1">Target Due Date</label>
+              <input
+                type="date"
+                value={taskFormData.dueDate}
+                onChange={(e) => setTaskFormData({ ...taskFormData, dueDate: e.target.value })}
+                className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 font-bold text-slate-900 dark:text-white"
+              />
             </div>
           </div>
 

@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Breadcrumb } from '../../components/common/Breadcrumb';
 import { Modal } from '../../components/common/Modal';
 import { useAuth } from '../../context/AuthContext';
 import { logAuditEvent } from '../../services/auditLogger';
-import { Layers, Plus, CheckCircle2, Clock, Activity, FolderKanban, Users, Calendar, ShieldCheck, Filter, Target, Zap, TrendingUp, Flag } from 'lucide-react';
+import { Layers, Plus, CheckCircle2, Clock, Activity, FolderKanban, Users, Calendar, ShieldCheck, Filter, Target, Zap, TrendingUp, Flag, CheckSquare, UserPlus, AlertCircle } from 'lucide-react';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 import { getAuthHeaders } from '../../services/apiClient';
 
@@ -11,8 +11,17 @@ export const SprintPlanner = ({ onShowToast }) => {
   const { user } = useAuth();
   const [sprints, setSprints] = useState([]);
   const [projectsList, setProjectsList] = useState([]);
+  const [teamsList, setTeamsList] = useState([]);
+  const [developersList, setDevelopersList] = useState([]);
+  const [tasks, setTasks] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isAddTaskModalOpen, setIsAddTaskModalOpen] = useState(false);
   const [selectedSprint, setSelectedSprint] = useState(null);
+
+  // Multi-Task / Batch Sprint Assignment State
+  const [selectedTaskIds, setSelectedTaskIds] = useState([]);
+  const [batchAssigneeId, setBatchAssigneeId] = useState('');
+  const [isBatchAssigning, setIsBatchAssigning] = useState(false);
 
   // Filters
   const [projectFilter, setProjectFilter] = useState('ALL');
@@ -23,58 +32,161 @@ export const SprintPlanner = ({ onShowToast }) => {
     name: '',
     projectId: '',
     projectName: '',
-    assignedTeam: 'Frontend Development Team',
-    scrumMaster: 'Krishna Deepesh',
+    assignedTeam: '',
+    scrumMaster: '',
     storyPoints: 40,
     startDate: '2026-09-01',
     endDate: '2026-09-15',
     goal: ''
   });
 
-  const availableTeams = [
-    { id: 'team_fe', name: 'Frontend Development Team', lead: 'Krishna Deepesh (Tech Lead)' },
-    { id: 'team_be', name: 'Backend & Microservices Team', lead: 'David Chen (Lead Architect)' },
-    { id: 'team_qa', name: 'QA & Test Automation Team', lead: 'Venu QA (QA Lead)' },
-    { id: 'team_devops', name: 'DevOps & Cloud Infra Team', lead: 'Alex Rivera (DevOps Lead)' }
-  ];
+  // Modal Form State - Add Task Directly to Selected Sprint
+  const [taskFormData, setTaskFormData] = useState({
+    title: '',
+    description: '',
+    priority: 'MEDIUM',
+    ticket_type: 'Task',
+    assigned_to: '',
+    estimated_hours: 8,
+    due_date: '2026-09-25'
+  });
 
-  const fetchSprintsAndProjects = async () => {
+  const fetchSprintData = async () => {
     const headers = getAuthHeaders();
 
     try {
-      const [spRes, prRes] = await Promise.all([
+      const [spRes, prRes, tmRes, tkRes, usRes] = await Promise.all([
         fetch('http://127.0.0.1:8000/api/v1/sprints/', { headers }),
-        fetch('http://127.0.0.1:8000/api/v1/projects/', { headers })
+        fetch('http://127.0.0.1:8000/api/v1/projects/', { headers }),
+        fetch('http://127.0.0.1:8000/api/v1/teams/', { headers }),
+        fetch('http://127.0.0.1:8000/api/v1/tasks/', { headers }),
+        fetch('http://127.0.0.1:8000/api/v1/users/', { headers })
       ]);
 
-      let fetchedProjects = [];
       if (prRes.ok) {
         const pData = await prRes.json();
-        fetchedProjects = pData.projects || [];
-        setProjectsList(fetchedProjects);
-        if (fetchedProjects.length > 0 && !formData.projectId) {
+        const projs = pData.projects || [];
+        setProjectsList(projs);
+        if (projs.length > 0 && !formData.projectId) {
           setFormData(prev => ({
             ...prev,
-            projectId: fetchedProjects[0].id,
-            projectName: fetchedProjects[0].name
+            projectId: projs[0].id,
+            projectName: projs[0].name
           }));
         }
+      }
+
+      if (tmRes.ok) {
+        const tData = await tmRes.json();
+        const teams = tData.teams || [];
+        setTeamsList(teams);
+        if (teams.length > 0 && !formData.assignedTeam) {
+          setFormData(prev => ({
+            ...prev,
+            assignedTeam: teams[0].name,
+            scrumMaster: teams[0].lead_name || 'Team Lead'
+          }));
+        }
+      }
+
+      if (usRes.ok) {
+        const uData = await usRes.json();
+        const users = uData.users || [];
+        setDevelopersList(users);
+        if (users.length > 0 && !taskFormData.assigned_to) {
+          setTaskFormData(prev => ({ ...prev, assigned_to: users[0].id }));
+        }
+      }
+
+      if (tkRes.ok) {
+        const tkData = await tkRes.json();
+        setTasks(tkData.tasks || []);
       }
 
       if (spRes.ok) {
         const sData = await spRes.json();
         const apiSprints = sData.sprints || [];
         setSprints(apiSprints);
-        if (apiSprints.length > 0) setSelectedSprint(apiSprints[0]);
+        if (apiSprints.length > 0) {
+          setSelectedSprint(prev => {
+            if (prev) {
+              const matched = apiSprints.find(s => s.id === prev.id);
+              return matched || apiSprints[0];
+            }
+            return apiSprints[0];
+          });
+        }
       }
     } catch (err) {
-      setSprints([]);
+      console.error('Failed to load sprint planner data:', err);
     }
   };
 
   useEffect(() => {
-    fetchSprintsAndProjects();
+    fetchSprintData();
   }, []);
+
+  // Resolve the sprint's specific assigned team
+  const sprintTeam = useMemo(() => {
+    if (!selectedSprint || !teamsList.length) return null;
+    return teamsList.find(t => 
+      (selectedSprint.team_id && String(t.id) === String(selectedSprint.team_id)) ||
+      (selectedSprint.team_name && t.name === selectedSprint.team_name) ||
+      (selectedSprint.team && t.name === selectedSprint.team)
+    ) || null;
+  }, [selectedSprint, teamsList]);
+
+  // Strictly filter developers to ONLY those who belong to the sprint's team with live availability stats
+  const sprintDevelopers = useMemo(() => {
+    if (!sprintTeam) return developersList;
+    if (sprintTeam.member_details && sprintTeam.member_details.length > 0) {
+      return sprintTeam.member_details.map(m => {
+        const u = developersList.find(d => String(d.id) === String(m.id)) || {};
+        return {
+          id: m.id,
+          name: m.name || u.display_name || u.full_name,
+          full_name: m.full_name || m.name || u.full_name,
+          email: m.email || u.email,
+          role: m.role || u.role || 'ROLE_DEV',
+          designation: m.designation || u.designation || 'Software Engineer',
+          status: m.status || (m.active_tasks_count === 0 ? 'Available' : `Busy (${m.active_tasks_count} active)`),
+          is_available: m.is_available !== undefined ? m.is_available : (m.active_tasks_count === 0),
+          active_tasks_count: m.active_tasks_count !== undefined ? m.active_tasks_count : 0,
+          completed_tasks_count: m.completed_tasks_count !== undefined ? m.completed_tasks_count : 0
+        };
+      });
+    }
+
+    const memberIds = new Set((sprintTeam.member_details || []).map(m => String(m.id)));
+    if (sprintTeam.team_leader_id) memberIds.add(String(sprintTeam.team_leader_id));
+    if (sprintTeam.lead_id) memberIds.add(String(sprintTeam.lead_id));
+
+    return developersList.filter(d => memberIds.has(String(d.id)));
+  }, [sprintTeam, developersList]);
+
+  const formatDevOption = (dev) => {
+    if (!dev) return 'Unassigned';
+    const isAvail = dev.is_available;
+    const completed = dev.completed_tasks_count || 0;
+    const active = dev.active_tasks_count || 0;
+    const availText = isAvail
+      ? (completed > 0 ? `Available (All ${completed} tasks completed)` : 'Available (Ready)')
+      : `Busy (${active} active, ${completed} completed)`;
+    return `${isAvail ? '🟢' : '🔴'} ${dev.full_name || dev.name} — ${availText} [${dev.role || 'DEV'}]`;
+  };
+
+  // Keep modal assignee aligned with team members
+  useEffect(() => {
+    if (sprintDevelopers.length > 0) {
+      setTaskFormData(prev => {
+        const isCurrentValid = sprintDevelopers.some(d => String(d.id) === String(prev.assigned_to));
+        if (!isCurrentValid) {
+          return { ...prev, assigned_to: sprintDevelopers[0].id };
+        }
+        return prev;
+      });
+    }
+  }, [sprintDevelopers]);
 
   const handleProjectSelect = (projId) => {
     const found = projectsList.find(p => p.id === projId);
@@ -86,12 +198,190 @@ export const SprintPlanner = ({ onShowToast }) => {
   };
 
   const handleTeamSelect = (teamName) => {
-    const found = availableTeams.find(t => t.name === teamName);
+    const found = teamsList.find(t => t.name === teamName);
     setFormData(prev => ({
       ...prev,
       assignedTeam: teamName,
-      scrumMaster: found ? found.lead : ''
+      scrumMaster: found?.lead_name || 'Team Lead'
     }));
+  };
+
+  const handleAssignDeveloper = async (taskId, devId) => {
+    const chosenDev = sprintDevelopers.find(u => String(u.id) === String(devId)) || developersList.find(u => String(u.id) === String(devId));
+    const devName = chosenDev ? (chosenDev.full_name || chosenDev.name || chosenDev.email) : 'Developer';
+
+    // Optimistic UI update
+    setTasks(prev => prev.map(t => {
+      if (t.id === taskId) {
+        return {
+          ...t,
+          assigned_to_id: devId,
+          assignee: devName,
+          assignee_name: devName,
+          needs_assignment: false
+        };
+      }
+      return t;
+    }));
+
+    try {
+      const res = await fetch(`http://127.0.0.1:8000/api/v1/tasks/${taskId}/assign`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeaders()
+        },
+        body: JSON.stringify({ assigned_to: devId })
+      });
+
+      if (res.ok) {
+        if (onShowToast) {
+          onShowToast({
+            type: 'success',
+            title: 'Developer Assigned to Task',
+            message: `Task successfully assigned to ${devName}.`
+          });
+        }
+        logAuditEvent({
+          user,
+          role: user?.role,
+          action: 'TASK_ASSIGNED_IN_SPRINT',
+          resource: `Task ${taskId} → ${devName}`,
+          status: 'SUCCESS'
+        });
+        fetchSprintData();
+      } else {
+        const errData = await res.json();
+        if (onShowToast) {
+          onShowToast({
+            type: 'error',
+            title: 'Assignment Failed',
+            message: errData.message || 'Could not assign developer.'
+          });
+        }
+      }
+    } catch (err) {
+      console.error('Error assigning developer:', err);
+    }
+  };
+
+  const handleBatchAssign = async () => {
+    if (!selectedTaskIds.length || !batchAssigneeId) return;
+    setIsBatchAssigning(true);
+
+    const chosenDev = sprintDevelopers.find(u => String(u.id) === String(batchAssigneeId));
+    const devName = chosenDev ? (chosenDev.full_name || chosenDev.name) : 'Developer';
+
+    // Optimistic UI update
+    setTasks(prev => prev.map(t => {
+      if (selectedTaskIds.includes(t.id)) {
+        return {
+          ...t,
+          assigned_to_id: batchAssigneeId,
+          assignee: devName,
+          assignee_name: devName,
+          needs_assignment: false
+        };
+      }
+      return t;
+    }));
+
+    try {
+      await Promise.all(
+        selectedTaskIds.map(taskId => 
+          fetch(`http://127.0.0.1:8000/api/v1/tasks/${taskId}/assign`, {
+            method: 'PATCH',
+            headers: {
+              'Content-Type': 'application/json',
+              ...getAuthHeaders()
+            },
+            body: JSON.stringify({ assigned_to: batchAssigneeId })
+          })
+        )
+      );
+
+      if (onShowToast) {
+        onShowToast({
+          type: 'success',
+          title: 'Batch Allocation Complete',
+          message: `${selectedTaskIds.length} tasks allocated to ${devName} in ${selectedSprint?.name}.`
+        });
+      }
+      logAuditEvent({
+        user,
+        role: user?.role,
+        action: 'PM_BATCH_TASK_ASSIGN',
+        resource: `${selectedTaskIds.length} tasks → ${devName}`,
+        status: 'SUCCESS'
+      });
+      setSelectedTaskIds([]);
+      setBatchAssigneeId('');
+      fetchSprintData();
+    } catch (err) {
+      console.error('Batch assign failed:', err);
+    } finally {
+      setIsBatchAssigning(false);
+    }
+  };
+
+  const handleCreateTaskForSprint = async (e) => {
+    e.preventDefault();
+    if (!taskFormData.title.trim() || !selectedSprint) return;
+
+    const payload = {
+      title: taskFormData.title,
+      description: taskFormData.description,
+      priority: taskFormData.priority,
+      ticket_type: taskFormData.ticket_type,
+      sprint_id: selectedSprint.id,
+      project_id: selectedSprint.project_id,
+      assigned_to: taskFormData.assigned_to,
+      estimated_hours: Number(taskFormData.estimated_hours) || 8,
+      due_date: taskFormData.due_date
+    };
+
+    try {
+      const res = await fetch('http://127.0.0.1:8000/api/v1/tasks/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeaders()
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (res.ok) {
+        if (onShowToast) {
+          onShowToast({
+            type: 'success',
+            title: 'Task Created in Sprint',
+            message: `Task "${taskFormData.title}" added to sprint ${selectedSprint.name}.`
+          });
+        }
+        setIsAddTaskModalOpen(false);
+        setTaskFormData({
+          title: '',
+          description: '',
+          priority: 'MEDIUM',
+          ticket_type: 'Task',
+          assigned_to: sprintDevelopers[0]?.id || '',
+          estimated_hours: 8,
+          due_date: '2026-09-25'
+        });
+        fetchSprintData();
+      } else {
+        const err = await res.json();
+        if (onShowToast) {
+          onShowToast({
+            type: 'error',
+            title: 'Task Creation Failed',
+            message: err.message || 'Failed to create task in sprint.'
+          });
+        }
+      }
+    } catch (err) {
+      console.error('Error creating task for sprint:', err);
+    }
   };
 
   const handleCreate = async (e) => {
@@ -133,7 +423,7 @@ export const SprintPlanner = ({ onShowToast }) => {
         },
         body: JSON.stringify(newSprint)
       });
-      fetchSprintsAndProjects();
+      fetchSprintData();
     } catch (err) {}
 
     logAuditEvent({
@@ -153,6 +443,10 @@ export const SprintPlanner = ({ onShowToast }) => {
     const matchTeam = teamFilter === 'ALL' || sp.assigned_team === teamFilter;
     return matchProj && matchTeam;
   });
+
+  const selectedSprintTasks = selectedSprint 
+    ? tasks.filter(t => (t.sprint_id && String(t.sprint_id) === String(selectedSprint.id)) || (t.sprint_name && t.sprint_name === selectedSprint.name))
+    : [];
 
   return (
     <div className="space-y-6 font-sans text-slate-900 dark:text-slate-100 warm:text-[#342314]">
@@ -212,7 +506,7 @@ export const SprintPlanner = ({ onShowToast }) => {
               className="p-1.5 px-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 text-xs font-bold"
             >
               <option value="ALL">All Teams</option>
-              {availableTeams.map(t => (
+              {teamsList.map(t => (
                 <option key={t.id} value={t.name}>{t.name}</option>
               ))}
             </select>
@@ -263,6 +557,248 @@ export const SprintPlanner = ({ onShowToast }) => {
                 <Line type="monotone" dataKey="target" stroke="#94a3b8" strokeDasharray="5 5" strokeWidth={2} name="Ideal Velocity Line" />
               </LineChart>
             </ResponsiveContainer>
+          </div>
+
+          {/* Sprint Squad Availability & Workload Roster */}
+          {sprintTeam && (
+            <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <Users className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                  <h4 className="text-xs font-black uppercase text-slate-800 dark:text-slate-200">
+                    Sprint Squad Availability Roster: {sprintTeam.name}
+                  </h4>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 font-bold text-slate-500">
+                    {sprintDevelopers.length} Members
+                  </span>
+                </div>
+                <div className="flex items-center gap-3 text-[11px] font-bold">
+                  <span className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                    {sprintDevelopers.filter(d => d.is_available).length} Available (Tasks Completed)
+                  </span>
+                  <span className="flex items-center gap-1.5 text-rose-600 dark:text-rose-400">
+                    <span className="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
+                    {sprintDevelopers.filter(d => !d.is_available).length} Busy (Active In-Flight)
+                  </span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-2.5">
+                {sprintDevelopers.map(dev => {
+                  const inThisSprintCount = selectedSprintTasks.filter(t => String(t.assigned_to_id) === String(dev.id) || t.assignee === dev.full_name).length;
+                  return (
+                    <div
+                      key={dev.id}
+                      className={`p-3 rounded-xl border transition-all ${
+                        dev.is_available
+                          ? 'bg-emerald-50/40 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800/60 shadow-xs'
+                          : 'bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-extrabold text-xs text-slate-900 dark:text-white truncate" title={dev.full_name || dev.name}>
+                          {dev.full_name || dev.name}
+                        </span>
+                        <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${dev.is_available ? 'bg-emerald-500 ring-2 ring-emerald-300 dark:ring-emerald-800' : 'bg-rose-500'}`} />
+                      </div>
+                      <div className="text-[10px] text-slate-400 font-medium truncate mt-0.5">
+                        {dev.designation || dev.role || 'Software Engineer'}
+                      </div>
+                      <div className="mt-2 pt-2 border-t border-slate-200/60 dark:border-slate-800/60 flex items-center justify-between text-[10px]">
+                        <span className={`font-bold ${dev.is_available ? 'text-emerald-700 dark:text-emerald-300' : 'text-amber-700 dark:text-amber-400'}`}>
+                          {dev.is_available ? '✓ Available' : `${dev.active_tasks_count} Active`}
+                        </span>
+                        <span className="font-mono text-slate-500 font-bold" title="Tasks allocated in this sprint">
+                          ⚡ {inThisSprintCount} in sprint
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* SPRINT DELIVERABLES & TASK ASSIGNMENT PANEL */}
+          <div className="pt-4 border-t border-slate-200 dark:border-slate-800 warm:border-[#cbb68e] space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h4 className="text-sm font-black text-slate-900 dark:text-white flex items-center gap-2">
+                  <CheckSquare className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                  Sprint Deliverables & Developer Allocation ({selectedSprintTasks.length})
+                </h4>
+                <p className="text-[11px] text-slate-500">
+                  Manage tasks committed to <strong>{selectedSprint.name}</strong>. Assign or reassign developers directly within this sprint.
+                </p>
+              </div>
+
+              <button
+                onClick={() => setIsAddTaskModalOpen(true)}
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-xs transition-all shrink-0 self-start sm:self-auto"
+              >
+                <Plus className="w-3.5 h-3.5" /> Add Task to this Sprint
+              </button>
+            </div>
+
+            {/* Multi-Task / Batch Sprint Assignment Bar */}
+            {selectedTaskIds.length > 0 && (
+              <div className="p-3.5 rounded-2xl bg-indigo-600 text-white flex flex-wrap items-center justify-between gap-3 shadow-lg animate-fadeIn">
+                <div className="flex items-center gap-2.5">
+                  <CheckSquare className="w-5 h-5 text-indigo-200 shrink-0" />
+                  <div>
+                    <span className="font-black text-xs">
+                      {selectedTaskIds.length} Sprint Task{selectedTaskIds.length !== 1 ? 's' : ''} Selected
+                    </span>
+                    <span className="text-[10px] text-indigo-200 block">
+                      Assign these deliverables simultaneously to a team member
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <select
+                    value={batchAssigneeId}
+                    onChange={(e) => setBatchAssigneeId(e.target.value)}
+                    className="p-2 px-3 rounded-xl bg-white text-slate-900 text-xs font-bold border-none cursor-pointer"
+                  >
+                    <option value="">Select Team Member to Allocate...</option>
+                    {sprintDevelopers.map(dev => (
+                      <option key={dev.id} value={dev.id}>
+                        {formatDevOption(dev)}
+                      </option>
+                    ))}
+                  </select>
+
+                  <button
+                    onClick={handleBatchAssign}
+                    disabled={!batchAssigneeId || isBatchAssigning}
+                    className="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-white text-xs font-black transition-all shadow-xs"
+                  >
+                    {isBatchAssigning ? 'Assigning...' : 'Assign to Selected Member'}
+                  </button>
+
+                  <button
+                    onClick={() => setSelectedTaskIds([])}
+                    className="px-3 py-2 text-xs font-bold text-indigo-200 hover:text-white"
+                  >
+                    Clear Selection
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {selectedSprintTasks.length === 0 ? (
+              <div className="p-8 rounded-2xl bg-slate-50 dark:bg-slate-950 warm:bg-[#f3e8d2] border border-dashed border-slate-300 dark:border-slate-800 text-center space-y-2">
+                <p className="text-xs font-bold text-slate-600 dark:text-slate-400">No tasks currently assigned to this sprint.</p>
+                <p className="text-[11px] text-slate-500">Click <strong>"Add Task to this Sprint"</strong> above to break down deliverables and assign developers.</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-slate-50 dark:bg-slate-950 text-slate-500 font-bold uppercase text-[10px] border-b border-slate-200 dark:border-slate-800">
+                    <tr>
+                      <th className="p-3 w-10 text-center">
+                        <input
+                          type="checkbox"
+                          checked={selectedSprintTasks.length > 0 && selectedTaskIds.length === selectedSprintTasks.length}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedTaskIds(selectedSprintTasks.map(t => t.id));
+                            } else {
+                              setSelectedTaskIds([]);
+                            }
+                          }}
+                          className="rounded border-slate-300 dark:border-slate-700 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                          title="Select All Sprint Tasks"
+                        />
+                      </th>
+                      <th className="p-3">Ticket ID</th>
+                      <th className="p-3">Task Deliverable</th>
+                      <th className="p-3">Priority</th>
+                      <th className="p-3">Status</th>
+                      <th className="p-3">Assigned Developer & Availability</th>
+                      <th className="p-3">Due Date</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium">
+                    {selectedSprintTasks.map(task => {
+                      const currentDevId = task.assigned_to_id || sprintDevelopers.find(d => (d.full_name === task.assignee || d.email === task.assignee))?.id || '';
+                      const isSelected = selectedTaskIds.includes(task.id);
+                      return (
+                        <tr key={task.id} className={`transition-colors ${isSelected ? 'bg-indigo-50/50 dark:bg-indigo-950/30' : 'hover:bg-slate-50/50 dark:hover:bg-slate-950/40'}`}>
+                          <td className="p-3 w-10 text-center">
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                setSelectedTaskIds(prev => [...prev, task.id]);
+                              } else {
+                                setSelectedTaskIds(prev => prev.filter(id => id !== task.id));
+                              }
+                            }}
+                            className="rounded border-slate-300 dark:border-slate-700 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                          />
+                        </td>
+                        <td className="p-3 font-mono text-[11px] font-bold text-indigo-600 dark:text-indigo-400">
+                          {task.ticket_code || (task.id ? String(task.id).substring(0, 8) : 'TCK')}
+                        </td>
+                        <td className="p-3">
+                          <span className="font-bold text-slate-900 dark:text-white block">{task.title}</span>
+                          {task.description && (
+                            <span className="text-[10px] text-slate-500 line-clamp-1">{task.description}</span>
+                          )}
+                        </td>
+                        <td className="p-3">
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-extrabold ${
+                            task.priority === 'CRITICAL' ? 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300' :
+                            task.priority === 'HIGH' ? 'bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-300' :
+                            task.priority === 'MEDIUM' ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300' :
+                            'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300'
+                          }`}>
+                            {task.priority || 'MEDIUM'}
+                          </span>
+                        </td>
+                        <td className="p-3">
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                            task.status === 'DONE' || task.status === 'COMPLETED' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' :
+                            task.status === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300' :
+                            task.status === 'REVIEW' || task.status === 'IN_REVIEW' ? 'bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300' :
+                            'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300'
+                          }`}>
+                            {task.status || 'TODO'}
+                          </span>
+                        </td>
+                        <td className="p-3">
+                          <select
+                            value={currentDevId}
+                            onChange={(e) => handleAssignDeveloper(task.id, e.target.value)}
+                            className="p-1 px-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 font-bold text-xs text-slate-900 dark:text-white cursor-pointer hover:border-indigo-500 transition-colors max-w-[280px]"
+                          >
+                            <option value="">⚠️ Unassigned (Assign Dev)</option>
+                            {currentDevId && !sprintDevelopers.some(d => String(d.id) === String(currentDevId)) && (
+                              <option value={currentDevId}>
+                                👤 {task.assignee || 'Assigned User'}
+                              </option>
+                            )}
+                            {sprintDevelopers.map(dev => (
+                              <option key={dev.id} value={dev.id}>
+                                {formatDevOption(dev)}
+                              </option>
+                            ))}
+                          </select>
+                        </td>
+                        <td className="p-3 font-mono text-[11px] text-slate-500">
+                          {task.due_date ? String(task.due_date).split('T')[0] : '—'}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
           </div>
         </div>
       )}
@@ -370,8 +906,8 @@ export const SprintPlanner = ({ onShowToast }) => {
                 onChange={(e) => handleTeamSelect(e.target.value)}
                 className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 font-bold text-slate-900 dark:text-white"
               >
-                {availableTeams.map(t => (
-                  <option key={t.id} value={t.name}>{t.name} (Master: {t.lead})</option>
+                {teamsList.map(t => (
+                  <option key={t.id} value={t.name}>{t.name} (Lead: {t.lead_name || 'Team Lead'})</option>
                 ))}
               </select>
             </div>
@@ -447,6 +983,115 @@ export const SprintPlanner = ({ onShowToast }) => {
               className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs"
             >
               Commit Sprint Milestone
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* ADD TASK DIRECTLY INSIDE SPRINT MODAL */}
+      <Modal isOpen={isAddTaskModalOpen} onClose={() => setIsAddTaskModalOpen(false)} title={`Add Task to Sprint: ${selectedSprint?.name || ''}`}>
+        <form onSubmit={handleCreateTaskForSprint} className="space-y-4 text-xs">
+          <div className="p-3 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-900 text-indigo-900 dark:text-indigo-200 flex items-center justify-between">
+            <div>
+              <span className="text-[10px] font-bold uppercase block text-indigo-600 dark:text-indigo-400">Target Sprint</span>
+              <span className="font-extrabold text-sm">{selectedSprint?.name}</span>
+            </div>
+            <div className="text-right">
+              <span className="text-[10px] font-bold uppercase block text-indigo-600 dark:text-indigo-400">Project</span>
+              <span className="font-extrabold">{selectedSprint?.project_name}</span>
+            </div>
+          </div>
+
+          <div>
+            <label className="block font-bold mb-1">1. Task Title *</label>
+            <input
+              type="text"
+              required
+              value={taskFormData.title}
+              onChange={(e) => setTaskFormData({ ...taskFormData, title: e.target.value })}
+              className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 font-bold"
+              placeholder="e.g. Implement OAuth2 Refresh Token Rotation"
+            />
+          </div>
+
+          <div>
+            <label className="block font-bold mb-1">2. Description & Acceptance Criteria</label>
+            <textarea
+              rows={3}
+              value={taskFormData.description}
+              onChange={(e) => setTaskFormData({ ...taskFormData, description: e.target.value })}
+              className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 font-medium"
+              placeholder="Describe deliverables and testing criteria..."
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block font-bold mb-1">3. Assign Developer *</label>
+              <select
+                required
+                value={taskFormData.assigned_to}
+                onChange={(e) => setTaskFormData({ ...taskFormData, assigned_to: e.target.value })}
+                className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 font-bold"
+              >
+                <option value="">Select Developer</option>
+                {sprintDevelopers.map(dev => (
+                  <option key={dev.id} value={dev.id}>
+                    {formatDevOption(dev)}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block font-bold mb-1">4. Priority</label>
+              <select
+                value={taskFormData.priority}
+                onChange={(e) => setTaskFormData({ ...taskFormData, priority: e.target.value })}
+                className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 font-bold"
+              >
+                <option value="CRITICAL">🔴 Critical</option>
+                <option value="HIGH">🟠 High</option>
+                <option value="MEDIUM">🟡 Medium</option>
+                <option value="LOW">🔵 Low</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block font-bold mb-1">Estimated Hours</label>
+              <input
+                type="number"
+                value={taskFormData.estimated_hours}
+                onChange={(e) => setTaskFormData({ ...taskFormData, estimated_hours: e.target.value })}
+                className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 font-bold"
+              />
+            </div>
+            <div>
+              <label className="block font-bold mb-1">Due Date</label>
+              <input
+                type="date"
+                value={taskFormData.due_date}
+                onChange={(e) => setTaskFormData({ ...taskFormData, due_date: e.target.value })}
+                className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 font-bold"
+              />
+            </div>
+          </div>
+
+          <div className="pt-3 border-t border-slate-200 dark:border-slate-800 flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setIsAddTaskModalOpen(false)}
+              className="px-3 py-2 text-xs font-bold text-slate-500"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs"
+            >
+              Commit Task to Sprint
             </button>
           </div>
         </form>

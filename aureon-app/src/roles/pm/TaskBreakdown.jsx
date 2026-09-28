@@ -21,26 +21,9 @@ export const TaskBreakdown = ({ onShowToast }) => {
   const [sprintFilter, setSprintFilter] = useState('ALL');
   const [statusFilter, setStatusFilter] = useState('ALL');
 
-  // Department Team Members Mapping
-  const teamMembersMap = {
-    'Frontend Development Team': [
-      { name: 'Ram Kumar', role: 'Frontend UI Engineer' },
-      { name: 'Sainu Anna', role: 'React Developer' }
-    ],
-    'Backend & Microservices Team': [
-      { name: 'David Chen', role: 'Lead Architect' },
-      { name: 'Priya Sharma', role: 'Database Engineer' },
-      { name: 'Rinta Thomas', role: 'Full Stack Dev' }
-    ],
-    'QA & Test Automation Team': [
-      { name: 'Venu QA', role: 'Lead QA Engineer' },
-      { name: 'Ananya Varma', role: 'Test Specialist' }
-    ],
-    'DevOps & Cloud Infra Team': [
-      { name: 'Alex Rivera', role: 'DevOps Lead' },
-      { name: 'Michael Brown', role: 'Security Engineer' }
-    ]
-  };
+  // Live Database Teams and Developers
+  const [teamsList, setTeamsList] = useState([]);
+  const [developersList, setDevelopersList] = useState([]);
 
   // Form State for Work Ticket Creation
   const [formData, setFormData] = useState({
@@ -50,33 +33,37 @@ export const TaskBreakdown = ({ onShowToast }) => {
     parentSprintId: '',
     projectId: '',
     projectName: '',
-    assignedTeam: 'Frontend Development Team',
-    assignee: 'Ram Kumar',
+    assignedTeam: '',
+    assignedToId: '',
+    assignee: '',
     priority: 'HIGH',
     gitBranch: 'feature/auth-module',
     estimatedHours: 8,
-    dueDate: '2026-09-15'
+    dueDate: '2026-09-25'
   });
 
   const fetchData = async () => {
     const headers = getAuthHeaders();
 
     try {
-      const [tRes, pRes, sRes] = await Promise.all([
+      const [tRes, pRes, sRes, tmRes, uRes] = await Promise.all([
         fetch('http://127.0.0.1:8000/api/v1/tasks/', { headers }),
         fetch('http://127.0.0.1:8000/api/v1/projects/', { headers }),
-        fetch('http://127.0.0.1:8000/api/v1/sprints/', { headers })
+        fetch('http://127.0.0.1:8000/api/v1/sprints/', { headers }),
+        fetch('http://127.0.0.1:8000/api/v1/teams/', { headers }),
+        fetch('http://127.0.0.1:8000/api/v1/users/', { headers })
       ]);
 
+      let fetchedProjects = [];
       if (pRes.ok) {
         const pData = await pRes.json();
-        const projs = pData.projects || [];
-        setProjectsList(projs);
-        if (projs.length > 0 && !formData.projectId) {
+        fetchedProjects = pData.projects || [];
+        setProjectsList(fetchedProjects);
+        if (fetchedProjects.length > 0 && !formData.projectId) {
           setFormData(prev => ({
             ...prev,
-            projectId: projs[0].id,
-            projectName: projs[0].name
+            projectId: fetchedProjects[0].id,
+            projectName: fetchedProjects[0].name
           }));
         }
       }
@@ -87,6 +74,28 @@ export const TaskBreakdown = ({ onShowToast }) => {
         setSprintsList(spr);
         if (spr.length > 0 && !formData.parentSprintId) {
           setFormData(prev => ({ ...prev, parentSprintId: spr[0].id }));
+        }
+      }
+
+      if (tmRes.ok) {
+        const tmData = await tmRes.json();
+        const tms = tmData.teams || [];
+        setTeamsList(tms);
+        if (tms.length > 0 && !formData.assignedTeam) {
+          setFormData(prev => ({ ...prev, assignedTeam: tms[0].name }));
+        }
+      }
+
+      if (uRes.ok) {
+        const uData = await uRes.json();
+        const usrs = uData.users || [];
+        setDevelopersList(usrs);
+        if (usrs.length > 0 && !formData.assignedToId) {
+          setFormData(prev => ({
+            ...prev,
+            assignedToId: usrs[0].id,
+            assignee: usrs[0].full_name || usrs[0].email
+          }));
         }
       }
 
@@ -107,19 +116,31 @@ export const TaskBreakdown = ({ onShowToast }) => {
 
   const handleProjectSelect = (projId) => {
     const found = projectsList.find(p => p.id === projId);
+    const projSprints = sprintsList.filter(s => String(s.project_id) === String(projId));
     setFormData(prev => ({
       ...prev,
       projectId: projId,
-      projectName: found ? found.name : ''
+      projectName: found ? found.name : '',
+      parentSprintId: projSprints[0]?.id || ''
     }));
   };
 
-  const handleTeamSelect = (teamName) => {
-    const members = teamMembersMap[teamName] || [];
+  const handleSprintSelect = (sprintId) => {
+    const foundSprint = sprintsList.find(s => String(s.id) === String(sprintId));
     setFormData(prev => ({
       ...prev,
-      assignedTeam: teamName,
-      assignee: members.length > 0 ? members[0].name : 'Unassigned'
+      parentSprintId: sprintId,
+      projectId: foundSprint?.project_id || prev.projectId,
+      projectName: foundSprint?.project_name || prev.projectName
+    }));
+  };
+
+  const handleDeveloperSelect = (devId) => {
+    const dev = developersList.find(d => String(d.id) === String(devId));
+    setFormData(prev => ({
+      ...prev,
+      assignedToId: devId,
+      assignee: dev ? (dev.full_name || dev.email) : ''
     }));
   };
 
@@ -127,51 +148,62 @@ export const TaskBreakdown = ({ onShowToast }) => {
     e.preventDefault();
     if (!formData.title.trim()) return;
 
-    const parentSprint = sprintsList.find(s => s.id === formData.parentSprintId);
+    const parentSprint = sprintsList.find(s => String(s.id) === String(formData.parentSprintId));
 
-    const newTask = {
-      id: `TCK-${Math.floor(1000 + Math.random() * 9000)}`,
+    const payload = {
       title: formData.title,
       description: formData.description,
       ticket_type: formData.ticketType,
       sprint_id: formData.parentSprintId,
-      sprint_name: parentSprint ? parentSprint.name : 'Backlog',
       project_id: formData.projectId,
-      project_name: formData.projectName || (projectsList.find(p => p.id === formData.projectId)?.name || 'General System'),
-      assigned_team: formData.assignedTeam,
-      assignee: formData.assignee,
+      assigned_to: formData.assignedToId,
       priority: formData.priority,
-      status: 'TODO',
       git_branch: formData.gitBranch || `feature/${formData.title.toLowerCase().replace(/[^a-z0-9]/g, '-')}`,
-      dueDate: formData.dueDate,
-      estimatedHours: Number(formData.estimatedHours) || 8,
-      loggedHours: 0
+      due_date: formData.dueDate,
+      estimated_hours: Number(formData.estimatedHours) || 8
     };
 
-    setTasks([newTask, ...tasks]);
-
     try {
-      await fetch('http://127.0.0.1:8000/api/v1/tasks/', {
+      const res = await fetch('http://127.0.0.1:8000/api/v1/tasks/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           ...getAuthHeaders()
         },
-        body: JSON.stringify(newTask)
+        body: JSON.stringify(payload)
       });
-      fetchData();
-    } catch (err) {}
+      
+      if (res.ok) {
+        logAuditEvent({
+          user,
+          role: user?.role,
+          action: 'TASK_CREATE',
+          resource: `Created Work Ticket: ${formData.title} in sprint ${parentSprint?.name || 'Sprint'} for ${formData.assignee}`,
+          status: 'SUCCESS'
+        });
 
-    logAuditEvent({
-      user,
-      role: user?.role,
-      action: 'TASK_CREATE',
-      resource: `Created Work Ticket: ${newTask.id} (${newTask.title}) for ${newTask.assignee}`,
-      status: 'SUCCESS'
-    });
-
-    if (onShowToast) onShowToast({ type: 'success', title: 'Work Ticket Assigned', message: `Ticket '${newTask.id}' assigned to ${newTask.assignee}.` });
-    setIsModalOpen(false);
+        if (onShowToast) {
+          onShowToast({
+            type: 'success',
+            title: 'Work Ticket Assigned',
+            message: `Task committed to sprint ${parentSprint?.name || ''} and assigned to ${formData.assignee}.`
+          });
+        }
+        setIsModalOpen(false);
+        fetchData();
+      } else {
+        const err = await res.json();
+        if (onShowToast) {
+          onShowToast({
+            type: 'error',
+            title: 'Task Creation Failed',
+            message: err.message || 'Could not create task.'
+          });
+        }
+      }
+    } catch (err) {
+      console.error('Error creating task:', err);
+    }
   };
 
   const handleUpdateTaskStatus = async (taskId, newStatus) => {
@@ -185,6 +217,26 @@ export const TaskBreakdown = ({ onShowToast }) => {
         },
         body: JSON.stringify({ status: newStatus })
       });
+    } catch (err) {}
+  };
+
+  const handleApproveTask = async (taskId) => {
+    if (!taskId) return;
+    try {
+      const res = await fetch(`http://127.0.0.1:8000/api/v1/tasks/${taskId}/approve`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeaders()
+        },
+        body: JSON.stringify({ approval_notes: 'Deliverable reviewed and approved by PM.' })
+      });
+      if (res.ok) {
+        setTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: 'COMPLETED', team_leader_review: 'Deliverable reviewed and approved by PM.' } : t));
+        if (typeof onShowToast === 'function') {
+          onShowToast({ type: 'success', title: 'Task Approved', message: 'Task marked COMPLETED and developer freed.' });
+        }
+      }
     } catch (err) {}
   };
 
@@ -219,7 +271,7 @@ export const TaskBreakdown = ({ onShowToast }) => {
         <div className="flex items-center gap-2">
           {ticketTypeIcons[row.ticket_type] || <FileCode className="w-3.5 h-3.5 text-blue-500" />}
           <div>
-            <span className="font-mono text-xs font-bold text-indigo-600 dark:text-indigo-400 block">{val}</span>
+            <span className="font-mono text-xs font-bold text-indigo-600 dark:text-indigo-400 block">{val ? String(val).substring(0, 8) : 'TCK'}</span>
             <span className="text-[10px] text-slate-400 font-medium">{row.ticket_type || 'Feature'}</span>
           </div>
         </div>
@@ -241,6 +293,15 @@ export const TaskBreakdown = ({ onShowToast }) => {
       )
     },
     {
+      key: 'sprint_name',
+      label: 'Sprint Milestone',
+      render: (val, row) => (
+        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-indigo-50 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 border border-indigo-200">
+          ⚡ {val || (row?.is_orphan ? 'No Sprint (Needs Review)' : 'Backlog')}
+        </span>
+      )
+    },
+    {
       key: 'assigned_team',
       label: 'Department Team',
       render: (val) => (
@@ -252,7 +313,13 @@ export const TaskBreakdown = ({ onShowToast }) => {
     {
       key: 'assignee',
       label: 'Developer Assignee',
-      render: (val) => <span className="font-extrabold text-slate-900 dark:text-white">{val || 'Unassigned'}</span>
+      render: (val, row) => {
+        const name = val || row?.assignee_name;
+        if (!name || row?.needs_assignment) {
+          return <span className="font-bold text-amber-600 dark:text-amber-400 text-xs">⚠️ Needs Assignment</span>;
+        }
+        return <span className="font-extrabold text-slate-900 dark:text-white">{name}</span>;
+      }
     },
     {
       key: 'priority',
@@ -261,24 +328,47 @@ export const TaskBreakdown = ({ onShowToast }) => {
     },
     {
       key: 'status',
-      label: 'Kanban Column',
-      render: (val, row) => (
-        <select
-          value={val}
-          onChange={(e) => handleUpdateTaskStatus(row.id, e.target.value)}
-          className="p-1 px-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-bold text-slate-900 dark:text-white cursor-pointer"
-        >
-          <option value="TODO">To Do</option>
-          <option value="IN_PROGRESS">In Progress</option>
-          <option value="REVIEW">Code Review</option>
-          <option value="DONE">Done</option>
-        </select>
-      )
+      label: 'Status & Approval',
+      render: (val, row) => {
+        if (val === 'IN_REVIEW') {
+          return (
+            <div className="flex items-center gap-1.5">
+              <span className="px-2 py-0.5 rounded-md bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 font-extrabold text-[11px] border border-amber-300">
+                In Review
+              </span>
+              <button
+                onClick={() => handleApproveTask(row.id)}
+                className="px-2 py-0.5 rounded-md bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[11px] flex items-center gap-1 shadow-xs"
+              >
+                <CheckCircle2 className="w-3 h-3" /> Approve
+              </button>
+            </div>
+          );
+        }
+        return (
+          <select
+            value={val}
+            onChange={(e) => handleUpdateTaskStatus(row.id, e.target.value)}
+            className="p-1 px-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-bold text-slate-900 dark:text-white cursor-pointer"
+          >
+            <option value="TODO">To Do</option>
+            <option value="IN_PROGRESS">In Progress</option>
+            <option value="IN_REVIEW">In Review</option>
+            <option value="COMPLETED">Completed</option>
+            <option value="DONE">Done</option>
+          </select>
+        );
+      }
     },
     {
       key: 'dueDate',
       label: 'Target Due Date',
-      render: (val) => <span className="font-mono text-xs text-slate-600 dark:text-slate-400 font-bold">{val || '2026-09-15'}</span>
+      render: (val, row) => (
+        <span className={`font-mono text-xs font-bold ${row?.is_overdue ? 'text-rose-600' : 'text-slate-600 dark:text-slate-400'}`}>
+          {val || '2026-09-15'}
+          {row?.is_overdue && <span className="block text-[9px] text-rose-500 font-extrabold uppercase">Overdue</span>}
+        </span>
+      )
     }
   ];
 
@@ -382,8 +472,8 @@ export const TaskBreakdown = ({ onShowToast }) => {
               className="p-1.5 px-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 text-xs font-bold"
             >
               <option value="ALL">All Departments</option>
-              {Object.keys(teamMembersMap).map(t => (
-                <option key={t} value={t}>{t}</option>
+              {teamsList.map(t => (
+                <option key={t.id} value={t.name}>{t.name}</option>
               ))}
             </select>
           </div>
@@ -470,60 +560,15 @@ export const TaskBreakdown = ({ onShowToast }) => {
       {/* CREATE WORK TICKET MODAL */}
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Engineering Work Ticket & Developer Assignment">
         <form onSubmit={handleCreateTask} className="space-y-4 text-xs">
-          <div>
-            <label className="block font-bold mb-1">1. Work Ticket Summary / Title *</label>
-            <input
-              type="text"
-              required
-              placeholder="e.g. Implement JWT Token Rotation & Blacklist Redis Key"
-              value={formData.title}
-              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-              className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 font-bold"
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
+          {/* Step 1 & Step 2: Project -> Sprint Hierarchy */}
+          <div className="grid grid-cols-2 gap-3 p-3 rounded-2xl bg-indigo-50/50 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-900/50">
             <div>
-              <label className="block font-bold mb-1">2. Ticket Category Type</label>
-              <select
-                value={formData.ticketType}
-                onChange={(e) => setFormData({ ...formData, ticketType: e.target.value })}
-                className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 font-bold text-slate-900 dark:text-white"
-              >
-                <option value="Feature">💻 Feature Development</option>
-                <option value="Bug Fix">🐞 Bug Fix / Incident</option>
-                <option value="Code Refactor">🛠️ Code Refactor / Debt</option>
-                <option value="QA Test">🧪 QA Test Suite</option>
-                <option value="Vulnerability">🛡️ Security Vulnerability</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block font-bold mb-1">3. Link to Sprint Milestone</label>
-              <select
-                value={formData.parentSprintId}
-                onChange={(e) => setFormData({ ...formData, parentSprintId: e.target.value })}
-                className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 font-bold text-slate-900 dark:text-white"
-              >
-                {sprintsList.length === 0 ? (
-                  <option value="">No Sprints created yet</option>
-                ) : (
-                  sprintsList.map(s => (
-                    <option key={s.id} value={s.id}>{s.name} ({s.id})</option>
-                  ))
-                )}
-              </select>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block font-bold mb-1">4. Target Project *</label>
+              <label className="block font-bold mb-1 text-indigo-900 dark:text-indigo-200">1. Target Project *</label>
               <select
                 required
                 value={formData.projectId}
                 onChange={(e) => handleProjectSelect(e.target.value)}
-                className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 font-bold text-slate-900 dark:text-white"
+                className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 font-bold text-slate-900 dark:text-white"
               >
                 {projectsList.length === 0 ? (
                   <option value="">No projects created yet</option>
@@ -536,59 +581,95 @@ export const TaskBreakdown = ({ onShowToast }) => {
             </div>
 
             <div>
-              <label className="block font-bold mb-1">5. Department Team *</label>
+              <label className="block font-bold mb-1 text-indigo-900 dark:text-indigo-200">2. Sprint Milestone *</label>
               <select
                 required
-                value={formData.assignedTeam}
-                onChange={(e) => handleTeamSelect(e.target.value)}
+                value={formData.parentSprintId}
+                onChange={(e) => handleSprintSelect(e.target.value)}
+                className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 font-bold text-slate-900 dark:text-white"
+              >
+                {sprintsList.filter(s => !formData.projectId || String(s.project_id) === String(formData.projectId)).length === 0 ? (
+                  <option value="">No Sprints for this project</option>
+                ) : (
+                  sprintsList
+                    .filter(s => !formData.projectId || String(s.project_id) === String(formData.projectId))
+                    .map(s => (
+                      <option key={s.id} value={s.id}>⚡ {s.name}</option>
+                    ))
+                )}
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label className="block font-bold mb-1">3. Work Ticket Summary / Title *</label>
+            <input
+              type="text"
+              required
+              placeholder="e.g. Implement JWT Token Rotation & Blacklist Redis Key"
+              value={formData.title}
+              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+              className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 font-bold"
+            />
+          </div>
+
+          <div>
+            <label className="block font-bold mb-1">4. Technical Scope & Description</label>
+            <textarea
+              rows={2}
+              placeholder="Describe deliverables and testing criteria..."
+              value={formData.description}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 font-medium"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block font-bold mb-1">5. Assign Developer *</label>
+              <select
+                required
+                value={formData.assignedToId}
+                onChange={(e) => handleDeveloperSelect(e.target.value)}
                 className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 font-bold text-slate-900 dark:text-white"
               >
-                {Object.keys(teamMembersMap).map(t => (
-                  <option key={t} value={t}>{t}</option>
+                <option value="">Select Developer</option>
+                {developersList.map(dev => (
+                  <option key={dev.id} value={dev.id}>
+                    👤 {dev.full_name || dev.email} ({dev.role || 'DEV'})
+                  </option>
                 ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block font-bold mb-1">6. Ticket Category</label>
+              <select
+                value={formData.ticketType}
+                onChange={(e) => setFormData({ ...formData, ticketType: e.target.value })}
+                className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 font-bold text-slate-900 dark:text-white"
+              >
+                <option value="Feature">💻 Feature Development</option>
+                <option value="Bug Fix">🐞 Bug Fix / Incident</option>
+                <option value="Code Refactor">🛠️ Code Refactor / Debt</option>
+                <option value="QA Test">🧪 QA Test Suite</option>
+                <option value="Vulnerability">🛡️ Security Vulnerability</option>
               </select>
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block font-bold mb-1">6. Assignee Member *</label>
-              <select
-                required
-                value={formData.assignee}
-                onChange={(e) => setFormData({ ...formData, assignee: e.target.value })}
-                className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 font-bold text-slate-900 dark:text-white"
-              >
-                {(teamMembersMap[formData.assignedTeam] || []).map(m => (
-                  <option key={m.name} value={m.name}>{m.name} ({m.role})</option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block font-bold mb-1">7. Git Branch / Repository</label>
-              <input
-                type="text"
-                placeholder="e.g. feature/auth-jwt-rotation"
-                value={formData.gitBranch}
-                onChange={(e) => setFormData({ ...formData, gitBranch: e.target.value })}
-                className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 font-mono text-xs font-bold"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block font-bold mb-1">Ticket Severity / Priority</label>
+              <label className="block font-bold mb-1">Priority</label>
               <select
                 value={formData.priority}
                 onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
                 className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 font-bold"
               >
-                <option value="LOW">Low Priority</option>
-                <option value="MEDIUM">Medium Priority</option>
-                <option value="HIGH">High Priority</option>
-                <option value="CRITICAL">Critical Priority</option>
+                <option value="LOW">🔵 Low Priority</option>
+                <option value="MEDIUM">🟡 Medium Priority</option>
+                <option value="HIGH">🟠 High Priority</option>
+                <option value="CRITICAL">🔴 Critical Priority</option>
               </select>
             </div>
 
@@ -613,7 +694,7 @@ export const TaskBreakdown = ({ onShowToast }) => {
             </button>
             <button
               type="submit"
-              className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs"
+              className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs"
             >
               Create Work Ticket
             </button>

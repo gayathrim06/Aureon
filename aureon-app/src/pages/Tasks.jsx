@@ -14,40 +14,63 @@ export const Tasks = () => {
   const [filter, setFilter] = useState('All');
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // Team Lead Work Distribution State
+  // Dynamic state loaded from DB
+  const [projectsList, setProjectsList] = useState([]);
+  const [sprintsList, setSprintsList] = useState([]);
+  const [teamMembers, setTeamMembers] = useState([]);
+
+  // Form State
   const [taskTitle, setTaskTitle] = useState('');
-  const [taskProject, setTaskProject] = useState('Verona Organic');
+  const [selectedProjectId, setSelectedProjectId] = useState('');
+  const [selectedSprintId, setSelectedSprintId] = useState('');
   const [selectedAssignee, setSelectedAssignee] = useState('');
   const [taskPriority, setTaskPriority] = useState('HIGH');
   const [taskModule, setTaskModule] = useState('Frontend UI');
 
-  const teamMembers = [
-    { id: 'usr_dev_1', name: 'Sainu Anna Sajan (Frontend Dev)', role: 'Developer' },
-    { id: 'usr_dev_2', name: 'Jiya Thomas (Software Dev)', role: 'Developer' },
-    { id: 'usr_dev_3', name: 'Rinta Thomas (Full Stack Dev)', role: 'Developer' },
-    { id: 'usr_dev_4', name: 'Ram Kumar (React Engineer)', role: 'Developer' },
-    { id: 'usr_qa_1', name: 'Venu QA (QA Automation Lead)', role: 'QA Tester' },
-    { id: 'usr_qa_2', name: 'Feba Biju (Executive QA)', role: 'QA Tester' }
-  ];
-
-  const fetchTasks = async () => {
+  const fetchAllData = async () => {
     try {
-      const res = await fetch('http://127.0.0.1:8000/api/v1/tasks/', {
-        headers: getAuthHeaders()
-      });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.tasks && data.tasks.length > 0) {
-          setTaskList(data.tasks);
-        }
+      const headers = getAuthHeaders();
+      const [pRes, sRes, tRes, uRes] = await Promise.all([
+        fetch('http://127.0.0.1:8000/api/v1/projects/', { headers }),
+        fetch('http://127.0.0.1:8000/api/v1/sprints/', { headers }),
+        fetch('http://127.0.0.1:8000/api/v1/tasks/', { headers }),
+        fetch('http://127.0.0.1:8000/api/v1/users/', { headers })
+      ]);
+
+      if (pRes.ok) {
+        const pData = await pRes.json();
+        const projs = pData.projects || [];
+        setProjectsList(projs);
+        if (projs.length > 0 && !selectedProjectId) setSelectedProjectId(projs[0].id);
       }
-    } catch (err) {
-      // Fallback
-    }
+      if (sRes.ok) {
+        const sData = await sRes.json();
+        const sps = sData.sprints || [];
+        setSprintsList(sps);
+        if (sps.length > 0 && !selectedSprintId) setSelectedSprintId(sps[0].id);
+      }
+      if (tRes.ok) {
+        const tData = await tRes.json();
+        setTaskList(tData.tasks || []);
+      }
+      if (uRes.ok) {
+        const uData = await uRes.json();
+        const members = (uData.users || [])
+          .filter(u => u.role !== 'ROLE_ADMIN' && u.role_name !== 'ROLE_ADMIN')
+          .map(u => ({
+            id: u.id,
+            name: u.full_name || u.name,
+            role: u.designation || u.role_name,
+            availability: u.availability_status || (u.is_available ? 'AVAILABLE' : 'BUSY'),
+            email: u.email
+          }));
+        setTeamMembers(members);
+      }
+    } catch (err) {}
   };
 
   useEffect(() => {
-    fetchTasks();
+    fetchAllData();
   }, []);
 
   const handleCreateTaskSubmit = async (e) => {
@@ -57,43 +80,36 @@ export const Tasks = () => {
       return;
     }
 
-    const newTask = {
-      id: `TASK-${Math.floor(200 + Math.random() * 800)}`,
-      title: taskTitle,
-      project: taskProject,
-      assignee: selectedAssignee,
-      assigned_by: `${user?.name || 'David Chen'} (Tech Lead)`,
-      status: 'In Progress',
-      priority: taskPriority,
-      module: taskModule
-    };
-
     try {
-      await fetch('http://127.0.0.1:8000/api/v1/tasks/', {
+      const targetSprint = sprintsList.find(s => s.id === selectedSprintId) || sprintsList[0];
+      const res = await fetch('http://127.0.0.1:8000/api/v1/tasks/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           ...getAuthHeaders()
         },
         body: JSON.stringify({
-          title: taskTitle,
-          project_name: taskProject,
+          title: taskTitle.trim(),
+          sprint_id: targetSprint ? targetSprint.id : selectedSprintId,
+          project_id: selectedProjectId,
           assigned_to: selectedAssignee,
           priority: taskPriority,
           module: taskModule
         })
       });
-      fetchTasks();
+      const data = await res.json();
+      if (res.ok && data.success) {
+        showToast(`Task '${taskTitle}' assigned successfully.`, 'success');
+        setTaskTitle('');
+        setSelectedAssignee('');
+        setIsModalOpen(false);
+        fetchAllData();
+      } else {
+        showToast(data.message || 'Failed to create task', 'error');
+      }
     } catch (err) {
-      // Fallback
+      showToast('Failed to create task: network error', 'error');
     }
-
-    setTaskList(prev => [newTask, ...prev]);
-    showToast(`Task '${taskTitle}' assigned to ${selectedAssignee.split(' (')[0]}.`, 'success');
-    
-    setTaskTitle('');
-    setSelectedAssignee('');
-    setIsModalOpen(false);
   };
 
   const filtered = taskList.filter(t => filter === 'All' || t.status === filter);
@@ -178,17 +194,39 @@ export const Tasks = () => {
             />
           </div>
 
-          <div>
-            <label className="block font-bold mb-1">Project Container</label>
-            <select
-              value={taskProject}
-              onChange={(e) => setTaskProject(e.target.value)}
-              className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 warm:border-[#b8a074] bg-slate-50 dark:bg-slate-950 warm:bg-[#f3e8d2] text-xs font-sans text-slate-900 dark:text-white warm:text-[#342314]"
-            >
-              <option value="Verona Organic">Verona Organic</option>
-              <option value="Aureon Core API Gateway">Aureon Core API Gateway</option>
-              <option value="Cloud Telemetry Mesh">Cloud Telemetry Mesh</option>
-            </select>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block font-bold mb-1">Project</label>
+              <select
+                value={selectedProjectId}
+                onChange={(e) => {
+                  setSelectedProjectId(e.target.value);
+                  const matchingSprints = sprintsList.filter(s => s.project_id === e.target.value);
+                  if (matchingSprints.length > 0) setSelectedSprintId(matchingSprints[0].id);
+                }}
+                className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 warm:border-[#b8a074] bg-slate-50 dark:bg-slate-950 warm:bg-[#f3e8d2] text-xs font-sans text-slate-900 dark:text-white warm:text-[#342314]"
+              >
+                {projectsList.map(p => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block font-bold mb-1">Sprint</label>
+              <select
+                value={selectedSprintId}
+                onChange={(e) => setSelectedSprintId(e.target.value)}
+                className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 warm:border-[#b8a074] bg-slate-50 dark:bg-slate-950 warm:bg-[#f3e8d2] text-xs font-sans text-slate-900 dark:text-white warm:text-[#342314]"
+              >
+                {(selectedProjectId 
+                  ? sprintsList.filter(s => s.project_id === selectedProjectId)
+                  : sprintsList
+                ).map(s => (
+                  <option key={s.id} value={s.id}>{s.name} ({s.status})</option>
+                ))}
+              </select>
+            </div>
           </div>
 
           {/* 💻 TEAM LEAD STEP: ASSIGN TECHNICAL WORK TO DEVELOPER OR QA */}
@@ -205,7 +243,7 @@ export const Tasks = () => {
               <option value="">-- Select Team Member --</option>
               {teamMembers.map(member => (
                 <option key={member.id} value={member.name}>
-                  {member.name} ({member.role})
+                  {member.name} ({member.role}) • [{member.availability || 'AVAILABLE'}]
                 </option>
               ))}
             </select>

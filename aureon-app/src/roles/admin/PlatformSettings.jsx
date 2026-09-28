@@ -1,12 +1,42 @@
 import React, { useState } from 'react';
 import { Breadcrumb } from '../../components/common/Breadcrumb';
-import { platformSettings } from '../../services/mockData';
 import { Settings, Key, Shield, Globe, Clock, Lock, Sun, Save, CheckCircle2 } from 'lucide-react';
 
+const DEFAULT_SETTINGS = {
+  jwtAccessExpiry: '15 minutes',
+  jwtRefreshExpiry: '7 days',
+  passwordMinLength: 12,
+  passwordRequireUppercase: true,
+  passwordRequireSpecialChar: true,
+  maxFailedLogins: 5,
+  lockoutDuration: '15 minutes',
+  rateLimitWindow: '15 minutes',
+  rateLimitMax: 20,
+  corsAllowedOrigins: ['http://localhost:5173', 'https://app.aureon.io'],
+  mfaEnforced: false,
+  defaultTheme: 'dark',
+  sessionTimeout: 3600,
+  auditRetentionDays: 365
+};
+
 export const PlatformSettings = ({ onShowToast }) => {
-  const [settings, setSettings] = useState(platformSettings);
+  const [settings, setSettings] = useState(() => {
+    try {
+      const saved = localStorage.getItem('aureon_platform_settings');
+      return saved ? JSON.parse(saved) : DEFAULT_SETTINGS;
+    } catch (e) {
+      return DEFAULT_SETTINGS;
+    }
+  });
   const [saved, setSaved] = useState(false);
-  const handleSave = () => { setSaved(true); setTimeout(() => setSaved(false), 2000); onShowToast && onShowToast({ type: 'success', title: 'Settings Saved', message: 'Platform configuration updated successfully.' }); };
+  const handleSave = () => { 
+    setSaved(true); 
+    try {
+      localStorage.setItem('aureon_platform_settings', JSON.stringify(settings));
+    } catch (e) {}
+    setTimeout(() => setSaved(false), 2000); 
+    onShowToast && onShowToast({ type: 'success', title: 'Settings Saved', message: 'Platform configuration updated successfully.' }); 
+  };
   const update = (key, val) => setSettings(prev => ({ ...prev, [key]: val }));
 
   const sections = [

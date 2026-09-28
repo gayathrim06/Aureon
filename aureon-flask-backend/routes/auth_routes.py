@@ -67,6 +67,7 @@ def login():
         'success': True,
         'access': access_token,
         'access_token': access_token,
+        'token': access_token,
         'user': user.to_dict()
     }), 200
 

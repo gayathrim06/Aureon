@@ -9,49 +9,79 @@ import { getAuthHeaders } from '../../services/apiClient';
 
 export const LeadDashboard = ({ onNavigate }) => {
   const { user } = useAuth();
-  const userName = user?.name || user?.full_name || user?.email?.split('@')[0] || 'Krishna Deepesh';
+  const userName = user?.name || user?.full_name || user?.email?.split('@')[0] || 'Team Lead';
 
   const [stats, setStats] = useState({
-    activeTasks: 1,
-    activeProjects: 1,
-    sprintProgress: 65
+    activeTasks: 0,
+    inReviewCount: 0,
+    activeProjects: 0,
+    activeSprintsCount: 0,
+    avgSprintScore: 100,
+    teamDevsCount: 0,
+    availableDevsCount: 0
   });
 
   const fetchDashboardStats = async () => {
     const headers = getAuthHeaders();
 
     try {
-      const [tRes, pRes] = await Promise.all([
+      const [tRes, pRes, sRes, aRes] = await Promise.all([
         fetch('http://127.0.0.1:8000/api/v1/tasks/', { headers }),
-        fetch('http://127.0.0.1:8000/api/v1/projects/', { headers })
+        fetch('http://127.0.0.1:8000/api/v1/projects/', { headers }),
+        fetch('http://127.0.0.1:8000/api/v1/sprints/', { headers }),
+        fetch('http://127.0.0.1:8000/api/v1/team-lead/my-team/availability', { headers })
       ]);
 
-      let tCount = 0;
-      let pCount = 0;
+      let tasks = [];
+      let projects = [];
+      let sprints = [];
+      let devs = [];
 
       if (tRes.ok) {
         const tData = await tRes.json();
-        tCount = (tData.tasks || []).length;
+        tasks = tData.tasks || [];
       }
 
       if (pRes.ok) {
         const pData = await pRes.json();
-        pCount = (pData.projects || []).length;
+        projects = pData.projects || [];
       }
 
-      const finalProjects = pCount > 0 ? pCount : 1;
-      const finalTasks = tCount > 0 ? tCount : 1;
+      if (sRes.ok) {
+        const sData = await sRes.json();
+        sprints = sData.sprints || [];
+      }
+
+      if (aRes.ok) {
+        const aData = await aRes.json();
+        devs = aData.developers || [];
+      }
+
+      const activeTasks = tasks.filter(t => !['COMPLETED', 'DONE', 'CLOSED'].includes(t.status));
+      const inReviewCount = tasks.filter(t => t.status === 'IN_REVIEW').length;
+      const activeSprints = sprints.filter(s => s.status === 'ACTIVE');
+      const sprintScores = sprints.map(s => s.sprint_score !== undefined ? s.sprint_score : 100);
+      const avgScore = sprintScores.length > 0 ? Math.round(sprintScores.reduce((a, b) => a + b, 0) / sprintScores.length) : 100;
+      const availableDevs = devs.filter(d => d.is_available).length;
 
       setStats({
-        activeTasks: finalTasks,
-        activeProjects: finalProjects,
-        sprintProgress: 65
+        activeTasks: activeTasks.length,
+        inReviewCount,
+        activeProjects: projects.length,
+        activeSprintsCount: activeSprints.length,
+        avgSprintScore: avgScore,
+        teamDevsCount: devs.length,
+        availableDevsCount: availableDevs
       });
     } catch (err) {
       setStats({
-        activeTasks: 1,
-        activeProjects: 1,
-        sprintProgress: 65
+        activeTasks: 0,
+        inReviewCount: 0,
+        activeProjects: 0,
+        activeSprintsCount: 0,
+        avgSprintScore: 100,
+        teamDevsCount: 0,
+        availableDevsCount: 0
       });
     }
   };
@@ -61,11 +91,11 @@ export const LeadDashboard = ({ onNavigate }) => {
   }, []);
 
   const widgets = [
-    { label: 'Logged-in Tech Lead', value: userName, sub: user?.email || 'krishna@aureon.com', icon: Users, color: 'border-l-blue-500' },
-    { label: 'Active Assigned Projects', value: `${stats.activeProjects} Project${stats.activeProjects > 1 ? 's' : ''}`, sub: 'Verona Organic Portfolio', icon: FolderKanban, color: 'border-l-purple-500' },
-    { label: 'Active Work Tickets', value: `${stats.activeTasks} Task${stats.activeTasks > 1 ? 's' : ''}`, sub: 'Assigned & In-Queue', icon: CheckSquare, color: 'border-l-indigo-500' },
-    { label: 'Code Quality Gate', value: 'PASSED', sub: 'SonarQube Ready', icon: Cpu, color: 'border-l-amber-500' },
-    { label: 'Sprint Progress', value: `${stats.sprintProgress}%`, sub: 'Operational', icon: Layers, color: 'border-l-emerald-600' },
+    { label: 'Logged-in Tech Lead', value: userName, sub: user?.email || 'Active Session', icon: Users, color: 'border-l-blue-500' },
+    { label: 'Scoped Projects', value: `${stats.activeProjects} Project${stats.activeProjects !== 1 ? 's' : ''}`, sub: 'Assigned Portfolio', icon: FolderKanban, color: 'border-l-purple-500' },
+    { label: 'Active Tasks', value: `${stats.activeTasks} Task${stats.activeTasks !== 1 ? 's' : ''}`, sub: `${stats.inReviewCount} Pending Review`, icon: CheckSquare, color: 'border-l-indigo-500' },
+    { label: 'Sprint Health Score', value: `${stats.avgSprintScore}/100`, sub: `${stats.activeSprintsCount} Active Sprint${stats.activeSprintsCount !== 1 ? 's' : ''}`, icon: Layers, color: 'border-l-emerald-600' },
+    { label: 'Squad Availability', value: `${stats.availableDevsCount}/${stats.teamDevsCount} Ready`, sub: 'Ready for Next Task', icon: Cpu, color: 'border-l-amber-500' },
   ];
 
   return (

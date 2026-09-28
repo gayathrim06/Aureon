@@ -1,15 +1,29 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Breadcrumb } from '../../components/common/Breadcrumb';
 import { useAuth } from '../../context/AuthContext';
-import { initialUsers, initialTestCases, initialBugs, initialTestSuites } from '../../services/mockData';
+import { apiClient } from '../../services/apiClient';
 import { User, Mail, Shield, Bug, CheckSquare, TestTube2, Activity, FileText } from 'lucide-react';
 
 export const QaProfile = () => {
   const { user } = useAuth();
+  const [bugsCount, setBugsCount] = useState(0);
+
+  useEffect(() => {
+    const fetchQaData = async () => {
+      try {
+        const res = await apiClient.get('/bugs/');
+        if (res?.success && Array.isArray(res?.data)) {
+          setBugsCount(res.data.length);
+        }
+      } catch (e) {}
+    };
+    fetchQaData();
+  }, []);
+
   const userData = user || { name: 'QA Engineer', email: 'qa@aureon.com', title: 'QA Specialist', department: 'Quality Assurance', role: 'ROLE_QA' };
-  const passedCount = (initialTestCases || []).filter(t => t.status === 'PASSED').length;
-  const bugsLogged = (initialBugs || []).length;
-  const passRate = (initialTestCases && initialTestCases.length > 0) ? Math.round((passedCount / initialTestCases.length) * 100) : 100;
+  const passedCount = 0;
+  const bugsLogged = bugsCount;
+  const passRate = 100;
 
   const activityTimeline = [
     { time: '30 mins ago', action: 'Executed Test Suite', detail: 'Sprint 24 Security Regression — 10 pass, 1 fail, 1 pending', icon: TestTube2, color: 'text-blue-500' },

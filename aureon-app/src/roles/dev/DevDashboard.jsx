@@ -1,21 +1,66 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Breadcrumb } from '../../components/common/Breadcrumb';
 import { useAuth } from '../../context/AuthContext';
 import { 
   CheckSquare, Clock, AlertTriangle, CheckCircle2, GitPullRequest, 
   GitCommit, Activity, Layers, Plus, Code2
 } from 'lucide-react';
+import { getAuthHeaders } from '../../services/apiClient';
 
 export const DevDashboard = ({ onNavigate }) => {
   const { user } = useAuth();
   const userName = user?.name || user?.full_name || user?.email?.split('@')[0] || 'Developer';
 
+  const [taskStats, setTaskStats] = useState({
+    total: 0,
+    active: 0,
+    completed: 0,
+    overdue: 0,
+    inReview: 0
+  });
+
+  useEffect(() => {
+    const fetchDevTasks = async () => {
+      try {
+        const res = await fetch('http://127.0.0.1:8000/api/v1/tasks/', {
+          headers: getAuthHeaders()
+        });
+        if (res.ok) {
+          const data = await res.json();
+          const tasks = data.tasks || [];
+          const active = tasks.filter(t => !['COMPLETED', 'DONE', 'CLOSED'].includes(t.status));
+          const completed = tasks.filter(t => ['COMPLETED', 'DONE'].includes(t.status));
+          const overdue = tasks.filter(t => t.is_overdue);
+          const inReview = tasks.filter(t => t.status === 'IN_REVIEW');
+
+          setTaskStats({
+            total: tasks.length,
+            active: active.length,
+            completed: completed.length,
+            overdue: overdue.length,
+            inReview: inReview.length
+          });
+        }
+      } catch (err) {}
+    };
+
+    fetchDevTasks();
+  }, []);
+
+  const isAvailable = taskStats.active === 0;
+
   const widgets = [
     { label: 'Developer', value: userName, sub: user?.email || 'Active Session', icon: Code2, color: 'border-l-emerald-500' },
-    { label: 'Assigned Tasks', value: '4 Tasks', sub: 'Active sprint queue', icon: CheckSquare, color: 'border-l-blue-500' },
-    { label: 'Overdue Tasks', value: '0 Overdue', sub: '100% on schedule', icon: AlertTriangle, color: 'border-l-emerald-600' },
-    { label: 'Pull Requests', value: '2 Open', sub: 'Under code review', icon: GitPullRequest, color: 'border-l-purple-500' },
-    { label: 'Workspace Health', value: 'Operational', sub: 'Connected to Aureon Backend', icon: Activity, color: 'border-l-cyan-500' },
+    { label: 'Assigned Work', value: `${taskStats.active} Active`, sub: `${taskStats.total} Total Assigned`, icon: CheckSquare, color: 'border-l-blue-500' },
+    { 
+      label: 'Availability', 
+      value: isAvailable ? 'Available' : `Busy (${taskStats.active})`, 
+      sub: isAvailable ? 'Ready for next task: YES' : 'Ready for next task: NO', 
+      icon: isAvailable ? CheckCircle2 : Clock, 
+      color: isAvailable ? 'border-l-emerald-600' : 'border-l-amber-500' 
+    },
+    { label: 'In TL Review', value: `${taskStats.inReview} Deliverables`, sub: 'Pending approval', icon: GitPullRequest, color: 'border-l-purple-500' },
+    { label: 'Overdue Tickets', value: `${taskStats.overdue} Overdue`, sub: taskStats.overdue === 0 ? '100% on schedule' : 'Needs attention', icon: AlertTriangle, color: taskStats.overdue === 0 ? 'border-l-emerald-600' : 'border-l-rose-500' },
   ];
 
   return (
@@ -32,7 +77,7 @@ export const DevDashboard = ({ onNavigate }) => {
           </div>
           <h1 className="text-2xl font-black tracking-tight text-white mt-1.5">{userName}'s Developer Hub</h1>
           <p className="text-xs banner-subtext mt-1 max-w-xl">
-            {user?.email ? `Authenticated as ${user.email}` : 'Focus on active tasks, manage Kanban cards, commit code, and submit Pull Requests.'}
+            {user?.email ? `Authenticated as ${user.email}. ` : ''}Focus on active tasks, submit deliverables for Team Lead review, and track execution.
           </p>
         </div>
         <div className="flex flex-wrap gap-2 relative z-10">
@@ -40,13 +85,7 @@ export const DevDashboard = ({ onNavigate }) => {
             onClick={() => onNavigate('MyTasks')}
             className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-white/20 hover:bg-white/30 text-white text-xs font-bold border border-white/30 shadow-md transition-all hover:scale-105"
           >
-            <CheckSquare className="w-3.5 h-3.5" /> Open Kanban Board
-          </button>
-          <button
-            onClick={() => onNavigate('PullRequests')}
-            className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-slate-900/90 hover:bg-slate-900 text-white text-xs font-bold border border-slate-700 shadow-md transition-all hover:scale-105"
-          >
-            <GitPullRequest className="w-3.5 h-3.5" /> Create Pull Request
+            <CheckSquare className="w-3.5 h-3.5" /> Open My Tasks
           </button>
         </div>
       </div>

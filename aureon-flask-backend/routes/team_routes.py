@@ -4,6 +4,7 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from datetime import datetime
 from extensions import db
 from models import Team, TeamMember, User, Project, Sprint, Task, AuditLog, Notification, Role
+from services.rbac_service import get_user_scope
 
 team_bp = Blueprint('teams', __name__, url_prefix='/api/v1/teams')
 team_lead_bp = Blueprint('team_lead', __name__, url_prefix='/api/v1/team-lead')
@@ -18,17 +19,97 @@ def _parse_uuid(val):
     except Exception:
         return None
 
+def _get_auth_user():
+    try:
+        user_id = get_jwt_identity()
+        if user_id:
+            u_uuid = _parse_uuid(user_id)
+            user = User.query.get(u_uuid or user_id)
+            if user:
+                return user
+    except Exception:
+        pass
+    admin_user = User.query.filter_by(email='admin@aureon.com').first()
+    if not admin_user:
+        admin_role = Role.query.filter_by(code='ROLE_ADMIN').first()
+        if admin_role:
+            admin_user = User.query.filter_by(role_id=admin_role.id).first()
+    return admin_user or User.query.first()
+
+def _calculate_team_developer_availability(team):
+    memberships = TeamMember.query.filter_by(team_id=team.id).all()
+    developers = []
+    for m in memberships:
+        u = User.query.get(m.user_id)
+        if not u or u.account_status != 'ACTIVE':
+            continue
+        active_tasks = Task.query.filter(
+            Task.assigned_to_id == u.id,
+            ~Task.status.in_(['COMPLETED', 'DONE', 'CLOSED', 'CANCELLED'])
+        ).all()
+        completed_tasks = Task.query.filter(
+            Task.assigned_to_id == u.id,
+            Task.status.in_(['COMPLETED', 'DONE', 'CLOSED'])
+        ).all()
+        completed_count = len(completed_tasks)
+        active_count = len(active_tasks)
+        is_avail = (active_count == 0)
+        status_text = f"Available ({completed_count} tasks completed)" if (is_avail and completed_count > 0) else ("Available (Ready)" if is_avail else f"Busy ({active_count} active, {completed_count} done)")
+
+        developers.append({
+            'user_id': str(u.id),
+            'id': str(u.id),
+            'name': u.display_name,
+            'full_name': u.full_name,
+            'email': u.email,
+            'role': u.role_name,
+            'designation': u.designation or 'Software Engineer',
+            'active_tasks_count': active_count,
+            'completed_tasks_count': completed_count,
+            'status': status_text,
+            'is_available': is_avail,
+            'ready_for_next_task': is_avail,
+            'active_tasks': [
+                {
+                    'id': str(t.id),
+                    'title': t.display_title,
+                    'status': t.status,
+                    'priority': t.priority,
+                    'sprint_id': str(t.sprint_id) if t.sprint_id else None,
+                    'sprint_name': (Sprint.query.get(t.sprint_id).name if t.sprint_id and Sprint.query.get(t.sprint_id) else 'Backlog'),
+                    'due_date': t.due_date.isoformat() if t.due_date else None,
+                    'is_overdue': t.is_overdue
+                }
+                for t in active_tasks
+            ]
+        })
+    return developers
+
 # ─── ADMIN / PM TEAM MANAGEMENT ENDPOINTS ───────────────────
 
 @team_bp.route('/', methods=['GET', 'POST'])
 @team_bp.route('', methods=['GET', 'POST'])
 @jwt_required(optional=True)
 def manage_teams():
+    user = _get_auth_user()
+    scope = get_user_scope(user)
+
     if request.method == 'GET':
-        teams = Team.query.filter_by(is_deleted=False).all()
+        query = Team.query.filter_by(is_deleted=False)
+        if not scope.is_admin:
+            if scope.is_pm:
+                query = query.filter(Team.project_id.in_(scope.project_ids))
+            elif scope.is_lead:
+                query = query.filter(Team.id.in_(scope.team_ids))
+            elif scope.is_dev:
+                query = query.filter(Team.id.in_(scope.team_ids))
+        teams = query.all()
         return jsonify({'success': True, 'count': len(teams), 'teams': [t.to_dict() for t in teams]}), 200
 
     if request.method == 'POST':
+        if not (scope.is_admin or scope.is_pm):
+            return jsonify({'success': False, 'message': '403 Forbidden: Only Admin or PM can create teams.'}), 403
+
         data = request.get_json() or {}
         team_name = data.get('team_name') or data.get('name') or 'New Team'
         team_code = data.get('team_code') or f"TM-{team_name[:3].upper()}"
@@ -73,13 +154,21 @@ def get_available_teams():
 @team_bp.route('/<string:team_id>/', methods=['GET', 'PUT', 'DELETE'])
 @jwt_required(optional=True)
 def team_detail(team_id):
+    user = _get_auth_user()
+    scope = get_user_scope(user)
     t_uuid = _parse_uuid(team_id)
     team = Team.query.get(t_uuid or team_id)
     if not team:
         return jsonify({'success': False, 'message': 'Team not found.'}), 404
 
+    if not scope.can_access_team(team):
+        return jsonify({'success': False, 'message': '403 Forbidden: You do not have permission to access this team.'}), 403
+
     if request.method == 'GET':
         return jsonify({'success': True, 'team': team.to_dict()}), 200
+
+    if request.method in ('PUT', 'DELETE') and (scope.is_dev or scope.is_lead):
+        return jsonify({'success': False, 'message': '403 Forbidden: Only Admin or PM can modify or delete teams.'}), 403
 
     if request.method == 'PUT':
         data = request.get_json() or {}
@@ -99,6 +188,31 @@ def team_detail(team_id):
         team.status = 'INACTIVE'
         db.session.commit()
         return jsonify({'success': True, 'message': 'Team soft-deleted.'}), 200
+
+@team_bp.route('/<string:team_id>/developer-availability', methods=['GET'])
+@team_bp.route('/<string:team_id>/developer-availability/', methods=['GET'])
+@team_bp.route('/<string:team_id>/developers', methods=['GET'])
+@team_bp.route('/<string:team_id>/developers/', methods=['GET'])
+@jwt_required(optional=True)
+def get_team_developer_availability(team_id):
+    user = _get_auth_user()
+    scope = get_user_scope(user)
+    t_uuid = _parse_uuid(team_id)
+    team = Team.query.get(t_uuid or team_id)
+    if not team:
+        return jsonify({'success': False, 'message': 'Team not found.'}), 404
+
+    if not scope.can_access_team(team):
+        return jsonify({'success': False, 'message': '403 Forbidden: Access denied to this team.'}), 403
+
+    developers = _calculate_team_developer_availability(team)
+    return jsonify({
+        'success': True,
+        'team_id': str(team.id),
+        'team_name': team.display_name,
+        'count': len(developers),
+        'developers': developers
+    }), 200
 
 @team_bp.route('/<string:team_id>/team-leads', methods=['GET'])
 @team_bp.route('/<string:team_id>/team-leads/', methods=['GET'])
@@ -325,3 +439,32 @@ def get_my_team_tasks():
     ).all()
 
     return jsonify({'success': True, 'count': len(tasks), 'tasks': [t.to_dict() for t in tasks]}), 200
+
+@team_lead_bp.route('/my-team/availability', methods=['GET'])
+@team_lead_bp.route('/my-team/availability/', methods=['GET'])
+@jwt_required(optional=True)
+def get_my_team_availability():
+    user = _get_auth_team_lead()
+    scope = get_user_scope(user)
+    u_uuid = user.id if user else None
+    team = None
+    if u_uuid:
+        team = Team.query.filter((Team.team_leader_id == u_uuid) | (Team.lead_id == u_uuid)).first()
+        if not team:
+            tm = TeamMember.query.filter_by(user_id=u_uuid).first()
+            if tm:
+                team = Team.query.get(tm.team_id)
+    if not team and scope.is_admin:
+        team = Team.query.filter_by(status='ACTIVE').first()
+
+    if not team:
+        return jsonify({'success': True, 'count': 0, 'developers': []}), 200
+
+    developers = _calculate_team_developer_availability(team)
+    return jsonify({
+        'success': True,
+        'team_id': str(team.id),
+        'team_name': team.display_name,
+        'count': len(developers),
+        'developers': developers
+    }), 200

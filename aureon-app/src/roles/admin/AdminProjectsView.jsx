@@ -1,38 +1,38 @@
 import React, { useState, useEffect } from 'react';
 import { Breadcrumb } from '../../components/common/Breadcrumb';
 import { DataTable } from '../../components/common/DataTable';
-import { initialProjects } from '../../services/mockData';
-import { FolderKanban, Cpu } from 'lucide-react';
+import { FolderKanban } from 'lucide-react';
+import { getAuthHeaders } from '../../services/apiClient';
 
 export const AdminProjectsView = () => {
-  const [projects, setProjects] = useState(initialProjects);
+  const [projects, setProjects] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   const fetchLiveProjects = async () => {
-    const rawToken = sessionStorage.getItem('aureon_jwt_access_token') || localStorage.getItem('aureon_jwt_access_token') || sessionStorage.getItem('aureon_access_token');
-    const isRealJwt = rawToken && rawToken.startsWith('ey') && rawToken.split('.').length === 3;
-    const headers = isRealJwt ? { 'Authorization': `Bearer ${rawToken}` } : {};
     try {
-      const res = await fetch('http://127.0.0.1:8000/api/v1/projects/', { headers });
+      const res = await fetch('http://127.0.0.1:8000/api/v1/projects/', {
+        headers: getAuthHeaders()
+      });
       if (res.ok) {
         const data = await res.json();
         const liveList = data.projects || [];
-        if (liveList.length > 0) {
-          const formatted = liveList.map(p => ({
-            id: p.id,
-            key: p.id?.substring(0, 8) || 'PROJ',
-            name: p.name || p.project_name || 'Verona Organic',
-            manager: p.manager_name || 'Gopika Manoj',
-            lead: p.lead_name || 'Krishna Deepesh',
-            status: p.status || 'IN_PROGRESS',
-            progress: p.progress || 25,
-            healthScore: p.health_score || 90,
-            deadline: p.target_deadline || p.deadline || '2026-09-08'
-          }));
-          setProjects(formatted);
-        }
+        const formatted = liveList.map(p => ({
+          id: p.id,
+          key: p.id?.substring(0, 8) || 'PROJ',
+          name: p.name || p.project_name || 'Project',
+          manager: p.manager_name || 'Unassigned PM',
+          lead: p.lead_name || 'Unassigned Lead',
+          status: p.status || 'IN_PROGRESS',
+          progress: p.progress || 0,
+          healthScore: p.health_score !== undefined && p.health_score !== null ? p.health_score : 90,
+          deadline: p.target_deadline || p.deadline || 'Ongoing'
+        }));
+        setProjects(formatted);
       }
     } catch (err) {
-      // Fallback to initialProjects
+      console.warn('Failed to load projects:', err);
+    } finally {
+      setLoading(false);
     }
   };
 

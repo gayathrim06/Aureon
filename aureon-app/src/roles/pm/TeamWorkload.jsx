@@ -7,32 +7,17 @@ export const TeamWorkload = () => {
   const [projectsList, setProjectsList] = useState([]);
   const [tasksList, setTasksList] = useState([]);
 
-  // Base Senior Team Leads (Clean baseline, stats calculated dynamically from backend database)
-  const baseLeads = [
-    { id: 'usr_lead_1', name: 'Krishna Deepesh', role: 'Team Lead', title: 'Senior Tech Lead & Architect', email: 'krish@aureon.com' },
-    { id: 'usr_lead_2', name: 'David Chen', role: 'Team Lead', title: 'Lead Systems Architect', email: 'david.c@aureon.com' },
-    { id: 'usr_lead_3', name: 'Vikram Patel', role: 'Team Lead', title: 'Principal Backend Engineer', email: 'vikram.p@aureon.com' }
-  ];
-
-  // Base Engineering Roster (Frontend Devs, Backend Devs, QA Testers)
-  const baseMembers = [
-    { id: 'usr_dev_1', name: 'Ram Kumar', role: 'Frontend UI Engineer', type: 'DEV' },
-    { id: 'usr_dev_2', name: 'Jiya Thomas', role: 'Backend API Developer', type: 'DEV' },
-    { id: 'usr_dev_3', name: 'Priya Sharma', role: 'Database & Analytics Engineer', type: 'DEV' },
-    { id: 'usr_dev_4', name: 'Michael Brown', role: 'Security Engineering Lead', type: 'DEV' },
-    { id: 'usr_dev_5', name: 'Sneha Roy', role: 'Flutter & Mobile Engineer', type: 'DEV' },
-    { id: 'usr_qa_1', name: 'Venu QA', role: 'Lead QA Automation Engineer', type: 'QA' },
-    { id: 'usr_qa_2', name: 'Ananya Varma', role: 'Test Automation Specialist', type: 'QA' },
-    { id: 'usr_qa_3', name: 'Sarah Thomas', role: 'Security & Regression QA', type: 'QA' }
-  ];
+  const [rawLeads, setRawLeads] = useState([]);
+  const [rawMembers, setRawMembers] = useState([]);
 
   useEffect(() => {
     const fetchData = async () => {
       const headers = getAuthHeaders();
       try {
-        const [projRes, taskRes] = await Promise.all([
+        const [projRes, taskRes, usersRes] = await Promise.all([
           fetch('http://127.0.0.1:8000/api/v1/projects/', { headers }),
-          fetch('http://127.0.0.1:8000/api/v1/tasks/', { headers })
+          fetch('http://127.0.0.1:8000/api/v1/tasks/', { headers }),
+          fetch('http://127.0.0.1:8000/api/v1/users/', { headers })
         ]);
         if (projRes.ok) {
           const pData = await projRes.json();
@@ -42,19 +27,44 @@ export const TeamWorkload = () => {
           const tData = await taskRes.json();
           setTasksList(tData.tasks || []);
         }
+        if (usersRes.ok) {
+          const uData = await usersRes.json();
+          const allUsers = uData.users || [];
+          const leads = allUsers
+            .filter(u => u.role === 'ROLE_LEAD' || u.role_name === 'ROLE_LEAD')
+            .map(u => ({
+              id: u.id,
+              name: u.full_name || u.name,
+              role: 'Team Lead',
+              title: u.designation || 'Senior Tech Lead & Architect',
+              email: u.email
+            }));
+          setRawLeads(leads);
+
+          const members = allUsers
+            .filter(u => u.role !== 'ROLE_LEAD' && u.role_name !== 'ROLE_LEAD' && u.role !== 'ROLE_ADMIN' && u.role_name !== 'ROLE_ADMIN')
+            .map(u => ({
+              id: u.id,
+              name: u.full_name || u.name,
+              role: u.designation || (u.role === 'ROLE_QA' ? 'QA Automation Specialist' : 'Software Engineer'),
+              type: u.role === 'ROLE_QA' ? 'QA' : 'DEV',
+              email: u.email
+            }));
+          setRawMembers(members);
+        }
       } catch (err) {}
     };
     fetchData();
   }, []);
 
   // Compute Real Team Lead Metrics from actual DB projects/tasks
-  const availableLeads = baseLeads.map(lead => {
+  const availableLeads = rawLeads.map(lead => {
     const assignedProjects = projectsList.filter(p => p.lead_id === lead.id || p.lead_name?.includes(lead.name));
-    const assignedTasks = tasksList.filter(t => t.assigned_to === lead.name || t.assignee_id === lead.id);
-    const activeTasks = assignedTasks.filter(t => t.status === 'IN_PROGRESS' || t.status === 'TODO').length;
+    const assignedTasks = tasksList.filter(t => t.assigned_to === lead.name || t.assignee_id === lead.id || t.assigned_to_id === lead.id);
+    const activeTasks = assignedTasks.filter(t => t.status === 'IN_PROGRESS' || t.status === 'TODO' || t.status === 'IN_REVIEW').length;
     const completedTasks = assignedTasks.filter(t => t.status === 'DONE' || t.status === 'COMPLETED').length;
-    const capacityPct = Math.min(100, activeTasks * 25);
-    const status = activeTasks > 3 ? 'HIGH_WORKLOAD' : 'AVAILABLE';
+    const capacityPct = Math.min(100, activeTasks * 33);
+    const status = activeTasks > 0 ? 'BUSY' : 'AVAILABLE';
 
     return {
       ...lead,
@@ -67,14 +77,14 @@ export const TeamWorkload = () => {
   });
 
   // Compute Real Member Metrics from actual DB projects/tasks
-  const availableMembers = baseMembers.map(member => {
-    const assignedTasks = tasksList.filter(t => t.assigned_to === member.name || t.assignee_id === member.id);
-    const activeTasks = assignedTasks.filter(t => t.status === 'IN_PROGRESS' || t.status === 'TODO').length;
+  const availableMembers = rawMembers.map(member => {
+    const assignedTasks = tasksList.filter(t => t.assigned_to === member.name || t.assignee_id === member.id || t.assigned_to_id === member.id);
+    const activeTasks = assignedTasks.filter(t => t.status === 'IN_PROGRESS' || t.status === 'TODO' || t.status === 'IN_REVIEW').length;
     const completedTasks = assignedTasks.filter(t => t.status === 'DONE' || t.status === 'COMPLETED').length;
     const totalTasks = assignedTasks.length;
     const finishRate = totalTasks > 0 ? `${Math.round((completedTasks / totalTasks) * 100)}%` : '0%';
-    const workloadPct = Math.min(100, activeTasks * 25);
-    const status = activeTasks > 3 ? 'HIGH_WORKLOAD' : 'AVAILABLE';
+    const workloadPct = Math.min(100, activeTasks * 33);
+    const status = activeTasks > 0 ? 'BUSY' : 'AVAILABLE';
 
     return {
       ...member,

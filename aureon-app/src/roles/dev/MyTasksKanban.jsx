@@ -1,15 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { Breadcrumb } from '../../components/common/Breadcrumb';
 import { Modal } from '../../components/common/Modal';
-import { initialTasks } from '../../services/mockData';
 import { logAuditEvent } from '../../services/auditLogger';
 import { useAuth } from '../../context/AuthContext';
-import { CheckSquare, MessageSquare, Paperclip, Plus, ArrowRight, User } from 'lucide-react';
+import { CheckSquare, MessageSquare, Paperclip, Plus, ArrowRight, User, RefreshCw } from 'lucide-react';
 import { getAuthHeaders } from '../../services/apiClient';
 
 export const MyTasksKanban = ({ onShowToast }) => {
   const { user } = useAuth();
-  const [tasks, setTasks] = useState(initialTasks);
+  const [tasks, setTasks] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [activeTask, setActiveTask] = useState(null);
   const [commentInput, setCommentInput] = useState('');
 
@@ -28,17 +28,18 @@ export const MyTasksKanban = ({ onShowToast }) => {
 
   // Fetch developer tasks from PostgreSQL REST API backend
   const fetchTasks = async () => {
-    const headers = getAuthHeaders();
-
     try {
-      const res = await fetch('http://127.0.0.1:8000/api/v1/developer/my-tasks', { headers });
+      setLoading(true);
+      const res = await fetch('http://127.0.0.1:8000/api/v1/developer/my-tasks', {
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() }
+      });
       if (res.ok) {
         const data = await res.json();
         if (data.success && data.tasks) {
-          const formatted = data.tasks.map((t, idx) => ({
+          const formatted = data.tasks.map((t) => ({
             id: t.id,
             title: t.title || 'Untitled Task',
-            status: t.status || 'TODO',
+            status: t.status === 'IN_REVIEW' ? 'REVIEW' : (t.status || 'TODO'),
             priority: t.priority || 'MEDIUM',
             assignee: t.assignee_name || user?.full_name || 'Engineer',
             dueDate: t.due_date || 'Today',
@@ -50,6 +51,8 @@ export const MyTasksKanban = ({ onShowToast }) => {
       }
     } catch (err) {
       console.warn('API fetch warning:', err);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -69,49 +72,16 @@ export const MyTasksKanban = ({ onShowToast }) => {
     };
 
     try {
-      const res = await fetch('http://127.0.0.1:8000/api/v1/tasks', {
+      const res = await fetch('http://127.0.0.1:8000/api/v1/tasks/', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         body: JSON.stringify(newTaskData)
       });
-      const data = await res.json();
-      if (data.success && data.task) {
-        const createdCard = {
-          id: data.task.id,
-          title: data.task.title,
-          status: data.task.status,
-          priority: data.task.priority,
-          assignee: user?.full_name || 'Engineer',
-          dueDate: 'Today',
-          comments: [],
-          attachments: []
-        };
-        setTasks(prev => [createdCard, ...prev]);
-      } else {
-        const fallbackCard = {
-          id: `TSK-${String(tasks.length + 101).padStart(3, '0')}`,
-          title: newTaskTitle.trim(),
-          status: newTaskColumn,
-          priority: newTaskPriority,
-          assignee: user?.full_name || 'Engineer',
-          dueDate: 'Today',
-          comments: [],
-          attachments: []
-        };
-        setTasks(prev => [fallbackCard, ...prev]);
+      if (res.ok) {
+        await fetchTasks();
       }
     } catch (err) {
-      const fallbackCard = {
-        id: `TSK-${String(tasks.length + 101).padStart(3, '0')}`,
-        title: newTaskTitle.trim(),
-        status: newTaskColumn,
-        priority: newTaskPriority,
-        assignee: user?.full_name || 'Engineer',
-        dueDate: 'Today',
-        comments: [],
-        attachments: []
-      };
-      setTasks(prev => [fallbackCard, ...prev]);
+      console.warn('Task creation failed:', err);
     }
 
     logAuditEvent({
@@ -133,13 +103,14 @@ export const MyTasksKanban = ({ onShowToast }) => {
   };
 
   const moveTaskStatus = async (taskId, newStatus) => {
+    const backendStatus = newStatus === 'REVIEW' ? 'IN_REVIEW' : newStatus;
     setTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: newStatus } : t));
 
     try {
       await fetch(`http://127.0.0.1:8000/api/v1/tasks/${taskId}/status`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: newStatus })
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        body: JSON.stringify({ status: backendStatus })
       });
     } catch (err) {
       console.warn('Task status update warning:', err);
@@ -160,9 +131,10 @@ export const MyTasksKanban = ({ onShowToast }) => {
     });
   };
 
-  const handleAddComment = () => {
+  const handleAddComment = async () => {
     if (!commentInput.trim() || !activeTask) return;
-    const newComment = { author: user?.name || 'Developer', text: commentInput, time: 'Just now' };
+    const commentText = commentInput.trim();
+    const newComment = { author: user?.display_name || user?.name || 'Developer', text: commentText, time: 'Just now' };
 
     setTasks(prev => prev.map(t => {
       if (t.id === activeTask.id) {
@@ -172,6 +144,16 @@ export const MyTasksKanban = ({ onShowToast }) => {
       }
       return t;
     }));
+
+    try {
+      await fetch(`http://127.0.0.1:8000/api/v1/tasks/${activeTask.id}/comments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        body: JSON.stringify({ comment: commentText })
+      });
+    } catch (err) {
+      console.warn('Failed to persist comment:', err);
+    }
 
     logAuditEvent({
       user,

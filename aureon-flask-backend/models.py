@@ -86,6 +86,21 @@ class User(db.Model):
         return check_password_hash(self.password, password_str)
 
     def to_dict(self):
+        active_count = 0
+        try:
+            from models import Task
+            active_tasks = Task.query.filter(
+                Task.assigned_to_id == self.id,
+                ~Task.status.in_(['COMPLETED', 'DONE', 'CLOSED', 'CANCELLED'])
+            ).all()
+            active_count = len(active_tasks)
+        except Exception:
+            pass
+
+        is_avail = (active_count == 0)
+        avail_status = 'AVAILABLE' if is_avail else 'BUSY'
+        status_text = 'Available' if is_avail else f"Busy ({active_count} active task{'s' if active_count != 1 else ''})"
+
         return {
             'id': str(self.id),
             'email': self.email,
@@ -106,7 +121,13 @@ class User(db.Model):
             'best_friend_name': self.school_friend_name or '',
             'status': self.account_status or ('ACTIVE' if self.is_active else 'INACTIVE'),
             'failed_logins': self.failed_login_attempts or 0,
-            'mfaEnabled': False
+            'mfaEnabled': False,
+            'active_tasks_count': active_count,
+            'is_available': is_avail,
+            'availability_status': avail_status,
+            'availability': avail_status,
+            'status_text': status_text,
+            'ready_for_next_task': is_avail
         }
 
 class Project(db.Model):
@@ -219,15 +240,46 @@ class Team(db.Model):
     def to_dict(self):
         t_members = TeamMember.query.filter_by(team_id=self.id).all()
         member_names = [m.user.full_name for m in t_members if m.user]
-        member_details = [
-            {
-                'id': str(m.user.id),
-                'name': m.user.full_name,
-                'email': m.user.email,
-                'role': m.user.role_name,
-                'designation': m.user.designation
-            } for m in t_members if m.user
-        ]
+        all_users = [m.user for m in t_members if m.user]
+        if self.leader and self.leader not in all_users:
+            all_users.append(self.leader)
+
+        member_details = []
+        user_ids_seen = set()
+
+        for u in all_users:
+            if not u or u.id in user_ids_seen or u.account_status != 'ACTIVE':
+                continue
+            user_ids_seen.add(u.id)
+
+            active_count = Task.query.filter(
+                Task.assigned_to_id == u.id,
+                ~Task.status.in_(['COMPLETED', 'DONE', 'CLOSED', 'CANCELLED'])
+            ).count()
+
+            completed_count = Task.query.filter(
+                Task.assigned_to_id == u.id,
+                Task.status.in_(['COMPLETED', 'DONE', 'CLOSED'])
+            ).count()
+
+            is_avail = (active_count == 0)
+            status_desc = f"Available ({completed_count} tasks completed)" if (is_avail and completed_count > 0) else ("Available (Ready)" if is_avail else f"Busy ({active_count} active, {completed_count} done)")
+
+            member_details.append({
+                'id': str(u.id),
+                'user_id': str(u.id),
+                'name': u.display_name,
+                'full_name': u.full_name,
+                'email': u.email,
+                'role': u.role_name,
+                'designation': u.designation or 'Software Engineer',
+                'active_tasks_count': active_count,
+                'completed_tasks_count': completed_count,
+                'is_available': is_avail,
+                'ready_for_next_task': is_avail,
+                'status': status_desc,
+                'availability': 'AVAILABLE' if is_avail else 'BUSY'
+            })
 
         leader_name = self.leader.full_name if self.leader else None
         proj_name = self.project.name if self.project else None
@@ -299,6 +351,17 @@ class Sprint(db.Model):
 
         completion_pct = round((completed_tasks / total_tasks * 100), 1) if total_tasks > 0 else 0.0
 
+        # Deterministic Sprint Score Calculation (0-100)
+        # Formula: round(0.60 * CompRate + 0.40 * OnTimeRate - (OverdueTasks * 2))
+        if total_tasks > 0:
+            comp_rate = (completed_tasks / total_tasks) * 100.0
+            ontime_rate = (max(0, total_tasks - overdue_tasks) / total_tasks) * 100.0
+            penalty = overdue_tasks * 2.0
+            calculated_score = round(0.60 * comp_rate + 0.40 * ontime_rate - penalty)
+            sprint_score = max(0, min(100, calculated_score))
+        else:
+            sprint_score = 100
+
         # Developer task distribution
         dev_dist = {}
         for t in sprint_tasks:
@@ -327,13 +390,13 @@ class Sprint(db.Model):
             'endDate': self.end_date.isoformat() if self.end_date else None,
             'project_id': str(self.project_id) if self.project_id else None,
             'projectId': str(self.project_id) if self.project_id else None,
-            'project_name': proj.display_name if proj else 'Verona Organic',
-            'projectName': proj.display_name if proj else 'Verona Organic',
-            'project': proj.display_name if proj else 'Verona Organic',
+            'project_name': proj.display_name if proj else 'No Project Assigned',
+            'projectName': proj.display_name if proj else 'No Project Assigned',
+            'project': proj.display_name if proj else 'No Project Assigned',
             'team_id': str(self.team_id) if self.team_id else None,
             'teamId': str(self.team_id) if self.team_id else None,
-            'team_name': tm.display_name if tm else 'Development Team',
-            'team': tm.display_name if tm else 'Development Team',
+            'team_name': tm.display_name if tm else 'No Team Assigned',
+            'team': tm.display_name if tm else 'No Team Assigned',
             'created_by': creator_user.display_name if creator_user else 'Team Lead',
             'created_by_id': str(self.created_by_id) if self.created_by_id else None,
             'created_at': self.created_at.isoformat() if self.created_at else None,
@@ -352,9 +415,14 @@ class Sprint(db.Model):
             'blocked_tasks': blocked_tasks,
             'overdue_tasks': overdue_tasks,
             'overdueTasks': overdue_tasks,
+            'active_tasks_count': (total_tasks - completed_tasks),
+            'remaining_tasks_count': (total_tasks - completed_tasks),
             'completion_percentage': completion_pct,
             'completionPercentage': completion_pct,
             'progress': completion_pct,
+            'sprint_score': sprint_score,
+            'sprintScore': sprint_score,
+            'score': sprint_score,
             'developer_distribution': list(dev_dist.values())
         }
 
@@ -468,15 +536,17 @@ class Task(db.Model):
             'actual_hours': self.actual_hours or 0.0,
             'progress': self.progress if self.progress is not None else (100 if self.display_status in ('DONE', 'COMPLETED') else 0),
             'assigned_to_id': str(self.assigned_to_id) if self.assigned_to_id else None,
-            'assignee_name': u.display_name if u else 'Unassigned',
-            'assignee': u.display_name if u else 'Unassigned',
+            'assignee_name': u.display_name if u else 'Unassigned (Needs Assignment)',
+            'assignee': u.display_name if u else 'Unassigned (Needs Assignment)',
+            'needs_assignment': bool(not self.assigned_to_id),
             'project_id': str(self.project_id) if self.project_id else (str(spr.project_id) if spr and spr.project_id else None),
-            'project_name': proj.display_name if proj else (spr.project_name if spr else 'Verona Organic'),
-            'project': proj.display_name if proj else (spr.project_name if spr else 'Verona Organic'),
+            'project_name': proj.display_name if proj else (spr.project.display_name if (spr and spr.project) else 'No Project Assigned'),
+            'project': proj.display_name if proj else (spr.project.display_name if (spr and spr.project) else 'No Project Assigned'),
             'team_id': str(self.team_id) if self.team_id else (str(spr.team_id) if spr and spr.team_id else None),
-            'assigned_team': tm.name if tm else 'Development Team',
+            'assigned_team': tm.name if tm else 'No Team Assigned',
             'sprint_id': str(self.sprint_id) if self.sprint_id else None,
-            'sprint_name': spr.name if spr else ('Product Backlog' if not self.sprint_id else 'ui design'),
+            'sprint_name': spr.name if spr else 'No Sprint (Needs Review)',
+            'is_orphan': bool(not self.sprint_id or not self.project_id),
             # Overdue & Delay Fields
             'is_overdue': self.is_overdue,
             'days_overdue': self.days_overdue,
@@ -685,7 +755,10 @@ class AuditLog(db.Model):
             'timestamp': self.timestamp.isoformat() if self.timestamp else '',
             'details': self.details or '',
             'user_email': self.user_email or 'system',
-            'role_name': self.role_name or 'ROLE_ADMIN'
+            'role_name': self.role_name or 'ROLE_ADMIN',
+            'status': self.status or 'SUCCESS',
+            'browser': self.browser or 'Chrome',
+            'operating_system': self.operating_system or 'Windows'
         }
 
 class Commit(db.Model):
@@ -803,59 +876,118 @@ class Report(db.Model):
         }
 
 class CodeAnalysis(db.Model):
-    __tablename__ = 'tbl_code_analysis'
+    __tablename__ = 'code_analysis'
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     repository_id = db.Column(UUID(as_uuid=True), db.ForeignKey('tbl_repository.id'), nullable=True)
+    commit_hash = db.Column(db.String(100), nullable=True)
     tool_name = db.Column(db.String(50), default='PYLINT_RADON')
     status = db.Column(db.String(30), default='PASSED')
     quality_score = db.Column(db.Float, default=9.5)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    executed_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    @property
+    def created_at(self):
+        return self.executed_at
 
     def to_dict(self):
         return {
             'id': str(self.id),
             'repository_id': str(self.repository_id) if self.repository_id else None,
+            'commit_hash': self.commit_hash or '',
             'tool_name': self.tool_name or 'PYLINT_RADON',
             'status': self.status or 'PASSED',
             'quality_score': self.quality_score or 9.5,
-            'created_at': self.created_at.isoformat() if self.created_at else ''
+            'executed_at': self.executed_at.isoformat() if self.executed_at else '',
+            'created_at': self.executed_at.isoformat() if self.executed_at else ''
         }
 
 class CodeAnalysisIssue(db.Model):
-    __tablename__ = 'tbl_bug'
+    __tablename__ = 'code_analysis_issues'
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    analysis_id = db.Column(UUID(as_uuid=True), db.ForeignKey('tbl_code_analysis.id'), nullable=True)
-    issue_type = db.Column(db.String(50), default='WARNING')
-    description = db.Column(db.Text, nullable=True)
+    analysis_id = db.Column(UUID(as_uuid=True), db.ForeignKey('code_analysis.id'), nullable=True)
     file_path = db.Column(db.String(255), nullable=True)
     line_number = db.Column(db.Integer, default=1)
+    issue_type = db.Column(db.String(50), default='WARNING')
+    category = db.Column(db.String(50), default='CONVENTION')
+    message_id = db.Column(db.String(50), nullable=True)
+    description = db.Column(db.Text, nullable=True)
     severity = db.Column(db.String(30), default='MEDIUM')
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     def to_dict(self):
         return {
             'id': str(self.id),
             'analysis_id': str(self.analysis_id) if self.analysis_id else None,
-            'issue_type': self.issue_type or 'WARNING',
-            'description': self.description or '',
             'file_path': self.file_path or '',
             'line_number': self.line_number or 1,
-            'severity': self.severity or 'MEDIUM',
-            'created_at': self.created_at.isoformat() if self.created_at else ''
+            'issue_type': self.issue_type or 'WARNING',
+            'category': self.category or 'CONVENTION',
+            'message_id': self.message_id or '',
+            'description': self.description or '',
+            'severity': self.severity or 'MEDIUM'
         }
 
 class CodeMetrics(db.Model):
-    __tablename__ = 'tbl_dashboard'
+    __tablename__ = 'code_metrics'
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    metric_name = db.Column(db.String(100), nullable=True)
-    metric_value = db.Column(db.Float, default=0.0)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    analysis_id = db.Column(UUID(as_uuid=True), db.ForeignKey('code_analysis.id'), nullable=True)
+    file_path = db.Column(db.String(255), nullable=True)
+    cyclomatic_complexity = db.Column(db.Float, default=1.0)
+    complexity_rank = db.Column(db.String(10), default='A')
+    loc = db.Column(db.Integer, default=0)
+    logical_loc = db.Column(db.Integer, default=0)
+    comment_loc = db.Column(db.Integer, default=0)
+    maintainability_index = db.Column(db.Float, default=100.0)
 
     def to_dict(self):
         return {
             'id': str(self.id),
-            'metric_name': self.metric_name or '',
-            'metric_value': self.metric_value or 0.0,
+            'analysis_id': str(self.analysis_id) if self.analysis_id else None,
+            'file_path': self.file_path or '',
+            'cyclomatic_complexity': self.cyclomatic_complexity or 1.0,
+            'complexity_rank': self.complexity_rank or 'A',
+            'loc': self.loc or 0,
+            'maintainability_index': self.maintainability_index or 100.0
+        }
+
+class Bug(db.Model):
+    __tablename__ = 'tbl_bug'
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    bug_id = db.Column(db.String(50), nullable=True)
+    title = db.Column(db.String(255), nullable=False)
+    description = db.Column(db.Text, nullable=True)
+    steps_to_reproduce = db.Column(db.Text, nullable=True)
+    severity = db.Column(db.String(30), default='MEDIUM')
+    priority = db.Column(db.String(30), default='MEDIUM')
+    status = db.Column(db.String(30), default='OPEN')
+    evidence_file = db.Column(db.String(255), nullable=True)
+    resolution_summary = db.Column(db.Text, nullable=True)
+    project_id = db.Column(UUID(as_uuid=True), db.ForeignKey('tbl_project.id'), nullable=True)
+    reporter_id = db.Column(UUID(as_uuid=True), db.ForeignKey('tbl_user.id'), nullable=True)
+    assigned_developer_id = db.Column(UUID(as_uuid=True), db.ForeignKey('tbl_user.id'), nullable=True)
+    assigned_qa_id = db.Column(UUID(as_uuid=True), db.ForeignKey('tbl_user.id'), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    is_active = db.Column(db.Boolean, default=True)
+    is_deleted = db.Column(db.Boolean, default=False)
+
+    def to_dict(self):
+        dev = User.query.get(self.assigned_developer_id) if self.assigned_developer_id else None
+        reporter = User.query.get(self.reporter_id) if self.reporter_id else None
+        proj = Project.query.get(self.project_id) if self.project_id else None
+        return {
+            'id': str(self.id),
+            'bug_id': self.bug_id or f"BUG-{str(self.id)[:6].upper()}",
+            'title': self.title,
+            'description': self.description or '',
+            'steps_to_reproduce': self.steps_to_reproduce or '',
+            'severity': self.severity or 'MEDIUM',
+            'priority': self.priority or 'MEDIUM',
+            'status': self.status or 'OPEN',
+            'project_id': str(self.project_id) if self.project_id else None,
+            'project_name': proj.name if proj else 'Global',
+            'assigned_developer': dev.display_name if dev else 'Unassigned',
+            'assigned_developer_id': str(self.assigned_developer_id) if self.assigned_developer_id else None,
+            'reporter': reporter.display_name if reporter else 'QA Engineer',
             'created_at': self.created_at.isoformat() if self.created_at else ''
         }
 

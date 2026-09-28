@@ -2,22 +2,49 @@ import React, { useState } from 'react';
 import { Breadcrumb } from '../../components/common/Breadcrumb';
 import { DataTable } from '../../components/common/DataTable';
 import { Modal } from '../../components/common/Modal';
-import { initialTestCases } from '../../services/mockData';
 import { logAuditEvent } from '../../services/auditLogger';
 import { useAuth } from '../../context/AuthContext';
 import { ClipboardCheck, Plus, CheckCircle2, XCircle, Clock, Play } from 'lucide-react';
 
 export const TestCaseLibrary = ({ onShowToast }) => {
   const { user } = useAuth();
-  const [testCases, setTestCases] = useState(initialTestCases);
+  const [testCases, setTestCases] = useState(() => {
+    try {
+      const saved = localStorage.getItem('aureon_test_cases');
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      return [];
+    }
+  });
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [formData, setFormData] = useState({ title: '', type: 'FUNCTIONAL', automated: false });
 
-  const handleCreate = (e) => { e.preventDefault(); const tc = { id: `TC-${800+testCases.length+1}`, ...formData, projectId: 'proj_1', status: 'PENDING', lastRun: 'Never', executedBy: user?.name || 'Elena Rostova' }; setTestCases([tc,...testCases]); logAuditEvent({ user, role: user?.role, action: 'TESTCASE_CREATE', resource: `Test Case ${tc.id}: ${tc.title}`, status: 'SUCCESS' }); onShowToast && onShowToast({ type: 'success', title: 'Test Case Created', message: `${tc.id} added to library.` }); setIsModalOpen(false); };
+  const handleCreate = (e) => { 
+    e.preventDefault(); 
+    const tc = { 
+      id: `TC-${800 + testCases.length + 1}`, 
+      ...formData, 
+      status: 'PENDING', 
+      lastRun: 'Never', 
+      executedBy: user?.name || user?.full_name || user?.email || 'QA Engineer' 
+    }; 
+    const updated = [tc, ...testCases];
+    setTestCases(updated); 
+    try {
+      localStorage.setItem('aureon_test_cases', JSON.stringify(updated));
+    } catch (err) {}
+    logAuditEvent({ user, role: user?.role, action: 'TESTCASE_CREATE', resource: `Test Case ${tc.id}: ${tc.title}`, status: 'SUCCESS' }); 
+    onShowToast && onShowToast({ type: 'success', title: 'Test Case Created', message: `${tc.id} added to library.` }); 
+    setIsModalOpen(false); 
+  };
 
   const runTest = (tc) => {
     const result = Math.random() > 0.3 ? 'PASSED' : 'FAILED';
-    setTestCases(prev => prev.map(t => t.id === tc.id ? { ...t, status: result, lastRun: new Date().toISOString().replace('T',' ').substring(0,16) } : t));
+    const updated = testCases.map(t => t.id === tc.id ? { ...t, status: result, lastRun: new Date().toISOString().replace('T',' ').substring(0,16) } : t);
+    setTestCases(updated);
+    try {
+      localStorage.setItem('aureon_test_cases', JSON.stringify(updated));
+    } catch (err) {}
     onShowToast && onShowToast({ type: result === 'PASSED' ? 'success' : 'error', title: `Test ${result}`, message: `${tc.id}: ${tc.title}` });
   };
 

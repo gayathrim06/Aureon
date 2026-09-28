@@ -48,8 +48,7 @@ export const Sidebar = ({ activeTab, onSelectTab }) => {
     ROLE_PM: [
       { id: 'Dashboard', label: 'Dashboard', icon: LayoutDashboard },
       { id: 'Projects', label: 'Projects', icon: FolderKanban },
-      { id: 'Sprints', label: 'Sprints', icon: Layers },
-      { id: 'Tasks', label: 'Tasks', icon: CheckSquare },
+      { id: 'Sprints', label: 'Sprints & Tasks', icon: Layers },
       { id: 'Milestones', label: 'Milestones', icon: Award },
       { id: 'TeamMembers', label: 'Team Members', icon: Users },
       { id: 'Repository', label: 'Repository', icon: GitBranch },
@@ -63,8 +62,7 @@ export const Sidebar = ({ activeTab, onSelectTab }) => {
     ROLE_LEAD: [
       { id: 'Dashboard', label: 'Dashboard', icon: LayoutDashboard },
       { id: 'AssignedProjects', label: 'Assigned Projects', icon: FolderKanban },
-      { id: 'SprintBoard', label: 'Sprint Board', icon: Layers },
-      { id: 'Tasks', label: 'Tasks', icon: CheckSquare },
+      { id: 'SprintBoard', label: 'Sprint & Tasks', icon: Layers },
       { id: 'Developers', label: 'Developers', icon: Users },
       { id: 'Repository', label: 'Repository', icon: GitBranch },
       { id: 'CodeQuality', label: 'Code Quality', icon: Cpu },

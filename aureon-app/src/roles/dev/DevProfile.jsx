@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Breadcrumb } from '../../components/common/Breadcrumb';
 import { useAuth } from '../../context/AuthContext';
-import { initialUsers, developerMetrics } from '../../services/mockData';
 import { Modal } from '../../components/common/Modal';
 import { Input } from '../../components/common/Input';
 import { Button } from '../../components/common/Button';
@@ -14,20 +13,18 @@ export const DevProfile = () => {
   // Edit Profile Form state
   const [editTitle, setEditTitle] = useState(user?.designation || user?.title || 'Software Developer');
   const [editDepartment, setEditDepartment] = useState(user?.department || 'Engineering');
-  const [skillsList, setSkillsList] = useState(user?.skills || ['React.js', 'Django REST', 'Python', 'Tailwind CSS', 'PostgreSQL']);
+  const [skillsList, setSkillsList] = useState(user?.skills || ['React.js', 'Python', 'Flask', 'PostgreSQL', 'Git']);
   const [newSkillInput, setNewSkillInput] = useState('');
 
-  const fallbackData = initialUsers.find(u => u.role === 'ROLE_DEV') || initialUsers[3];
   const userData = {
-    name: user?.name || user?.full_name || fallbackData.name,
-    email: user?.email || fallbackData.email,
-    role: user?.role || fallbackData.role,
-    department: user?.department || fallbackData.department || 'Engineering',
-    title: user?.designation || user?.title || fallbackData.title || 'Software Developer',
-    avatar: user?.avatar || user?.avatar_url || user?.profile_image || fallbackData.avatar,
+    name: user?.display_name || user?.full_name || user?.username || 'Developer',
+    email: user?.email || '',
+    role: user?.role || 'ROLE_DEV',
+    department: user?.department || 'Engineering',
+    title: user?.designation || user?.title || 'Software Developer',
+    avatar: user?.avatar || user?.avatar_url || user?.profile_image || null,
     skills: user?.skills || skillsList
   };
-  const metrics = developerMetrics.find(d => d.name === userData.name) || developerMetrics[0];
 
   const handleAddSkill = (e) => {
     e.preventDefault();

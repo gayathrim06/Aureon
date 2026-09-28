@@ -8,20 +8,9 @@ import { getAuthHeaders } from '../../services/apiClient';
 
 export const LeadTaskAllocation = ({ onShowToast }) => {
   const { user } = useAuth();
-  const defaultTasks = [
-    {
-      id: 'TCK-1001',
-      title: 'sign in and register',
-      project_name: 'Verona Organic',
-      assignee_name: 'Sainu Anna Sajan',
-      assignee: 'Sainu Anna Sajan',
-      priority: 'HIGH',
-      status: 'TODO',
-      due_date: '2026-09-15'
-    }
-  ];
-
-  const [tasks, setTasks] = useState(defaultTasks);
+  const [tasks, setTasks] = useState([]);
+  const [developers, setDevelopers] = useState([]);
+  const [teamsList, setTeamsList] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const fetchLeadTasks = async () => {
@@ -29,19 +18,30 @@ export const LeadTaskAllocation = ({ onShowToast }) => {
     const headers = getAuthHeaders();
 
     try {
-      const res = await fetch('http://127.0.0.1:8000/api/v1/tasks/', { headers });
-      if (res.ok) {
-        const data = await res.json();
-        if (data && Array.isArray(data.tasks) && data.tasks.length > 0) {
-          setTasks(data.tasks);
-        } else {
-          setTasks(defaultTasks);
-        }
+      const [tRes, uRes, tmRes] = await Promise.all([
+        fetch('http://127.0.0.1:8000/api/v1/tasks/', { headers }),
+        fetch('http://127.0.0.1:8000/api/v1/users/', { headers }),
+        fetch('http://127.0.0.1:8000/api/v1/teams/', { headers })
+      ]);
+
+      if (tRes.ok) {
+        const data = await tRes.json();
+        setTasks(Array.isArray(data.tasks) ? data.tasks : []);
       } else {
-        setTasks(defaultTasks);
+        setTasks([]);
+      }
+
+      if (uRes.ok) {
+        const uData = await uRes.json();
+        setDevelopers(Array.isArray(uData.users) ? uData.users : []);
+      }
+
+      if (tmRes && tmRes.ok) {
+        const tmData = await tmRes.json();
+        setTeamsList(Array.isArray(tmData.teams) ? tmData.teams : []);
       }
     } catch (err) {
-      setTasks(defaultTasks);
+      setTasks([]);
     } finally {
       setLoading(false);
     }
@@ -50,6 +50,50 @@ export const LeadTaskAllocation = ({ onShowToast }) => {
   useEffect(() => {
     fetchLeadTasks();
   }, []);
+
+  const handleAssignDeveloper = async (taskId, devId) => {
+    const chosenDev = developers.find(u => String(u.id) === String(devId));
+    const devName = chosenDev ? (chosenDev.full_name || chosenDev.email) : 'Developer';
+
+    // Optimistic UI update
+    setTasks(prev => prev.map(t => {
+      if (t.id === taskId) {
+        return {
+          ...t,
+          assigned_to_id: devId,
+          assignee: devName,
+          assignee_name: devName,
+          needs_assignment: false
+        };
+      }
+      return t;
+    }));
+
+    try {
+      const res = await fetch(`http://127.0.0.1:8000/api/v1/tasks/${taskId}/assign`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeaders()
+        },
+        body: JSON.stringify({ assigned_to: devId })
+      });
+
+      if (res.ok) {
+        if (typeof onShowToast === 'function') {
+          onShowToast({ type: 'success', title: 'Developer Assigned', message: `Task assigned to ${devName}.` });
+        }
+        logAuditEvent({ user, role: user?.role, action: 'LEAD_TASK_ASSIGN', resource: `Task ${taskId} → ${devName}`, status: 'SUCCESS' });
+      } else {
+        const err = await res.json();
+        if (typeof onShowToast === 'function') {
+          onShowToast({ type: 'error', title: 'Assignment Failed', message: err.message || 'Could not assign developer.' });
+        }
+      }
+    } catch (err) {
+      console.error('Error assigning developer:', err);
+    }
+  };
 
   const handleUpdateStatus = async (taskId, newStatus) => {
     if (!taskId) return;
@@ -71,6 +115,26 @@ export const LeadTaskAllocation = ({ onShowToast }) => {
     }
   };
 
+  const handleApproveTask = async (taskId) => {
+    if (!taskId) return;
+    try {
+      const res = await fetch(`http://127.0.0.1:8000/api/v1/tasks/${taskId}/approve`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeaders()
+        },
+        body: JSON.stringify({ approval_notes: 'Deliverable reviewed and approved by Team Lead.' })
+      });
+      if (res.ok) {
+        setTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: 'COMPLETED', team_leader_review: 'Deliverable reviewed and approved by Team Lead.' } : t));
+        if (typeof onShowToast === 'function') {
+          onShowToast({ type: 'success', title: 'Task Approved', message: 'Task marked COMPLETED and developer freed.' });
+        }
+      }
+    } catch (err) {}
+  };
+
   const priorityColors = {
     CRITICAL: 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 font-extrabold border border-rose-300',
     HIGH: 'bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-300 font-extrabold border border-orange-300',
@@ -82,26 +146,73 @@ export const LeadTaskAllocation = ({ onShowToast }) => {
     {
       key: 'id',
       label: 'Ticket ID',
-      render: (val) => <span className="font-mono text-xs font-bold text-indigo-600 dark:text-indigo-400">{val || 'TCK-1001'}</span>
+      render: (val, row) => <span className="font-mono text-xs font-bold text-indigo-600 dark:text-indigo-400">{val ? String(val).substring(0, 8) : 'TCK'}</span>
     },
     {
       key: 'title',
-      label: 'Work Ticket Title & Project',
+      label: 'Task Name',
       render: (val, row) => (
         <div>
           <span className="font-extrabold text-slate-900 dark:text-white block">{val || 'Untitled Task'}</span>
-          <span className="text-[10px] text-slate-500 font-medium">📁 {row?.project_name || 'Verona Organic'}</span>
+          <span className="text-[10px] text-slate-500 font-medium">📁 {row?.project_name || 'No Project Assigned'}</span>
+          {row?.is_orphan && (
+            <span className="inline-block mt-0.5 px-1.5 py-0.2 rounded bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 text-[9px] font-bold">
+              ⚠️ Needs Review
+            </span>
+          )}
         </div>
       )
     },
     {
-      key: 'assignee_name',
-      label: 'Assignee Engineer',
+      key: 'sprint_name',
+      label: 'Sprint',
       render: (val, row) => (
-        <span className="font-bold text-slate-900 dark:text-white flex items-center gap-1">
-          👤 {val || row?.assignee || 'Sainu Anna Sajan'}
+        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-indigo-50 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 border border-indigo-200">
+          ⚡ {val || (row?.is_orphan ? 'No Sprint (Needs Review)' : 'Backlog')}
         </span>
       )
+    },
+    {
+      key: 'assignee_name',
+      label: 'Assigned To',
+      render: (val, row) => {
+        const currentDevId = row?.assigned_to_id || developers.find(d => d.full_name === val || d.email === val)?.id || '';
+        
+        // Scope candidate developers to the task's assigned squad/team
+        const taskTeam = teamsList.find(t => 
+          (row?.team_id && String(t.id) === String(row.team_id)) ||
+          (row?.assigned_team && t.name === row.assigned_team)
+        );
+
+        let candidateDevs = developers;
+        if (taskTeam) {
+          const memberIds = new Set((taskTeam.member_details || []).map(m => String(m.id)));
+          if (taskTeam.team_leader_id) memberIds.add(String(taskTeam.team_leader_id));
+          if (taskTeam.lead_id) memberIds.add(String(taskTeam.lead_id));
+          const matched = developers.filter(d => memberIds.has(String(d.id)));
+          candidateDevs = matched.length > 0 ? matched : (taskTeam.member_details || []);
+        }
+
+        return (
+          <select
+            value={currentDevId}
+            onChange={(e) => handleAssignDeveloper(row.id, e.target.value)}
+            className="p-1 px-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 font-bold text-xs text-slate-900 dark:text-white cursor-pointer hover:border-indigo-500 transition-colors"
+          >
+            <option value="">⚠️ Needs Assignment</option>
+            {currentDevId && !candidateDevs.some(d => String(d.id) === String(currentDevId)) && (
+              <option value={currentDevId}>
+                👤 {val || 'Assigned Developer'}
+              </option>
+            )}
+            {candidateDevs.map(dev => (
+              <option key={dev.id} value={dev.id}>
+                👤 {dev.full_name || dev.name || dev.email} ({dev.role || 'DEV'})
+              </option>
+            ))}
+          </select>
+        );
+      }
     },
     {
       key: 'priority',
@@ -110,24 +221,56 @@ export const LeadTaskAllocation = ({ onShowToast }) => {
     },
     {
       key: 'status',
-      label: 'Execution Status',
-      render: (val, row) => (
-        <select
-          value={val || 'TODO'}
-          onChange={(e) => handleUpdateStatus(row?.id || 'TCK-1001', e.target.value)}
-          className="p-1 px-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-bold text-slate-900 dark:text-white cursor-pointer"
-        >
-          <option value="TODO">To Do</option>
-          <option value="IN_PROGRESS">In Progress</option>
-          <option value="REVIEW">Code Review</option>
-          <option value="DONE">Done</option>
-        </select>
-      )
+      label: 'Status',
+      render: (val, row) => {
+        if (val === 'IN_REVIEW') {
+          return (
+            <span className="px-2.5 py-1 rounded-lg bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 font-extrabold text-xs border border-amber-300 flex items-center gap-1">
+              <Clock className="w-3 h-3" /> In Review
+            </span>
+          );
+        }
+        return (
+          <select
+            value={val || 'TODO'}
+            onChange={(e) => handleUpdateStatus(row?.id, e.target.value)}
+            className="p-1 px-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-bold text-slate-900 dark:text-white cursor-pointer"
+          >
+            <option value="TODO">To Do</option>
+            <option value="IN_PROGRESS">In Progress</option>
+            <option value="IN_REVIEW">In Review</option>
+            <option value="COMPLETED">Completed</option>
+            <option value="BLOCKED">Blocked</option>
+          </select>
+        );
+      }
     },
     {
       key: 'due_date',
-      label: 'Target Due Date',
-      render: (val, row) => <span className="font-mono text-xs text-slate-600 dark:text-slate-400 font-bold">{val || row?.dueDate || '2026-09-15'}</span>
+      label: 'Due Date',
+      render: (val, row) => (
+        <span className={`font-mono text-xs font-bold ${row?.is_overdue ? 'text-rose-600 dark:text-rose-400' : 'text-slate-600 dark:text-slate-400'}`}>
+          {val ? String(val).split('T')[0] : 'No Due Date'}
+          {row?.is_overdue && <span className="block text-[9px] text-rose-500 font-extrabold uppercase">Overdue</span>}
+        </span>
+      )
+    },
+    {
+      key: 'actions',
+      label: 'Actions',
+      render: (_, row) => {
+        if (row?.status === 'IN_REVIEW') {
+          return (
+            <button
+              onClick={() => handleApproveTask(row.id)}
+              className="flex items-center gap-1 px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-xs transition-all hover:scale-105"
+            >
+              <CheckCircle2 className="w-3.5 h-3.5" /> Approve
+            </button>
+          );
+        }
+        return <span className="text-slate-400 text-xs font-medium">—</span>;
+      }
     }
   ];
 
@@ -141,14 +284,14 @@ export const LeadTaskAllocation = ({ onShowToast }) => {
           Team Lead: Task Allocation & Developer Assignments
         </h1>
         <p className="text-xs text-slate-500 mt-0.5">
-          Review tasks assigned by PMs, monitor developer task execution, and update ticket statuses.
+          Review tasks within your sprint hierarchy, approve completed developer deliverables, and monitor execution.
         </p>
       </div>
 
       <DataTable
         columns={columns}
         data={tasks}
-        searchPlaceholder="Search PM assigned tasks by title, engineer, priority, project..."
+        searchPlaceholder="Search assigned tasks by title, sprint, engineer, project..."
       />
     </div>
   );

@@ -14,24 +14,11 @@ export const PmDashboard = ({ onNavigate }) => {
   const { user, showToast } = useAuth();
   const userName = user?.name || user?.full_name || user?.email?.split('@')[0] || 'Gopika Manoj';
 
-  // Available Team Leads for PM Assignment
-  const availableLeads = [
-    { id: 'usr_lead_1', name: 'David Chen', title: 'Senior Tech Lead & Architect', email: 'david.c@aureon.com', status: 'AVAILABLE' },
-    { id: 'usr_lead_2', name: 'Krishna Deepesh', title: 'Lead Backend Engineer', email: 'krish@aureon.com', status: 'AVAILABLE' },
-    { id: 'usr_lead_3', name: 'Vikram Patel', title: 'Principal Systems Lead', email: 'vikram.p@aureon.com', status: 'AVAILABLE' }
-  ];
+  // Available Team Leads for PM Assignment (Loaded dynamically from DB)
+  const [availableLeads, setAvailableLeads] = useState([]);
 
-  // Available Team Members (Developers & QA)
-  const availableMembers = [
-    { id: 'usr_dev_1', name: 'Ram Kumar', role: 'Frontend UI Engineer', type: 'DEV' },
-    { id: 'usr_dev_2', name: 'Alex Rivera', role: 'DevOps & Cloud Architect', type: 'DEV' },
-    { id: 'usr_dev_3', name: 'Priya Sharma', role: 'Database & Data Engineer', type: 'DEV' },
-    { id: 'usr_dev_4', name: 'Michael Brown', role: 'Cybersecurity Specialist', type: 'DEV' },
-    { id: 'usr_dev_5', name: 'Sneha Roy', role: 'Flutter & Mobile Developer', type: 'DEV' },
-    { id: 'usr_qa_1', name: 'Venu QA', role: 'Lead QA Automation Engineer', type: 'QA' },
-    { id: 'usr_qa_2', name: 'Ananya Varma', role: 'QA Test Specialist', type: 'QA' },
-    { id: 'usr_qa_3', name: 'Sarah Thomas', role: 'Security QA Engineer', type: 'QA' }
-  ];
+  // Available Team Members (Developers & QA loaded dynamically from DB)
+  const [availableMembers, setAvailableMembers] = useState([]);
 
   // Projects State
   const [projectsList, setProjectsList] = useState([]);
@@ -60,8 +47,8 @@ export const PmDashboard = ({ onNavigate }) => {
   const [formDeadline, setFormDeadline] = useState('2026-11-30');
   const [formPriority, setFormPriority] = useState('HIGH');
   const [formStatus, setFormStatus] = useState('PLANNING');
-  const [formSelectedLeadId, setFormSelectedLeadId] = useState(availableLeads[0].id);
-  const [formSelectedMemberIds, setFormSelectedMemberIds] = useState([availableMembers[0].id, availableMembers[1].id, availableMembers[5].id]);
+  const [formSelectedLeadId, setFormSelectedLeadId] = useState('');
+  const [formSelectedMemberIds, setFormSelectedMemberIds] = useState([]);
 
   // Load Projects from Flask Backend API
   const fetchProjects = async () => {
@@ -80,8 +67,48 @@ export const PmDashboard = ({ onNavigate }) => {
     }
   };
 
+  // Load Users (Leads and Team Members) dynamically from API
+  const fetchUsers = async () => {
+    try {
+      const res = await fetch('http://127.0.0.1:8000/api/v1/users/', {
+        headers: getAuthHeaders()
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const users = data.users || [];
+        const leads = users
+          .filter(u => u.role === 'ROLE_LEAD' || u.role_name === 'ROLE_LEAD' || (u.roles && u.roles.some(r => r.code === 'ROLE_LEAD')))
+          .map(u => ({
+            id: u.id,
+            name: u.full_name || u.name,
+            title: u.designation || 'Technical Team Lead',
+            email: u.email,
+            status: u.account_status || 'AVAILABLE'
+          }));
+        if (leads.length > 0) {
+          setAvailableLeads(leads);
+          setFormSelectedLeadId(prev => leads.some(l => l.id === prev) ? prev : leads[0].id);
+        }
+        const members = users
+          .filter(u => u.role !== 'ROLE_LEAD' && u.role_name !== 'ROLE_LEAD' && (!u.roles || !u.roles.some(r => r.code === 'ROLE_LEAD')))
+          .map(u => ({
+            id: u.id,
+            name: u.full_name || u.name,
+            role: u.designation || (u.role === 'ROLE_QA' ? 'QA Test Specialist' : 'Software Developer'),
+            type: u.role === 'ROLE_QA' ? 'QA' : 'DEV'
+          }));
+        if (members.length > 0) {
+          setAvailableMembers(members);
+        }
+      }
+    } catch (err) {
+      // API Offline
+    }
+  };
+
   useEffect(() => {
     fetchProjects();
+    fetchUsers();
   }, []);
 
   // Handle Add Requirement
@@ -129,6 +156,7 @@ export const PmDashboard = ({ onNavigate }) => {
       status: formStatus,
       manager_name: `${userName} (PM)`,
       lead_id: leadObj ? leadObj.id : null,
+      team_lead_id: leadObj ? leadObj.id : null,
       lead_name: leadObj ? leadObj.name : 'Unassigned Lead',
       team_members: assignedMemberObjs,
       total_tasks: 0,
