@@ -75,10 +75,7 @@ def seed_database():
             existing_user.failed_login_attempts = 0
             existing_user.password = generate_password_hash('Aureon@123')
 
-    # 3. Seed Baseline Projects (Empty by default)
-    default_projects = []
-
-    # 4. Seed Baseline Teams with designated Leads & Members
+    # Query users for team assignments
     krish = User.query.filter_by(email='krish@aureon.com').first()
     david = User.query.filter_by(email='david.c@aureon.com').first()
     vikram = User.query.filter_by(email='vikram.p@aureon.com').first()
@@ -91,7 +88,21 @@ def seed_database():
     venu = User.query.filter_by(email='venu.qa@aureon.com').first()
     feba = User.query.filter_by(email='feba@aureon.com').first()
     ananya = User.query.filter_by(email='ananya.v@aureon.com').first()
+    eli_user = User.query.filter_by(email='eli@aureon.com').first()
+
+    # 3. Seed Baseline Project
     proj = Project.query.filter_by(name='Verona Organic').first()
+    if not proj:
+        proj = Project(
+            name='Verona Organic',
+            description='E-Commerce Platform & Organic Distribution Engine',
+            status='ACTIVE',
+            is_active=True,
+            manager_id=eli_user.id if eli_user else None,
+            lead_id=krish.id if krish else None
+        )
+        db.session.add(proj)
+        db.session.flush()
 
     default_teams = [
         { 'name': 'Frontend UI Squad', 'description': 'User Experience', 'lead': krish, 'project': proj, 'members': [sainu, ram] },

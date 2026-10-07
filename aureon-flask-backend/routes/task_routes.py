@@ -311,34 +311,60 @@ def manage_tasks():
         team_id = _parse_uuid(data.get('team_id'))
         parent_task_id = _parse_uuid(data.get('parent_task_id'))
 
-        # Resolve Sprint
-        sprint = Sprint.query.get(sprint_id) if sprint_id else None
-        if not sprint and project_id:
-            # Fallback to project's active or planned sprint if project_id provided
+        # Developer restriction: Developers cannot create project tasks or backlog items
+        if not scope.is_admin and scope.is_dev:
+            return jsonify({'success': False, 'message': '403 Forbidden: Developers cannot create project tasks.'}), 403
+
+        # Resolve Sprint vs Backlog
+        is_backlog = data.get('is_backlog') or data.get('backlog') or (status == 'BACKLOG')
+        sprint = None
+        if sprint_id:
+            sprint = Sprint.query.get(sprint_id)
+            if not sprint:
+                return jsonify({'success': False, 'message': 'Validation Error: Specified sprint not found.'}), 404
+        elif not is_backlog and project_id:
+            # Fallback to project's active or planned sprint if project_id provided and not explicitly backlog
             sprint = Sprint.query.filter_by(project_id=project_id).filter(
                 Sprint.status.in_(['ACTIVE', 'IN_PROGRESS', 'PLANNED'])
             ).first()
-            if not sprint:
-                sprint = Sprint.query.filter_by(project_id=project_id).first()
             if sprint:
                 sprint_id = sprint.id
 
         if not sprint:
-            return jsonify({'success': False, 'message': 'Validation Error: Every project task must belong to a valid Sprint.'}), 400
-
-        # Scope check: can this user create task in this sprint?
-        if not scope.is_admin:
-            if scope.is_dev:
-                return jsonify({'success': False, 'message': '403 Forbidden: Developers cannot create sprint tasks.'}), 403
-            if scope.is_lead and not scope.can_access_sprint(sprint):
-                return jsonify({'success': False, 'message': '403 Forbidden: Cannot create task for a sprint outside your team.'}), 403
-            if scope.is_pm and not scope.can_access_sprint(sprint):
-                return jsonify({'success': False, 'message': '403 Forbidden: Cannot create task for a sprint outside your projects.'}), 403
+            sprint_id = None
+            if status in ('TODO', 'BACKLOG'):
+                status = 'BACKLOG'
 
         # Auto-inherit project and team from sprint
-        project_id = sprint.project_id
-        if not team_id:
-            team_id = sprint.team_id
+        if sprint:
+            project_id = sprint.project_id
+            if not team_id:
+                team_id = sprint.team_id
+        else:
+            if not project_id:
+                first_p = Project.query.filter_by(is_active=True).first()
+                if first_p:
+                    project_id = first_p.id
+
+        if not project_id:
+            return jsonify({'success': False, 'message': 'Validation Error: Every task must belong to a project.'}), 400
+
+        project = Project.query.get(project_id)
+        if not project:
+            return jsonify({'success': False, 'message': 'Validation Error: Project not found.'}), 404
+
+        # Scope check: can this user create task in this sprint or project?
+        if not scope.is_admin:
+            if sprint:
+                if scope.is_lead and not scope.can_access_sprint(sprint):
+                    return jsonify({'success': False, 'message': '403 Forbidden: Cannot create task for a sprint outside your team.'}), 403
+                if scope.is_pm and not scope.can_access_sprint(sprint):
+                    return jsonify({'success': False, 'message': '403 Forbidden: Cannot create task for a sprint outside your projects.'}), 403
+            else:
+                if scope.is_lead and not scope.can_access_project(project):
+                    return jsonify({'success': False, 'message': '403 Forbidden: Cannot create backlog task outside your assigned projects.'}), 403
+                if scope.is_pm and not scope.can_access_project(project):
+                    return jsonify({'success': False, 'message': '403 Forbidden: Cannot create backlog task outside your projects.'}), 403
 
         # Resolve assigned developer
         raw_assignee = data.get('assigned_to') or data.get('assigned_to_id') or data.get('assignee') or data.get('assignee_name')
@@ -437,17 +463,49 @@ def manage_tasks():
 @task_bp.route('/backlog/', methods=['GET'])
 @jwt_required(optional=True)
 def get_product_backlog():
+    user = _get_auth_user()
+    scope = get_user_scope(user)
+
+    if not scope.is_admin:
+        if scope.is_dev:
+            return jsonify({'success': False, 'message': '403 Forbidden: Developers cannot manage the product backlog.'}), 403
+
+    query = Task.query.filter(Task.sprint_id.is_(None))
+
+    if not scope.is_admin:
+        if scope.is_pm:
+            query = query.filter(Task.project_id.in_(scope.project_ids))
+        elif scope.is_lead:
+            query = query.filter((Task.team_id.in_(scope.team_ids)) | (Task.project_id.in_(scope.project_ids)))
+
     project_id_raw = request.args.get('project_id')
     p_uuid = _parse_uuid(project_id_raw)
-    query = Task.query.filter(Task.sprint_id.is_(None))
     if p_uuid:
         query = query.filter_by(project_id=p_uuid)
 
+    priority_param = request.args.get('priority')
+    if priority_param and priority_param.upper() != 'ALL':
+        query = query.filter(Task.priority == priority_param.upper())
+
+    type_param = request.args.get('ticket_type') or request.args.get('type')
+    if type_param and type_param.upper() != 'ALL':
+        query = query.filter(Task.ticket_type.ilike(f"%{type_param.strip()}%"))
+
+    search_param = request.args.get('search') or request.args.get('q')
+    if search_param:
+        query = query.filter(
+            (Task.title.ilike(f"%{search_param.strip()}%")) |
+            (Task.description.ilike(f"%{search_param.strip()}%")) |
+            (Task.task_key.ilike(f"%{search_param.strip()}%"))
+        )
+
     backlog_tasks = query.order_by(Task.created_at.desc()).all()
+    task_dicts = [t.to_dict() for t in backlog_tasks]
     return jsonify({
         'success': True,
         'count': len(backlog_tasks),
-        'backlog_tasks': [t.to_dict() for t in backlog_tasks]
+        'tasks': task_dicts,
+        'backlog_tasks': task_dicts
     }), 200
 
 @task_bp.route('/<string:task_id>', methods=['GET', 'PUT', 'DELETE'])
@@ -1143,12 +1201,21 @@ def get_task_stats():
     blocked_count = len([t for t in tasks if t.status == 'BLOCKED'])
     overdue_count = len([t for t in tasks if t.is_overdue])
 
+    backlog_count = len([t for t in tasks if t.sprint_id is None])
+    sprint_tasks_count = len([t for t in tasks if t.sprint_id is not None])
+    unassigned_backlog_count = len([t for t in tasks if t.sprint_id is None and t.assigned_to_id is None])
+    overdue_sprint_count = len([t for t in tasks if t.sprint_id is not None and t.is_overdue])
+
     completion_pct = round((completed_count / len(tasks) * 100), 2) if tasks else 0.0
 
     return jsonify({
         'success': True,
         'stats': {
             'total_tasks': len(tasks),
+            'backlog_tasks': backlog_count,
+            'sprint_tasks': sprint_tasks_count,
+            'unassigned_backlog_items': unassigned_backlog_count,
+            'overdue_sprint_tasks': overdue_sprint_count,
             'todo': todo_count,
             'in_progress': in_prog_count,
             'in_review': review_count,

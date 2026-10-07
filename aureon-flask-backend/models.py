@@ -184,6 +184,22 @@ class Project(db.Model):
                         'designation': tm.user.designation
                     })
 
+        # Connected Repository Details
+        gh_repo = GitHubRepository.query.filter_by(project_id=self.id, is_active=True).first()
+        repo_data = None
+        if gh_repo:
+            repo_data = {
+                'id': str(gh_repo.id),
+                'owner': gh_repo.owner,
+                'name': gh_repo.repository_name,
+                'full_name': gh_repo.full_name,
+                'url': gh_repo.repository_url,
+                'default_branch': gh_repo.default_branch,
+                'last_synced_at': gh_repo.last_synced_at.isoformat() if gh_repo.last_synced_at else None,
+                'commits_count': len(gh_repo.commits) if gh_repo.commits else 0,
+                'recent_commits': [c.to_dict() for c in (gh_repo.commits[:10] if gh_repo.commits else [])]
+            }
+
         return {
             'id': str(self.id),
             'name': self.display_name,
@@ -200,7 +216,10 @@ class Project(db.Model):
             'lead_id': str(self.lead_id) if self.lead_id else None,
             'team_lead_id': str(self.lead_id) if self.lead_id else None,
             'lead_name': lead_user.display_name if lead_user else 'Unassigned Lead',
-            'team_members': member_users
+            'team_members': member_users,
+            'repository': repo_data,
+            'github_repo_url': repo_data['url'] if repo_data else None,
+            'github_repo_name': repo_data['full_name'] if repo_data else None
         }
 
 class ProjectMember(db.Model):

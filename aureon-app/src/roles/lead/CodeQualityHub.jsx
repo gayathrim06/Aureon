@@ -71,7 +71,7 @@ export const CodeQualityHub = () => {
       };
       return <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${c[val] || c.INFO}`}>{val}</span>;
     }},
-    { key: 'effort', label: 'Fix Effort', render: () => '15 min' }
+    { key: 'effort', label: 'Fix Effort', render: (val, row) => row.effort || (row.severity === 'CRITICAL' ? '1 hr' : row.severity === 'MAJOR' ? '30 min' : row.severity === 'MINOR' ? '15 min' : '5 min') }
   ];
 
   return (
@@ -81,7 +81,7 @@ export const CodeQualityHub = () => {
         <button
           onClick={fetchQualityData}
           disabled={loading}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 shadow-sm transition"
+          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 shadow-sm transition cursor-pointer"
         >
           <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
           Refresh Metrics

@@ -63,6 +63,33 @@ export const Login = ({ onNavigateHome }) => {
     confirmNewPassword: ''
   });
 
+  // Clear form data whenever user switches tabs
+  useEffect(() => {
+    if (activeTab === 'register') {
+      setRegData({
+        fullName: '',
+        email: '',
+        password: '',
+        confirmPassword: '',
+        role: 'ROLE_DEV',
+        department: 'Engineering',
+        designation: 'Full Stack Developer',
+        dateOfBirth: '',
+        bestFriendName: ''
+      });
+      setRegEmailStatus({ checking: false, valid: null, isDuplicate: false, error: '', message: '' });
+    }
+    if (activeTab === 'forgot') {
+      setForgotData({
+        email: '',
+        dateOfBirth: '',
+        bestFriendName: '',
+        newPassword: '',
+        confirmNewPassword: ''
+      });
+    }
+  }, [activeTab]);
+
   // Live Validation Effect for Sign In Email
   useEffect(() => {
     const cleanEmail = (email || '').trim().toLowerCase();
@@ -76,7 +103,7 @@ export const Login = ({ onNavigateHome }) => {
       setLoginEmailStatus({
         checking: false,
         valid: false,
-        error: 'Please enter a valid corporate email format (e.g. admin@aureon.com)',
+        error: 'Please enter a valid corporate email format (e.g. abc@aureon.com)',
         accountInfo: ''
       });
       return;
@@ -388,7 +415,11 @@ export const Login = ({ onNavigateHome }) => {
         {/* Tab Selection (Clean 2-Tab Navigation) */}
         <div className="flex rounded-xl bg-slate-200/60 dark:bg-slate-900/60 warm:bg-[#e8dbbe] p-1 border border-slate-200 dark:border-slate-800 warm:border-[#cbb68e]">
           <button
-            onClick={() => { setActiveTab('login'); setErrorMsg(''); setRegSuccessMsg(''); }}
+            onClick={() => { 
+              setActiveTab('login'); 
+              setErrorMsg(''); 
+              setRegSuccessMsg(''); 
+            }}
             className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
               activeTab === 'login'
                 ? 'bg-white dark:bg-slate-800 warm:bg-[#f3e8d2] text-slate-900 dark:text-white warm:text-[#342314] shadow-sm'
@@ -398,7 +429,23 @@ export const Login = ({ onNavigateHome }) => {
             Sign In
           </button>
           <button
-            onClick={() => { setActiveTab('register'); setErrorMsg(''); setRegSuccessMsg(''); }}
+            onClick={() => { 
+              setActiveTab('register'); 
+              setErrorMsg(''); 
+              setRegSuccessMsg('');
+              setRegData({
+                fullName: '',
+                email: '',
+                password: '',
+                confirmPassword: '',
+                role: 'ROLE_DEV',
+                department: 'Engineering',
+                designation: 'Full Stack Developer',
+                dateOfBirth: '',
+                bestFriendName: ''
+              });
+              setRegEmailStatus({ checking: false, valid: null, isDuplicate: false, error: '', message: '' });
+            }}
             className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
               activeTab === 'register'
                 ? 'bg-white dark:bg-slate-800 warm:bg-[#f3e8d2] text-slate-900 dark:text-white warm:text-[#342314] shadow-sm'
@@ -444,7 +491,7 @@ export const Login = ({ onNavigateHome }) => {
                     type="email"
                     required
                     autoComplete="off"
-                    placeholder="admin@aureon.com"
+                    placeholder="abc@aureon.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className={`w-full p-3 pr-10 rounded-xl border ${
@@ -529,7 +576,18 @@ export const Login = ({ onNavigateHome }) => {
                 <div className="flex justify-end mt-1.5">
                   <button
                     type="button"
-                    onClick={() => { setActiveTab('forgot'); setErrorMsg(''); setRegSuccessMsg(''); }}
+                    onClick={() => { 
+                      setActiveTab('forgot'); 
+                      setErrorMsg(''); 
+                      setRegSuccessMsg(''); 
+                      setForgotData({
+                        email: '',
+                        dateOfBirth: '',
+                        bestFriendName: '',
+                        newPassword: '',
+                        confirmNewPassword: ''
+                      });
+                    }}
                     className="text-[11px] font-semibold text-indigo-600 dark:text-indigo-400 warm:text-[#b45309] hover:underline"
                   >
                     Forgot password?
@@ -551,12 +609,19 @@ export const Login = ({ onNavigateHome }) => {
         {/* ━━━ TAB 2: REGISTER ━━━ */}
         {activeTab === 'register' && (
           <div className="p-6 sm:p-7 rounded-2xl bg-white dark:bg-slate-900 warm:bg-[#e8dbbe] border border-slate-200 dark:border-slate-800 warm:border-[#cbb68e] shadow-xl">
-            <form onSubmit={handleRegisterSubmit} className="space-y-3.5 text-xs">
+            <form onSubmit={handleRegisterSubmit} autoComplete="off" className="space-y-3.5 text-xs">
+              {/* Dummy hidden inputs to absorb browser password manager autofill */}
+              <input type="text" name="fake_username_trap" style={{ position: 'absolute', opacity: 0, height: 0, width: 0, zIndex: -1, pointerEvents: 'none' }} tabIndex="-1" autoComplete="username" />
+              <input type="password" name="fake_password_trap" style={{ position: 'absolute', opacity: 0, height: 0, width: 0, zIndex: -1, pointerEvents: 'none' }} tabIndex="-1" autoComplete="current-password" />
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block font-bold mb-1">Full Name</label>
                   <input
                     type="text"
+                    name="reg_fullName"
+                    id="reg_fullName"
+                    autoComplete="off"
                     required
                     placeholder="e.g. Alex Rivera"
                     value={regData.fullName}
@@ -579,6 +644,9 @@ export const Login = ({ onNavigateHome }) => {
                   <div className="relative">
                     <input
                       type="email"
+                      name="reg_email"
+                      id="reg_email"
+                      autoComplete="off"
                       required
                       placeholder="alex.rivera@aureon.com"
                       value={regData.email}
@@ -644,6 +712,9 @@ export const Login = ({ onNavigateHome }) => {
                   <div className="relative">
                     <input
                       type={showRegPassword ? 'text' : 'password'}
+                      name="reg_password"
+                      id="reg_password"
+                      autoComplete="new-password"
                       required
                       placeholder="••••••••"
                       value={regData.password}
@@ -677,6 +748,9 @@ export const Login = ({ onNavigateHome }) => {
                   <div className="relative">
                     <input
                       type={showRegConfirmPassword ? 'text' : 'password'}
+                      name="reg_confirmPassword"
+                      id="reg_confirmPassword"
+                      autoComplete="new-password"
                       required
                       placeholder="••••••••"
                       value={regData.confirmPassword}
@@ -801,13 +875,20 @@ export const Login = ({ onNavigateHome }) => {
               </button>
             </div>
 
-            <form onSubmit={handleForgotSubmit} className="space-y-3 text-xs">
+            <form onSubmit={handleForgotSubmit} autoComplete="off" className="space-y-3 text-xs">
+              {/* Dummy hidden inputs to absorb browser password manager autofill */}
+              <input type="text" name="fake_recovery_user" style={{ position: 'absolute', opacity: 0, height: 0, width: 0, zIndex: -1, pointerEvents: 'none' }} tabIndex="-1" autoComplete="username" />
+              <input type="password" name="fake_recovery_pass" style={{ position: 'absolute', opacity: 0, height: 0, width: 0, zIndex: -1, pointerEvents: 'none' }} tabIndex="-1" autoComplete="current-password" />
+
               <div>
                 <label className="block font-bold mb-1">Corporate Email</label>
                 <input
                   type="email"
+                  name="recovery_user_email"
+                  id="recovery_user_email"
+                  autoComplete="off"
                   required
-                  placeholder="admin@aureon.com"
+                  placeholder="abc@aureon.com"
                   value={forgotData.email}
                   onChange={(e) => setForgotData({ ...forgotData, email: e.target.value })}
                   className="w-full p-2.5 rounded-xl border bg-slate-50 dark:bg-slate-950 warm:bg-[#f3e8d2]"
@@ -823,6 +904,9 @@ export const Login = ({ onNavigateHome }) => {
                     <label className="block text-[11px] font-semibold text-slate-500 mb-1">Date of Birth</label>
                     <input
                       type="date"
+                      name="recovery_dob"
+                      id="recovery_dob"
+                      autoComplete="off"
                       value={forgotData.dateOfBirth}
                       onChange={(e) => setForgotData({ ...forgotData, dateOfBirth: e.target.value })}
                       className="w-full p-2 rounded-lg border bg-slate-50 dark:bg-slate-950 warm:bg-[#f3e8d2]"
@@ -832,6 +916,9 @@ export const Login = ({ onNavigateHome }) => {
                     <label className="block text-[11px] font-semibold text-slate-500 mb-1">Best Friend's Name</label>
                     <input
                       type="text"
+                      name="recovery_best_friend"
+                      id="recovery_best_friend"
+                      autoComplete="off"
                       placeholder="e.g. Samuel"
                       value={forgotData.bestFriendName}
                       onChange={(e) => setForgotData({ ...forgotData, bestFriendName: e.target.value })}
@@ -848,6 +935,9 @@ export const Login = ({ onNavigateHome }) => {
                     <div className="relative">
                       <input
                         type={showForgotNewPassword ? 'text' : 'password'}
+                        name="recovery_new_password"
+                        id="recovery_new_password"
+                        autoComplete="new-password"
                         required
                         placeholder="••••••••"
                         value={forgotData.newPassword}
@@ -867,6 +957,9 @@ export const Login = ({ onNavigateHome }) => {
                     <label className="block font-bold mb-1">Confirm New Password</label>
                     <input
                       type="password"
+                      name="recovery_confirm_new_password"
+                      id="recovery_confirm_new_password"
+                      autoComplete="new-password"
                       required
                       placeholder="••••••••"
                       value={forgotData.confirmNewPassword}

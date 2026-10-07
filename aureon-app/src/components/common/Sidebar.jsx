@@ -3,7 +3,7 @@ import { useAuth } from '../../context/AuthContext';
 import { 
   LayoutDashboard, Building, Users, Shield, Users2, FolderKanban, GitBranch, 
   Activity, FileText, Server, Bell, Settings, Calendar, Award, Code2, 
-  CheckSquare, GitPullRequest, AlertCircle, User, Cpu, Bug, FileCheck, Layers, Sparkles
+  CheckSquare, GitPullRequest, AlertCircle, User, Cpu, Bug, FileCheck, Layers, Sparkles, ListTodo
 } from 'lucide-react';
 
 export const Sidebar = ({ activeTab, onSelectTab }) => {
@@ -33,6 +33,7 @@ export const Sidebar = ({ activeTab, onSelectTab }) => {
       { id: 'RolesPermissions', label: 'Roles & Permissions', icon: Shield },
       { id: 'Teams', label: 'Teams', icon: Users2 },
       { id: 'Projects', label: 'Projects', icon: FolderKanban },
+      { id: 'Backlog', label: 'Backlog', icon: ListTodo },
       { id: 'Sprints', label: 'Sprints', icon: Layers },
       { id: 'Tasks', label: 'Tasks', icon: CheckSquare },
       { id: 'Repositories', label: 'Repositories', icon: GitBranch },
@@ -48,7 +49,8 @@ export const Sidebar = ({ activeTab, onSelectTab }) => {
     ROLE_PM: [
       { id: 'Dashboard', label: 'Dashboard', icon: LayoutDashboard },
       { id: 'Projects', label: 'Projects', icon: FolderKanban },
-      { id: 'Sprints', label: 'Sprints & Tasks', icon: Layers },
+      { id: 'Backlog', label: 'Backlog', icon: ListTodo },
+      { id: 'Sprints', label: 'Sprint Planning', icon: Layers },
       { id: 'Milestones', label: 'Milestones', icon: Award },
       { id: 'TeamMembers', label: 'Team Members', icon: Users },
       { id: 'Repository', label: 'Repository', icon: GitBranch },
@@ -62,6 +64,7 @@ export const Sidebar = ({ activeTab, onSelectTab }) => {
     ROLE_LEAD: [
       { id: 'Dashboard', label: 'Dashboard', icon: LayoutDashboard },
       { id: 'AssignedProjects', label: 'Assigned Projects', icon: FolderKanban },
+      { id: 'Backlog', label: 'Backlog', icon: ListTodo },
       { id: 'SprintBoard', label: 'Sprint & Tasks', icon: Layers },
       { id: 'Developers', label: 'Developers', icon: Users },
       { id: 'Repository', label: 'Repository', icon: GitBranch },
@@ -73,8 +76,7 @@ export const Sidebar = ({ activeTab, onSelectTab }) => {
 
     ROLE_DEV: [
       { id: 'Dashboard', label: 'Dashboard', icon: LayoutDashboard },
-      { id: 'MyTasks', label: 'My Tasks', icon: CheckSquare },
-      { id: 'Sprint', label: 'Sprint', icon: Layers },
+      { id: 'SprintTasks', label: 'Sprint & Tasks', icon: Layers },
       { id: 'Repository', label: 'Repository', icon: GitBranch },
       { id: 'PullRequests', label: 'Pull Requests', icon: GitPullRequest },
       { id: 'CodeIssues', label: 'Code Issues', icon: AlertCircle },
@@ -137,14 +139,14 @@ export const Sidebar = ({ activeTab, onSelectTab }) => {
               <button
                 key={item.id}
                 onClick={() => onSelectTab(item.id)}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-semibold transition-all ${
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all duration-150 cursor-pointer group active:scale-[0.98] ${
                   isActive
-                    ? 'bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 font-bold border-l-4 border-indigo-600 dark:border-indigo-500 shadow-xs'
-                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-slate-200'
+                    ? 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 font-bold border-l-4 border-indigo-600 dark:border-indigo-500 shadow-xs'
+                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/70 hover:text-slate-900 dark:hover:text-slate-100 hover:translate-x-0.5'
                 }`}
               >
-                <Icon className={`w-4 h-4 ${isActive ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-400'}`} />
-                <span>{item.label}</span>
+                <Icon className={`w-4 h-4 transition-transform duration-150 group-hover:scale-110 ${isActive ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-200'}`} />
+                <span className="truncate">{item.label}</span>
               </button>
             );
           })}

@@ -235,6 +235,14 @@ def manage_repositories():
             data['health_status'] = risk_eval['health_status']
             data['risks_count'] = risk_eval['risks_count']
             data['risks'] = risk_eval['risks']
+            if commits:
+                data['latest_commit'] = commits[0]
+                data['last_commit_date'] = commits[0].get('commit_date')
+                data['recent_commits'] = commits[:10]
+            else:
+                data['latest_commit'] = None
+                data['last_commit_date'] = None
+                data['recent_commits'] = []
             results.append(data)
 
         # Legacy fallback if no GitHub repos exist
@@ -831,6 +839,69 @@ def list_repository_commits(repo_id):
     else:
         commits = Commit.query.filter_by(repository_id=repo.id).order_by(Commit.timestamp.desc()).all()
         return jsonify({'success': True, 'count': len(commits), 'commits': [c.to_dict() for c in commits]}), 200
+
+
+@repository_bp.route('/<string:repo_id>/commits', methods=['POST'])
+@repository_bp.route('/<string:repo_id>/commits/', methods=['POST'])
+@jwt_required(optional=True)
+def create_developer_commit(repo_id):
+    """
+    Records a developer commit / push event to the repository.
+    Allows developers, leads, and PMs to log new commits or push updates,
+    which instantly updates the commit stream, last commit details, and activity timeline.
+    """
+    repo, is_gh = _find_repo(repo_id)
+    if not repo:
+        return jsonify({'success': False, 'message': 'Repository not found.'}), 404
+
+    user = _get_authenticated_user()
+    data = request.get_json() or {}
+    message = (data.get('commit_message') or data.get('message') or '').strip()
+    if not message:
+        return jsonify({'success': False, 'message': 'Commit message is required.'}), 400
+
+    author_name = (data.get('author_name') or (user.display_name if user else 'Developer')).strip()
+    author_email = (data.get('author_email') or (user.email if user else 'dev@aureon.com')).strip()
+    branch = (data.get('branch') or getattr(repo, 'default_branch', 'main') or 'main').strip()
+
+    import hashlib, time
+    raw_hash = hashlib.sha1(f"{repo_id}:{message}:{time.time()}".encode()).hexdigest()
+
+    now = datetime.utcnow()
+    if is_gh:
+        commit_record = GitHubCommit(
+            repository_id=repo.id,
+            github_commit_id=raw_hash,
+            commit_sha=raw_hash,
+            author_name=author_name,
+            author_email=author_email,
+            commit_message=message,
+            commit_date=now,
+            commit_url=f"{repo.repository_url}/commit/{raw_hash[:7]}"
+        )
+        db.session.add(commit_record)
+        repo.last_synced_at = now
+        db.session.commit()
+        return jsonify({
+            'success': True,
+            'message': f"Commit {raw_hash[:7]} successfully recorded to {branch}.",
+            'commit': commit_record.to_dict()
+        }), 201
+    else:
+        legacy_c = Commit(
+            repository_id=repo.id,
+            hash=raw_hash,
+            author_name=author_name,
+            message=message,
+            timestamp=now
+        )
+        db.session.add(legacy_c)
+        db.session.commit()
+        return jsonify({
+            'success': True,
+            'message': f"Commit {raw_hash[:7]} successfully recorded to {branch}.",
+            'commit': legacy_c.to_dict()
+        }), 201
 
 
 # ━━━ 5. PULL REQUESTS LIST (ROLE-CHECKED) ━━━

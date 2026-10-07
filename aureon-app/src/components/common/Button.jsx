@@ -16,11 +16,11 @@ export const Button = ({
   const baseStyles = 'inline-flex items-center justify-center font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed select-none rounded-[12px]';
 
   const variants = {
-    primary: 'aureon-glow-btn text-white focus:ring-purple-500 font-semibold',
-    secondary: 'bg-purple-100 dark:bg-[#191128] hover:bg-purple-200 dark:hover:bg-[#231838] text-purple-950 dark:text-purple-100 border border-purple-200 dark:border-purple-900/60 focus:ring-purple-500',
-    outline: 'bg-transparent border border-purple-300 dark:border-purple-800 hover:bg-purple-50 dark:hover:bg-purple-950/60 text-purple-900 dark:text-purple-200 focus:ring-purple-500',
-    danger: 'bg-rose-600 hover:bg-rose-700 text-white focus:ring-rose-500 shadow-md shadow-rose-500/20',
-    ghost: 'bg-transparent hover:bg-purple-50 dark:hover:bg-purple-950/60 text-purple-700 dark:text-purple-300 focus:ring-purple-500',
+    primary: 'bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white focus:ring-indigo-500 font-bold shadow-md shadow-indigo-500/20',
+    secondary: 'bg-indigo-50 hover:bg-indigo-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-indigo-700 dark:text-slate-200 border border-indigo-200 dark:border-slate-700 focus:ring-indigo-500 font-bold',
+    outline: 'bg-transparent border border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 focus:ring-indigo-500 font-semibold',
+    danger: 'bg-rose-600 hover:bg-rose-700 text-white focus:ring-rose-500 shadow-md shadow-rose-500/20 font-bold',
+    ghost: 'bg-transparent hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 focus:ring-indigo-500',
   };
 
   const sizes = {

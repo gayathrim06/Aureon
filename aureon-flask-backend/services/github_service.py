@@ -137,6 +137,14 @@ class GitHubService:
                 f"GitHub {resource_name} not found. Verify repository name and ensure it is public or authorized."
             )
 
+        if response.status_code == 409:
+            try:
+                err_data = response.json()
+                if 'empty' in err_data.get('message', '').lower():
+                    return []
+            except Exception:
+                pass
+
         if response.status_code == 401:
             raise GitHubAuthenticationError(
                 "GitHub authentication failed. Invalid or expired GITHUB_TOKEN."
@@ -368,7 +376,7 @@ class GitHubService:
                 resp = requests.get(url, headers=cls.get_headers(), timeout=15)
 
             data = cls._handle_response(resp, resource_name="repository tree")
-            tree_nodes = data.get('tree', [])
+            tree_nodes = data.get('tree', []) if isinstance(data, dict) else []
 
             total_files = 0
             source_files = []

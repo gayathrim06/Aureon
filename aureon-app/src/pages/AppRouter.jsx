@@ -35,6 +35,7 @@ import { AiHealthInsights } from '../roles/pm/AiHealthInsights';
 import { DeliveryReports } from '../roles/pm/DeliveryReports';
 import { ReleaseCalendar } from '../roles/pm/ReleaseCalendar';
 import { PmNotifications } from '../roles/pm/PmNotifications';
+import { BacklogView } from '../roles/pm/BacklogView';
 
 // ─── Team Lead Role Pages (9 total) ──────────────
 import { LeadDashboard } from '../roles/lead/LeadDashboard';
@@ -49,6 +50,7 @@ import { LeadReports } from '../roles/lead/LeadReports';
 
 // ─── Developer Role Pages (8 total) ──────────────
 import { DevDashboard } from '../roles/dev/DevDashboard';
+import { DevSprintTasks } from '../roles/dev/DevSprintTasks';
 import { MyTasksKanban } from '../roles/dev/MyTasksKanban';
 import { DevSprintView } from '../roles/dev/DevSprintView';
 import { DevRepositoryView } from '../roles/dev/DevRepositoryView';
@@ -109,11 +111,59 @@ export const AppRouter = () => {
   const { user } = useAuth();
   const [viewState, setViewState] = useState('landing'); // 'landing', 'login'
   
+  // Tab normalization mapping to ensure reliable navigation regardless of casing or hyphens
+  const TAB_ALIASES = {
+    dashboard: 'Dashboard',
+    projects: 'Projects',
+    assignedprojects: 'AssignedProjects',
+    backlog: 'Backlog',
+    sprints: 'Sprints',
+    sprintplanning: 'Sprints',
+    sprinttasks: 'SprintTasks',
+    sprintboard: 'SprintBoard',
+    sprint: 'SprintTasks',
+    mytasks: 'SprintTasks',
+    tasks: 'SprintTasks',
+    milestones: 'Milestones',
+    teammembers: 'TeamMembers',
+    developers: 'Developers',
+    repository: 'Repository',
+    repositories: 'Repositories',
+    pullrequests: 'PullRequests',
+    codeissues: 'CodeIssues',
+    codequality: 'CodeQuality',
+    projecthealth: 'ProjectHealth',
+    reports: 'Reports',
+    calendar: 'Calendar',
+    notifications: 'Notifications',
+    profile: 'Profile',
+    users: 'Users',
+    usermanagement: 'Users',
+    auditlogs: 'AuditLogs',
+    rolespermissions: 'RolesPermissions',
+    organization: 'Organization',
+    organizations: 'Organization',
+    teams: 'Teams',
+    sonarqube: 'SonarQube',
+    systemlogs: 'SystemLogs',
+    compliance: 'Reports',
+    settings: 'Settings',
+    bugtracker: 'BugTracker',
+    testsuites: 'TestSuites',
+    testcases: 'TestCases',
+  };
+
+  const normalizeTab = (raw) => {
+    if (!raw) return 'Dashboard';
+    const clean = String(raw).replace(/^#/, '').replace(/[-_\s]/g, '').toLowerCase();
+    return TAB_ALIASES[clean] || raw;
+  };
+
   // Extract initial active tab from URL hash if present
   const getTabFromHash = () => {
     const hash = window.location.hash.replace('#', '').trim();
     if (!hash) return 'Dashboard';
-    return hash.split('-').map(part => part.charAt(0).toUpperCase() + part.slice(1)).join('');
+    return normalizeTab(hash);
   };
 
   const [activeTab, setActiveTab] = useState(() => getTabFromHash() || 'Dashboard');
@@ -126,10 +176,11 @@ export const AppRouter = () => {
 
   const navigateTab = (newTab) => {
     if (!newTab) return;
-    setActiveTab(newTab);
-    const hash = `#${newTab.toLowerCase()}`;
+    const canonicalTab = normalizeTab(newTab);
+    setActiveTab(canonicalTab);
+    const hash = `#${canonicalTab.toLowerCase()}`;
     if (window.location.hash !== hash) {
-      window.history.pushState({ isAureonApp: true, viewState, activeTab: newTab }, '', hash);
+      window.history.pushState({ isAureonApp: true, viewState, activeTab: canonicalTab }, '', hash);
     }
   };
 
@@ -149,12 +200,11 @@ export const AppRouter = () => {
     const handlePopState = (event) => {
       if (event.state && event.state.isAureonApp) {
         if (event.state.viewState) setViewState(event.state.viewState);
-        if (event.state.activeTab) setActiveTab(event.state.activeTab);
+        if (event.state.activeTab) setActiveTab(normalizeTab(event.state.activeTab));
       } else {
         const hash = window.location.hash.replace('#', '').trim();
         if (hash) {
-          const tabName = hash.split('-').map(part => part.charAt(0).toUpperCase() + part.slice(1)).join('');
-          setActiveTab(tabName);
+          setActiveTab(normalizeTab(hash));
         } else if (user) {
           setActiveTab('Dashboard');
         } else {
@@ -203,9 +253,10 @@ export const AppRouter = () => {
 
   const renderRoleContent = () => {
     const role = getNormalizedRole(user);
+    const tab = normalizeTab(activeTab);
 
     if (role === 'ROLE_ADMIN') {
-      switch (activeTab) {
+      switch (tab) {
         case 'Dashboard': return <AdminDashboard onNavigate={navigateTab} />;
         case 'Users': return <UserManagement onShowToast={showToast} />;
         case 'AuditLogs': return <AuditLogsView />;
@@ -214,9 +265,11 @@ export const AppRouter = () => {
         case 'Organization': return <OrganizationView />;
         case 'Teams': return <TeamsView />;
         case 'Projects': return <AdminProjectsView />;
+        case 'Backlog': return <BacklogView onShowToast={showToast} onNavigate={navigateTab} />;
         case 'Sprints': return <SprintPlanner onShowToast={showToast} />;
         case 'Tasks': return <TaskBreakdown onShowToast={showToast} />;
-        case 'Repositories': return <RepositoriesHub />;
+        case 'Repositories':
+        case 'Repository': return <RepositoriesHub />;
         case 'SonarQube': return <SonarQubeAdmin />;
         case 'SystemLogs': return <SystemLogsView />;
         case 'Reports': return <ComplianceReports />;
@@ -228,10 +281,12 @@ export const AppRouter = () => {
     }
 
     if (role === 'ROLE_PM') {
-      switch (activeTab) {
+      switch (tab) {
         case 'Dashboard': return <PmDashboard onNavigate={navigateTab} />;
         case 'Projects': return <Projects />;
+        case 'Backlog': return <BacklogView onShowToast={showToast} onNavigate={navigateTab} />;
         case 'Sprints':
+        case 'SprintTasks':
         case 'Tasks': return <SprintPlanner onShowToast={showToast} />;
         case 'Milestones': return <MilestoneTracker />;
         case 'TeamMembers': return <TeamWorkload />;
@@ -246,26 +301,30 @@ export const AppRouter = () => {
     }
 
     if (role === 'ROLE_LEAD') {
-      switch (activeTab) {
+      switch (tab) {
         case 'Dashboard': return <LeadDashboard onNavigate={navigateTab} />;
-        case 'AssignedProjects': return <LeadAssignedProjects />;
+        case 'AssignedProjects': return <LeadAssignedProjects onNavigate={navigateTab} />;
+        case 'Backlog': return <BacklogView onShowToast={showToast} onNavigate={navigateTab} />;
         case 'SprintBoard':
-        case 'Tasks': return <LeadSprintBoard onShowToast={showToast} initialView={activeTab === 'Tasks' ? 'table' : 'kanban'} />;
+        case 'SprintTasks':
+        case 'Tasks': return <LeadSprintBoard onShowToast={showToast} initialView={tab === 'Tasks' ? 'table' : 'kanban'} />;
         case 'Developers': return <DeveloperRoster onShowToast={showToast} />;
-        case 'Repository': return <LeadRepositoryView />;
-        case 'CodeQuality': return <CodeQualityHub />;
-        case 'ProjectHealth': return <LeadProjectHealth />;
-        case 'Reports': return <LeadReports />;
+        case 'Repository': return <LeadRepositoryView onNavigate={navigateTab} />;
+        case 'CodeQuality': return <CodeQualityHub onNavigate={navigateTab} />;
+        case 'ProjectHealth': return <LeadProjectHealth onNavigate={navigateTab} />;
+        case 'Reports': return <LeadReports onNavigate={navigateTab} />;
         case 'Profile': return <UserProfile />;
         default: return <LeadDashboard onNavigate={navigateTab} />;
       }
     }
 
     if (role === 'ROLE_DEV') {
-      switch (activeTab) {
+      switch (tab) {
         case 'Dashboard': return <DevDashboard onNavigate={navigateTab} />;
-        case 'MyTasks': return <MyTasksKanban onShowToast={showToast} />;
-        case 'Sprint': return <DevSprintView />;
+        case 'SprintTasks':
+        case 'MyTasks':
+        case 'SprintBoard':
+        case 'Sprint': return <DevSprintTasks onShowToast={showToast} />;
         case 'Repository': return <DevRepositoryView />;
         case 'PullRequests': return <DevPullRequests />;
         case 'CodeIssues': return <DevCodeIssues />;
@@ -276,7 +335,7 @@ export const AppRouter = () => {
     }
 
     if (role === 'ROLE_QA') {
-      switch (activeTab) {
+      switch (tab) {
         case 'Dashboard': return <QaDashboard onNavigate={navigateTab} />;
         case 'BugTracker': return <BugTracker onShowToast={showToast} />;
         case 'TestSuites': return <QaTestSuites />;

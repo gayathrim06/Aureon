@@ -1,23 +1,34 @@
 import React, { useState, useEffect } from 'react';
 import { Breadcrumb } from '../../components/common/Breadcrumb';
 import { getAuthHeaders } from '../../services/apiClient';
-import { Activity, Shield, Cpu, TrendingUp, RefreshCw } from 'lucide-react';
-import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
+import { Activity, Shield, Cpu, TrendingUp, RefreshCw, Layers } from 'lucide-react';
+import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, BarChart, Bar } from 'recharts';
 
-export const LeadProjectHealth = () => {
+export const LeadProjectHealth = ({ onNavigate }) => {
   const [projects, setProjects] = useState([]);
+  const [sprints, setSprints] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const fetchHealthData = async () => {
     try {
       setLoading(true);
-      const res = await fetch('http://127.0.0.1:8000/api/v1/analysis/quality-summary', {
-        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() }
-      });
+      const headers = { 'Content-Type': 'application/json', ...getAuthHeaders() };
+      const [res, spRes] = await Promise.all([
+        fetch('http://127.0.0.1:8000/api/v1/analysis/quality-summary', { headers }),
+        fetch('http://127.0.0.1:8000/api/v1/sprints/', { headers })
+      ]);
+
       if (res.ok) {
         const data = await res.json();
         if (data.success && data.projects) {
           setProjects(data.projects);
+        }
+      }
+
+      if (spRes.ok) {
+        const spData = await spRes.json();
+        if (spData.sprints) {
+          setSprints(spData.sprints);
         }
       }
     } catch (err) {
@@ -32,16 +43,13 @@ export const LeadProjectHealth = () => {
   }, []);
 
   const safeProjects = Array.isArray(projects) ? projects : [];
-  const avgCoverage = safeProjects.length > 0
-    ? Math.round(safeProjects.reduce((acc, p) => acc + (parseFloat(p.coverage) || 85), 0) / safeProjects.length)
-    : 85;
-
-  const coverageTrend = [
-    { sprint: 'S1', coverage: Math.max(avgCoverage - 6, 70) },
-    { sprint: 'S2', coverage: Math.max(avgCoverage - 4, 75) },
-    { sprint: 'S3', coverage: Math.max(avgCoverage - 2, 78) },
-    { sprint: 'S4', coverage: Math.min(avgCoverage, 95) }
-  ];
+  
+  // Real sprint health & progress trend derived directly from database records
+  const sprintTrend = sprints.map(s => ({
+    sprint: (s.name || s.sprint_name || 'Sprint').substring(0, 16),
+    score: s.sprint_score !== undefined && s.sprint_score !== null ? Number(s.sprint_score) : 100,
+    progress: s.completion_percentage !== undefined ? Math.round(Number(s.completion_percentage)) : 0
+  }));
 
   return (
     <div className="space-y-6">
@@ -50,7 +58,7 @@ export const LeadProjectHealth = () => {
         <button
           onClick={fetchHealthData}
           disabled={loading}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 shadow-sm transition"
+          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 shadow-sm transition cursor-pointer"
         >
           <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
           Refresh Health
@@ -65,7 +73,7 @@ export const LeadProjectHealth = () => {
       </div>
 
       {loading && safeProjects.length === 0 ? (
-        <div className="p-8 text-center text-sm text-gray-500">Loading project health data...</div>
+        <div className="p-8 text-center text-sm text-gray-500 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">Loading project health data...</div>
       ) : safeProjects.length === 0 ? (
         <div className="p-8 text-center text-sm text-gray-400 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
           No project quality data currently available in database.
@@ -73,7 +81,7 @@ export const LeadProjectHealth = () => {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {safeProjects.map(p => (
-            <div key={p.id || p.projectKey} className="p-5 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm">
+            <div key={p.id || p.projectKey} className="p-5 rounded-2xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-all">
               <div className="flex items-center justify-between mb-2">
                 <span className="font-mono text-[10px] text-blue-600 dark:text-blue-400 font-bold bg-blue-50 dark:bg-blue-950/40 px-2 py-0.5 rounded">
                   {p.projectKey}
@@ -96,18 +104,27 @@ export const LeadProjectHealth = () => {
         </div>
       )}
 
-      {safeProjects.length > 0 && (
-        <div className="p-5 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm">
-          <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100 mb-4">Code Coverage Trend Over Sprints</h3>
+      {sprintTrend.length > 0 && (
+        <div className="p-5 rounded-2xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100 flex items-center gap-1.5">
+                <Layers className="w-4 h-4 text-indigo-500" />
+                Live Sprint Health & Completion Progress (DB Records)
+              </h3>
+              <p className="text-xs text-gray-400">Calculated metrics directly from PostgreSQL sprint milestones</p>
+            </div>
+          </div>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={coverageTrend}>
+              <BarChart data={sprintTrend}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.2} />
                 <XAxis dataKey="sprint" stroke="#9ca3af" fontSize={11} />
-                <YAxis domain={[50, 100]} stroke="#9ca3af" fontSize={11} />
+                <YAxis domain={[0, 100]} stroke="#9ca3af" fontSize={11} />
                 <Tooltip contentStyle={{ backgroundColor: '#1f2937', borderRadius: '8px', border: 'none', color: '#fff' }} />
-                <Line type="monotone" dataKey="coverage" stroke="#10b981" strokeWidth={3} name="Coverage %" dot={{ r: 4 }} />
-              </LineChart>
+                <Bar dataKey="score" fill="#10b981" radius={[4, 4, 0, 0]} name="Sprint Health Score" />
+                <Bar dataKey="progress" fill="#6366f1" radius={[4, 4, 0, 0]} name="Completion %" />
+              </BarChart>
             </ResponsiveContainer>
           </div>
         </div>
@@ -115,4 +132,3 @@ export const LeadProjectHealth = () => {
     </div>
   );
 };
-

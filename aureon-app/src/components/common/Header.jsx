@@ -3,19 +3,13 @@ import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { 
   Sun, Moon, Coffee, Shield, Bell, Search, User, LogOut, ChevronDown, 
-  Key, Activity, Sparkles
+  Activity, Sparkles
 } from 'lucide-react';
 
 export const Header = ({ currentTab, onSelectTab, onNavigateHome }) => {
-  const { user, logout, sessionExpiry } = useAuth();
+  const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const [showProfileMenu, setShowProfileMenu] = useState(false);
-
-  const formatTimer = (seconds) => {
-    const m = Math.floor(seconds / 60);
-    const s = seconds % 60;
-    return `${m}:${s < 10 ? '0' : ''}${s}`;
-  };
 
   const getNormalizedRole = (u) => {
     if (!u) return 'ROLE_DEV';
@@ -55,18 +49,12 @@ export const Header = ({ currentTab, onSelectTab, onNavigateHome }) => {
         </span>
       </div>
 
-      {/* Right side: Session Timer, Theme, Profile */}
+      {/* Right side: Theme, Notifications, Profile */}
       <div className="flex items-center gap-3">
-        {/* JWT Session Expire Indicator */}
-        <div className="hidden sm:flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-3 py-1 rounded-full border border-slate-200 dark:border-slate-700">
-          <Key className="w-3.5 h-3.5 text-amber-500" />
-          <span className="font-mono text-[11px] font-medium">JWT: {formatTimer(sessionExpiry)}</span>
-        </div>
-
         {/* Theme Toggle Button (Dark -> Light -> Warm Eye-Care) */}
         <button
           onClick={toggleTheme}
-          className="p-2 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all duration-200"
+          className="p-2 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all duration-150 cursor-pointer active:scale-95 hover:shadow-xs"
           title={`Current Theme: ${theme === 'dark' ? 'Dark Obsidian' : theme === 'warm' ? 'Warm Eye-Care Sepia' : 'Clean Light'} (Click to switch)`}
         >
           {theme === 'dark' && <Sun className="w-4 h-4 text-amber-400 hover:rotate-45 transition-transform" />}
@@ -77,7 +65,8 @@ export const Header = ({ currentTab, onSelectTab, onNavigateHome }) => {
         {/* Notifications */}
         <button
           onClick={() => onSelectTab && onSelectTab('Notifications')}
-          className="relative p-2 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+          className="relative p-2 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all duration-150 cursor-pointer active:scale-95 hover:shadow-xs"
+          title="Notifications"
         >
           <Bell className="w-4 h-4" />
           <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-indigo-500 ring-2 ring-white dark:ring-[#111827]" />
@@ -87,7 +76,7 @@ export const Header = ({ currentTab, onSelectTab, onNavigateHome }) => {
         <div className="relative">
           <button
             onClick={() => setShowProfileMenu(!showProfileMenu)}
-            className="flex items-center gap-2.5 p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+            className="flex items-center gap-2.5 p-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-all duration-150 cursor-pointer active:scale-95"
           >
             <div className="w-8 h-8 rounded-full bg-indigo-600 text-white font-bold text-xs flex items-center justify-center ring-2 ring-indigo-500/30 shadow-xs">
               {user?.name ? user.name.charAt(0).toUpperCase() : 'U'}
@@ -113,7 +102,7 @@ export const Header = ({ currentTab, onSelectTab, onNavigateHome }) => {
               <div className="py-1 space-y-1 mt-1">
                 <button
                   onClick={() => { setShowProfileMenu(false); onSelectTab && onSelectTab('Profile'); }}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
+                  className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
                 >
                   <User className="w-4 h-4 text-slate-400" /> My Profile
                 </button>
@@ -121,7 +110,7 @@ export const Header = ({ currentTab, onSelectTab, onNavigateHome }) => {
                 <div className="pt-1 border-t border-slate-100 dark:border-slate-800">
                   <button
                     onClick={() => logout('USER_LOGOUT')}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg transition-colors"
+                    className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg transition-colors cursor-pointer"
                   >
                     <LogOut className="w-4 h-4" /> Secure Logout
                   </button>

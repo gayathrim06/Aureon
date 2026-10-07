@@ -272,9 +272,11 @@ export const PmDashboard = ({ onNavigate }) => {
         <div className="flex flex-wrap gap-2.5 relative z-10">
           <button
             onClick={() => setIsCreateModalOpen(true)}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white text-indigo-900 font-extrabold text-xs shadow-lg hover:bg-slate-100 transition-all hover:scale-105"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white text-indigo-950 font-black text-xs shadow-lg hover:bg-slate-100 transition-all hover:scale-105 cursor-pointer"
+            style={{ color: '#1e1b4b' }}
           >
-            <Plus className="w-4 h-4 text-indigo-600" /> Initialize Project
+            <Plus className="w-4 h-4 text-indigo-600 shrink-0" style={{ color: '#4f46e5' }} />
+            <span style={{ color: '#1e1b4b', fontWeight: 800 }}>Initialize Project</span>
           </button>
           <button
             onClick={() => onNavigate && onNavigate('Projects')}

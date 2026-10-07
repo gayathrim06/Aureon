@@ -47,6 +47,14 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* Global button interactive hover and pointer guarantee */
+button, [role="button"], input[type="button"], input[type="submit"], input[type="reset"], a {
+  cursor: pointer;
+}
+button:disabled, [role="button"][aria-disabled="true"] {
+  cursor: not-allowed;
+}
+
 /* Scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
@@ -96,17 +104,30 @@ html.warm .aureon-theme-banner {
 }
 
 /* ━━━ BANNER TEXT CONTRAST PROTECTION (Strict Header Banners Only) ━━━ */
-.aureon-theme-banner *,
+.aureon-theme-banner {
+  color: #ffffff !important;
+}
+
 .aureon-theme-banner h1,
 .aureon-theme-banner h2,
 .aureon-theme-banner h3,
 .aureon-theme-banner p,
-.aureon-theme-banner span {
+.aureon-theme-banner > div > div > span,
+.aureon-theme-banner .banner-subtext {
   color: #ffffff !important;
 }
 
-.aureon-theme-banner .banner-subtext {
-  color: rgba(255, 255, 255, 0.85) !important;
+/* Explicit button text protection inside theme banners */
+.aureon-theme-banner button.bg-white,
+.aureon-theme-banner button.bg-white *,
+.aureon-theme-banner button[class*="bg-white"]:not([class*="bg-white/"]),
+.aureon-theme-banner button[class*="bg-white"]:not([class*="bg-white/"]) * {
+  color: #1e1b4b !important;
+}
+
+.aureon-theme-banner button.bg-white svg,
+.aureon-theme-banner button[class*="bg-white"]:not([class*="bg-white/"]) svg {
+  color: #4f46e5 !important;
 }
 
 /* ━━━ 1. LIGHT THEME HIGH-CONTRAST TYPOGRAPHY ━━━ */
@@ -243,7 +264,7 @@ html.warm input, html.warm select, html.warm textarea {
 }
 
 /* Warm Mode Pills & Badges */
-html.warm .bg-indigo-50, html.warm .bg-slate-100, html.warm .bg-gray-100, html.warm .bg-[#f3e8d2] {
+html.warm .bg-indigo-50, html.warm .bg-slate-100, html.warm .bg-gray-100 {
   background-color: #d8c7a2 !important;
   color: #342314 !important;
   border-color: #b8a074 !important;

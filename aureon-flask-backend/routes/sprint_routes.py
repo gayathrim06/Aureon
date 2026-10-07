@@ -319,7 +319,8 @@ def sprint_tasks(sprint_id):
 
         added_tasks = []
         for tid in task_ids:
-            task = Task.query.get(tid)
+            t_uuid = _parse_uuid(tid)
+            task = Task.query.get(t_uuid) if t_uuid else None
             if not task:
                 continue
 
@@ -334,6 +335,8 @@ def sprint_tasks(sprint_id):
             task.sprint_id = sprint.id
             task.project_id = sprint.project_id
             task.team_id = sprint.team_id
+            if task.status in ('BACKLOG', None):
+                task.status = 'TODO'
 
             # Audit history
             hist = TaskStatusHistory(
@@ -375,6 +378,8 @@ def remove_task_from_sprint(sprint_id, task_id):
         return jsonify({'success': False, 'message': 'Task not found.'}), 404
 
     task.sprint_id = None
+    if task.status in ('TODO', None):
+        task.status = 'BACKLOG'
     hist = TaskStatusHistory(
         task_id=task.id,
         user_id=user.id if user else None,

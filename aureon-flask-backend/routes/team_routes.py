@@ -54,7 +54,7 @@ def _calculate_team_developer_availability(team):
         completed_count = len(completed_tasks)
         active_count = len(active_tasks)
         is_avail = (active_count == 0)
-        status_text = f"Available ({completed_count} tasks completed)" if (is_avail and completed_count > 0) else ("Available (Ready)" if is_avail else f"Busy ({active_count} active, {completed_count} done)")
+        status_text = f"Available ({completed_count} tasks completed)" if (is_avail and completed_count > 0) else ("Available" if is_avail else f"Busy ({active_count} active, {completed_count} done)")
 
         developers.append({
             'user_id': str(u.id),

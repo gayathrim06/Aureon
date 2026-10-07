@@ -147,3 +147,65 @@ def test_developer_delay_remark_and_tl_actions(client, app):
         assert 'DELAY_REMARK_ADDED' in action_types
         assert 'TL_REVIEW_ADDED' in action_types
         assert 'DUE_DATE_CHANGED' in action_types
+
+def test_backlog_creation_and_sprint_lifecycle(client, app):
+    from flask_jwt_extended import create_access_token
+    from models import Sprint, Role
+    with app.app_context():
+        proj = Project.query.filter_by(is_active=True).first()
+        pm_role = Role.query.filter_by(code='ROLE_PM').first()
+        pm_user = User.query.filter_by(role_id=pm_role.id).first() if pm_role else None
+        dev_role = Role.query.filter_by(code='ROLE_DEV').first()
+        dev_user = User.query.filter_by(role_id=dev_role.id).first() if dev_role else None
+        sprint = Sprint.query.filter_by(project_id=proj.id).first() if proj else None
+
+        pm_token = create_access_token(identity=str(pm_user.id))
+        dev_token = create_access_token(identity=str(dev_user.id))
+
+        # 1. Developer cannot create task or backlog task (403 Forbidden)
+        dev_res = client.post('/api/v1/tasks/', json={
+            'title': 'Dev Rogue Task',
+            'project_id': str(proj.id)
+        }, headers={'Authorization': f'Bearer {dev_token}'})
+        assert dev_res.status_code == 403
+
+        # 2. Developer cannot access backlog endpoint (403 Forbidden)
+        dev_backlog_res = client.get('/api/v1/tasks/backlog', headers={'Authorization': f'Bearer {dev_token}'})
+        assert dev_backlog_res.status_code == 403
+
+        # 3. PM creates a backlog task
+        create_res = client.post('/api/v1/tasks/', json={
+            'title': 'Implement Authentication Module Backlog',
+            'description': 'Backlog item for upcoming sprint',
+            'priority': 'HIGH',
+            'project_id': str(proj.id),
+            'is_backlog': True
+        }, headers={'Authorization': f'Bearer {pm_token}'})
+        assert create_res.status_code == 201
+        created_task = create_res.get_json()['task']
+        assert created_task['sprint_id'] is None
+        assert created_task['status'] == 'BACKLOG'
+        task_id = created_task['id']
+
+        # 4. Task appears in backlog
+        backlog_res = client.get(f'/api/v1/tasks/backlog?project_id={proj.id}', headers={'Authorization': f'Bearer {pm_token}'})
+        assert backlog_res.status_code == 200
+        backlog_ids = [t['id'] for t in backlog_res.get_json()['backlog_tasks']]
+        assert task_id in backlog_ids
+
+        # 5. Move task into sprint during sprint planning
+        if sprint:
+            plan_res = client.post(f'/api/v1/sprints/{sprint.id}/tasks', json={
+                'task_ids': [task_id]
+            }, headers={'Authorization': f'Bearer {pm_token}'})
+            import uuid
+            db_task = Task.query.get(uuid.UUID(str(task_id)))
+            assert str(db_task.sprint_id) == str(sprint.id)
+            assert db_task.status == 'TODO'
+
+            # 6. Remove task from sprint back to backlog
+            remove_res = client.delete(f'/api/v1/sprints/{sprint.id}/tasks/{task_id}', headers={'Authorization': f'Bearer {pm_token}'})
+            assert remove_res.status_code == 200
+            db.session.refresh(db_task)
+            assert db_task.sprint_id is None
+            assert db_task.status == 'BACKLOG'

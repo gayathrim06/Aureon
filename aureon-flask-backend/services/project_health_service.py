@@ -97,16 +97,20 @@ class HealthCalculator:
 
         avg_sprint_score = (sum(sprint_scores) / len(sprint_scores)) if sprint_scores else 100.0
 
-        # 2. Project Tasks Metrics
-        total_tasks = len(tasks)
-        completed_tasks = [t for t in tasks if t.status in ('COMPLETED', 'DONE')]
-        overdue_tasks = [t for t in tasks if t.is_overdue]
-        blocked_tasks = [t for t in tasks if t.status == 'BLOCKED']
+        # 2. Sprint vs Backlog Tasks Metrics
+        sprint_tasks = [t for t in tasks if t.sprint_id is not None]
+        backlog_tasks = [t for t in tasks if t.sprint_id is None]
+        eval_tasks = sprint_tasks if (sprint_tasks or sprints) else tasks
+
+        total_tasks = len(eval_tasks)
+        completed_tasks = [t for t in eval_tasks if t.status in ('COMPLETED', 'DONE')]
+        overdue_tasks = [t for t in eval_tasks if t.is_overdue]
+        blocked_tasks = [t for t in eval_tasks if t.status == 'BLOCKED']
 
         task_comp_rate = (len(completed_tasks) / total_tasks * 100.0) if total_tasks > 0 else 100.0
 
         if len(overdue_tasks) > 0:
-            risks.append(f"{len(overdue_tasks)} task(s) currently overdue in project")
+            risks.append(f"{len(overdue_tasks)} task(s) currently overdue in project sprints")
         if len(blocked_tasks) > 0:
             risks.append(f"{len(blocked_tasks)} task(s) currently blocked in project")
 
@@ -116,7 +120,7 @@ class HealthCalculator:
             risks.append(f"{total_carry_forward} incomplete task(s) carried forward across sprints")
 
         # 4. Composite Formula
-        if sprints and tasks:
+        if sprints and eval_tasks:
             raw_score = 0.50 * avg_sprint_score + 0.50 * task_comp_rate
         elif sprints:
             raw_score = avg_sprint_score
@@ -135,7 +139,9 @@ class HealthCalculator:
             'avg_sprint_score': round(avg_sprint_score, 1),
             'task_completion_rate': round(task_comp_rate, 1),
             'total_sprints': len(sprints),
-            'total_tasks': total_tasks,
+            'total_tasks': len(tasks),
+            'sprint_tasks': len(sprint_tasks),
+            'backlog_tasks': len(backlog_tasks),
             'completed_tasks': len(completed_tasks),
             'overdue_tasks': len(overdue_tasks),
             'blocked_tasks': len(blocked_tasks),

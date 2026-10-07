@@ -265,6 +265,28 @@ export const SprintPlanner = ({ onShowToast }) => {
     }
   };
 
+  const handleReturnToBacklog = async (taskId) => {
+    if (!selectedSprint) return;
+    try {
+      const res = await fetch(`http://127.0.0.1:8000/api/v1/sprints/${selectedSprint.id}/tasks/${taskId}`, {
+        method: 'DELETE',
+        headers: getAuthHeaders()
+      });
+      if (res.ok) {
+        if (onShowToast) {
+          onShowToast({
+            type: 'success',
+            title: 'Task Returned to Backlog',
+            message: 'Task detached from sprint and moved back to product backlog.'
+          });
+        }
+        await fetchSprintData();
+      }
+    } catch (err) {
+      console.error('Error returning task to backlog:', err);
+    }
+  };
+
   const handleBatchAssign = async () => {
     if (!selectedTaskIds.length || !batchAssigneeId) return;
     setIsBatchAssigning(true);
@@ -719,6 +741,7 @@ export const SprintPlanner = ({ onShowToast }) => {
                       <th className="p-3">Status</th>
                       <th className="p-3">Assigned Developer & Availability</th>
                       <th className="p-3">Due Date</th>
+                      <th className="p-3 text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium">
@@ -791,6 +814,15 @@ export const SprintPlanner = ({ onShowToast }) => {
                         </td>
                         <td className="p-3 font-mono text-[11px] text-slate-500">
                           {task.due_date ? String(task.due_date).split('T')[0] : '—'}
+                        </td>
+                        <td className="p-3 text-right">
+                          <button
+                            onClick={() => handleReturnToBacklog(task.id)}
+                            className="px-2.5 py-1 text-[11px] font-semibold rounded-lg bg-slate-100 hover:bg-rose-50 text-slate-700 hover:text-rose-600 dark:bg-slate-800 dark:hover:bg-rose-950/40 dark:text-slate-300 dark:hover:text-rose-400 border border-slate-200 dark:border-slate-700 transition"
+                            title="Remove from this sprint and return to product backlog"
+                          >
+                            To Backlog
+                          </button>
                         </td>
                       </tr>
                     );

@@ -3,7 +3,7 @@ import { Breadcrumb } from '../../components/common/Breadcrumb';
 import { Modal } from '../../components/common/Modal';
 import { useAuth } from '../../context/AuthContext';
 import { logAuditEvent } from '../../services/auditLogger';
-import { Users, CheckSquare, Plus, Layers, ShieldCheck, UserCheck, CheckCircle2 } from 'lucide-react';
+import { Users, CheckSquare, Plus, Layers, ShieldCheck, UserCheck, CheckCircle2, Clock } from 'lucide-react';
 import { getAuthHeaders } from '../../services/apiClient';
 
 export const DeveloperRoster = ({ onShowToast }) => {
@@ -25,8 +25,8 @@ export const DeveloperRoster = ({ onShowToast }) => {
     projectId: '',
     sprintId: '',
     priority: 'HIGH',
-    gitBranch: 'feature/auth-module',
-    dueDate: '2026-09-15'
+    gitBranch: '',
+    dueDate: new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0]
   });
 
   // Form Data for Sprint Assignment
@@ -35,8 +35,8 @@ export const DeveloperRoster = ({ onShowToast }) => {
     goal: '',
     projectId: '',
     storyPoints: 40,
-    startDate: '2026-09-01',
-    endDate: '2026-09-15'
+    startDate: new Date().toISOString().split('T')[0],
+    endDate: new Date(Date.now() + 14 * 86400000).toISOString().split('T')[0]
   });
 
   const fetchData = async () => {
@@ -248,69 +248,71 @@ export const DeveloperRoster = ({ onShowToast }) => {
           const isAvailable = u.is_available !== undefined ? u.is_available : (activeTasksCount === 0);
 
           return (
-            <div key={devId} className="p-5 rounded-3xl bg-white dark:bg-slate-900 warm:bg-[#e8dbbe] border border-slate-200 dark:border-slate-800 warm:border-[#cbb68e] shadow-sm space-y-4 hover:shadow-md transition-all">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-2xl bg-indigo-600 dark:bg-indigo-600 text-white font-black text-sm flex items-center justify-center shrink-0 shadow-sm">
-                  {getInitials(uName)}
+            <div key={devId} className="p-5 rounded-3xl bg-white dark:bg-slate-900 warm:bg-[#e8dbbe] border border-slate-200 dark:border-slate-800 warm:border-[#cbb68e] shadow-sm space-y-4 hover:shadow-xl hover:-translate-y-1 hover:border-indigo-400 dark:hover:border-indigo-600 transition-all duration-200 flex flex-col justify-between">
+              <div className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-2xl bg-indigo-600 dark:bg-indigo-600 text-white font-black text-sm flex items-center justify-center shrink-0 shadow-sm">
+                    {getInitials(uName)}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-sm font-black text-slate-900 dark:text-white truncate">{uName}</h3>
+                    <p className="text-[11px] text-slate-500 font-bold truncate">{u.designation || u.role_name || u.role || 'Software Engineer'}</p>
+                    <p className="text-[10px] text-indigo-600 dark:text-indigo-400 font-mono truncate">{u.email}</p>
+                  </div>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <h3 className="text-sm font-black text-slate-900 dark:text-white truncate">{uName}</h3>
-                  <p className="text-[11px] text-slate-500 font-bold truncate">{u.designation || u.role_name || u.role || 'Software Engineer'}</p>
-                  <p className="text-[10px] text-indigo-600 dark:text-indigo-400 font-mono truncate">{u.email}</p>
-                </div>
-              </div>
 
-              {/* Developer Availability Badge */}
-              <div className="pt-1">
-                {isAvailable ? (
-                  <div className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 flex items-center justify-between">
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-600 text-white flex items-center gap-1">
-                      <CheckCircle2 className="w-3 h-3" /> Available
-                    </span>
-                    <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-300">Ready for next task: YES</span>
-                  </div>
-                ) : (
-                  <div className="p-2 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 flex items-center justify-between">
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-500 text-white flex items-center gap-1">
-                      <Clock className="w-3 h-3" /> Busy ({activeTasksCount} active)
-                    </span>
-                    <span className="text-[10px] font-bold text-amber-700 dark:text-amber-300">Ready for next task: NO</span>
-                  </div>
-                )}
-              </div>
+                {/* Developer Availability Badge */}
+                <div className="pt-1">
+                  {isAvailable ? (
+                    <div className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 flex items-center justify-between">
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-600 text-white flex items-center gap-1 shadow-xs">
+                        <CheckCircle2 className="w-3 h-3" /> Available
+                      </span>
+                      <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-300">Ready for next task: YES</span>
+                    </div>
+                  ) : (
+                    <div className="p-2 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 flex items-center justify-between">
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-500 text-white flex items-center gap-1 shadow-xs">
+                        <Clock className="w-3 h-3" /> Busy ({activeTasksCount} active)
+                      </span>
+                      <span className="text-[10px] font-bold text-amber-700 dark:text-amber-300">Ready for next task: NO</span>
+                    </div>
+                  )}
+                </div>
 
-              {/* Real Task Metrics */}
-              <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-950 warm:bg-[#f3e8d2] border border-slate-100 dark:border-slate-800 text-xs space-y-2">
-                <div className="flex justify-between items-center text-slate-600 dark:text-slate-400">
-                  <span>Assigned Work Tickets:</span>
-                  <strong className="text-slate-900 dark:text-white font-mono">{totalAssigned} Tasks</strong>
-                </div>
-                <div className="flex justify-between items-center text-slate-600 dark:text-slate-400">
-                  <span>Finished Deliverables:</span>
-                  <strong className="text-emerald-600 font-mono">{completedCount} Finished</strong>
-                </div>
-                <div>
-                  <div className="flex justify-between text-[10px] text-slate-500 font-bold mb-1">
-                    <span>Task Completion Rate</span>
-                    <span className="text-indigo-600">{completionRate}%</span>
+                {/* Real Task Metrics */}
+                <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-950 warm:bg-[#f3e8d2] border border-slate-100 dark:border-slate-800 text-xs space-y-2">
+                  <div className="flex justify-between items-center text-slate-600 dark:text-slate-400">
+                    <span>Assigned Work Tickets:</span>
+                    <strong className="text-slate-900 dark:text-white font-mono">{totalAssigned} Tasks</strong>
                   </div>
-                  <div className="w-full h-2 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
-                    <div className="h-full bg-gradient-to-r from-indigo-500 to-purple-600 rounded-full transition-all duration-500" style={{ width: `${completionRate}%` }} />
+                  <div className="flex justify-between items-center text-slate-600 dark:text-slate-400">
+                    <span>Finished Deliverables:</span>
+                    <strong className="text-emerald-600 font-mono">{completedCount} Finished</strong>
+                  </div>
+                  <div>
+                    <div className="flex justify-between text-[10px] text-slate-500 font-bold mb-1">
+                      <span>Task Completion Rate</span>
+                      <span className="text-indigo-600 font-mono font-bold">{completionRate}%</span>
+                    </div>
+                    <div className="w-full h-2 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
+                      <div className="h-full bg-gradient-to-r from-indigo-500 to-purple-600 rounded-full transition-all duration-500" style={{ width: `${completionRate}%` }} />
+                    </div>
                   </div>
                 </div>
               </div>
 
               {/* Action Buttons */}
-              <div className="grid grid-cols-2 gap-2 pt-1">
+              <div className="grid grid-cols-2 gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
                 <button
                   onClick={() => setTaskModalDev(u)}
-                  className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-xs transition-all"
+                  className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white text-xs font-bold shadow-xs hover:shadow-md transition-all duration-150 cursor-pointer"
                 >
                   <Plus className="w-3.5 h-3.5" /> Assign Task
                 </button>
                 <button
                   onClick={() => setSprintModalDev(u)}
-                  className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold shadow-xs transition-all"
+                  className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 active:scale-95 text-white text-xs font-bold shadow-xs hover:shadow-md transition-all duration-150 cursor-pointer"
                 >
                   <Layers className="w-3.5 h-3.5" /> Assign Sprint
                 </button>

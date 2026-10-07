@@ -105,6 +105,13 @@ export const AuthProvider = ({ children }) => {
     return () => clearInterval(timer);
   }, [user]);
 
+  const extendSession = () => {
+    setSessionExpiry(3600);
+    if (typeof showToast === 'function') {
+      showToast({ type: 'info', title: 'Session Extended', message: 'JWT security session reset to 60 minutes.' });
+    }
+  };
+
   useEffect(() => {
     if (!isLocked) return;
     const timer = setInterval(() => {
@@ -420,6 +427,7 @@ export const AuthProvider = ({ children }) => {
         register,
         updateProfile,
         logout,
+        extendSession,
         showToast,
       }}
     >

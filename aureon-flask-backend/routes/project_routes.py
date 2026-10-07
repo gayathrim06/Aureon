@@ -144,6 +144,45 @@ def manage_projects():
                         pm_rec = ProjectMember(project_id=project.id, user_id=du.id)
                         db.session.add(pm_rec)
 
+            # Auto-connect GitHub repository if URL provided
+            repo_url = data.get('github_repo_url') or data.get('repository_url')
+            if repo_url:
+                try:
+                    from services.github_service import GitHubService
+                    from models import GitHubRepository, Repository
+                    owner, repo_name = GitHubService.parse_github_url(repo_url)
+                    meta = GitHubService.get_repository(owner, repo_name)
+                    gh_repo = GitHubRepository(
+                        project_id=project.id,
+                        github_repository_id=meta.get('github_repository_id'),
+                        owner=owner,
+                        repository_name=repo_name,
+                        repository_url=meta.get('repository_url') or repo_url,
+                        default_branch=meta.get('default_branch', 'main'),
+                        description=meta.get('description', ''),
+                        visibility=meta.get('visibility', 'public'),
+                        language=meta.get('language', 'Other'),
+                        is_active=True
+                    )
+                    db.session.add(gh_repo)
+                    db.session.flush()
+                    legacy_repo = Repository(
+                        id=gh_repo.id,
+                        project_id=project.id,
+                        repository_name=repo_name,
+                        name=repo_name,
+                        repository_url=gh_repo.repository_url,
+                        url=gh_repo.repository_url,
+                        provider='GitHub',
+                        default_branch=gh_repo.default_branch,
+                        status='CONNECTED',
+                        connection_status='CONNECTED',
+                        last_synced=datetime.utcnow()
+                    )
+                    db.session.add(legacy_repo)
+                except Exception as ex:
+                    print(f"[AUTO ATTACH REPO ERROR] {ex}")
+
             # Create Audit Log
             log = AuditLog(
                 user_email=user.email if user else 'pm@aureon.com',
@@ -212,6 +251,51 @@ def project_detail(project_id):
                 if m_uuid:
                     pm_rec = ProjectMember(project_id=project.id, user_id=m_uuid)
                     db.session.add(pm_rec)
+
+        # Update or Attach GitHub Repository
+        repo_url = data.get('github_repo_url') or data.get('repository_url')
+        if repo_url:
+            try:
+                from services.github_service import GitHubService
+                from models import GitHubRepository, Repository
+                owner, repo_name = GitHubService.parse_github_url(repo_url)
+                existing_gh = GitHubRepository.query.filter_by(project_id=project.id, is_active=True).first()
+                if not existing_gh:
+                    meta = GitHubService.get_repository(owner, repo_name)
+                    gh_repo = GitHubRepository(
+                        project_id=project.id,
+                        github_repository_id=meta.get('github_repository_id'),
+                        owner=owner,
+                        repository_name=repo_name,
+                        repository_url=meta.get('repository_url') or repo_url,
+                        default_branch=meta.get('default_branch', 'main'),
+                        description=meta.get('description', ''),
+                        visibility=meta.get('visibility', 'public'),
+                        language=meta.get('language', 'Other'),
+                        is_active=True
+                    )
+                    db.session.add(gh_repo)
+                    db.session.flush()
+                    legacy_repo = Repository(
+                        id=gh_repo.id,
+                        project_id=project.id,
+                        repository_name=repo_name,
+                        name=repo_name,
+                        repository_url=gh_repo.repository_url,
+                        url=gh_repo.repository_url,
+                        provider='GitHub',
+                        default_branch=gh_repo.default_branch,
+                        status='CONNECTED',
+                        connection_status='CONNECTED',
+                        last_synced=datetime.utcnow()
+                    )
+                    db.session.add(legacy_repo)
+                else:
+                    existing_gh.owner = owner
+                    existing_gh.repository_name = repo_name
+                    existing_gh.repository_url = repo_url
+            except Exception as ex:
+                print(f"[UPDATE ATTACH REPO ERROR] {ex}")
 
         db.session.commit()
         return jsonify({'success': True, 'message': 'Project updated.', 'project': project.to_dict()}), 200

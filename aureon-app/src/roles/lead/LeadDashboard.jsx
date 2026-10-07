@@ -3,13 +3,20 @@ import { Breadcrumb } from '../../components/common/Breadcrumb';
 import { useAuth } from '../../context/AuthContext';
 import { 
   Users, CheckSquare, Activity, Cpu, Clock, GitPullRequest, Layers, 
-  GitBranch, CheckCircle2, AlertTriangle, ArrowRight, UserCheck, Code2, FolderKanban
+  GitBranch, CheckCircle2, AlertTriangle, ArrowRight, UserCheck, Code2, 
+  FolderKanban, FileText, ChevronRight, Sparkles, ExternalLink, Plus
 } from 'lucide-react';
 import { getAuthHeaders } from '../../services/apiClient';
 
 export const LeadDashboard = ({ onNavigate }) => {
   const { user } = useAuth();
   const userName = user?.name || user?.full_name || user?.email?.split('@')[0] || 'Team Lead';
+
+  const [rawProjects, setRawProjects] = useState([]);
+  const [rawTasks, setRawTasks] = useState([]);
+  const [rawSprints, setRawSprints] = useState([]);
+  const [rawDevs, setRawDevs] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   const [stats, setStats] = useState({
     activeTasks: 0,
@@ -22,6 +29,7 @@ export const LeadDashboard = ({ onNavigate }) => {
   });
 
   const fetchDashboardStats = async () => {
+    setLoading(true);
     const headers = getAuthHeaders();
 
     try {
@@ -57,11 +65,27 @@ export const LeadDashboard = ({ onNavigate }) => {
         devs = aData.developers || [];
       }
 
+      setRawProjects(projects);
+      setRawTasks(tasks);
+      setRawSprints(sprints);
+      setRawDevs(devs);
+
       const activeTasks = tasks.filter(t => !['COMPLETED', 'DONE', 'CLOSED'].includes(t.status));
-      const inReviewCount = tasks.filter(t => t.status === 'IN_REVIEW').length;
-      const activeSprints = sprints.filter(s => s.status === 'ACTIVE');
-      const sprintScores = sprints.map(s => s.sprint_score !== undefined ? s.sprint_score : 100);
-      const avgScore = sprintScores.length > 0 ? Math.round(sprintScores.reduce((a, b) => a + b, 0) / sprintScores.length) : 100;
+      const inReviewCount = tasks.filter(t => t.status === 'IN_REVIEW' || t.status === 'REVIEW').length;
+      
+      // Look for any active/in-progress sprints matching database statuses
+      const activeSprints = sprints.filter(s => 
+        ['ACTIVE', 'IN_PROGRESS', 'IN PROGRESS', 'STARTED', 'PLANNING'].includes((s.status || '').toUpperCase())
+      );
+      
+      const sprintScores = sprints
+        .map(s => s.sprint_score !== undefined && s.sprint_score !== null ? Number(s.sprint_score) : null)
+        .filter(score => score !== null);
+      
+      const avgScore = sprintScores.length > 0 
+        ? Math.round(sprintScores.reduce((a, b) => a + b, 0) / sprintScores.length) 
+        : 100;
+      
       const availableDevs = devs.filter(d => d.is_available).length;
 
       setStats({
@@ -74,15 +98,9 @@ export const LeadDashboard = ({ onNavigate }) => {
         availableDevsCount: availableDevs
       });
     } catch (err) {
-      setStats({
-        activeTasks: 0,
-        inReviewCount: 0,
-        activeProjects: 0,
-        activeSprintsCount: 0,
-        avgSprintScore: 100,
-        teamDevsCount: 0,
-        availableDevsCount: 0
-      });
+      console.error('Failed to load lead dashboard statistics:', err);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -90,56 +108,445 @@ export const LeadDashboard = ({ onNavigate }) => {
     fetchDashboardStats();
   }, []);
 
+  const handleNav = (tab) => {
+    if (typeof onNavigate === 'function') {
+      onNavigate(tab);
+    }
+  };
+
   const widgets = [
-    { label: 'Logged-in Tech Lead', value: userName, sub: user?.email || 'Active Session', icon: Users, color: 'border-l-blue-500' },
-    { label: 'Scoped Projects', value: `${stats.activeProjects} Project${stats.activeProjects !== 1 ? 's' : ''}`, sub: 'Assigned Portfolio', icon: FolderKanban, color: 'border-l-purple-500' },
-    { label: 'Active Tasks', value: `${stats.activeTasks} Task${stats.activeTasks !== 1 ? 's' : ''}`, sub: `${stats.inReviewCount} Pending Review`, icon: CheckSquare, color: 'border-l-indigo-500' },
-    { label: 'Sprint Health Score', value: `${stats.avgSprintScore}/100`, sub: `${stats.activeSprintsCount} Active Sprint${stats.activeSprintsCount !== 1 ? 's' : ''}`, icon: Layers, color: 'border-l-emerald-600' },
-    { label: 'Squad Availability', value: `${stats.availableDevsCount}/${stats.teamDevsCount} Ready`, sub: 'Ready for Next Task', icon: Cpu, color: 'border-l-amber-500' },
+    { 
+      label: 'Logged-in Tech Lead', 
+      value: userName, 
+      sub: user?.email || 'Active Session', 
+      icon: Users, 
+      color: 'border-l-blue-500 hover:border-l-blue-600', 
+      tab: 'Profile',
+      hint: 'Manage profile'
+    },
+    { 
+      label: 'Scoped Projects', 
+      value: `${stats.activeProjects} Project${stats.activeProjects !== 1 ? 's' : ''}`, 
+      sub: 'Assigned Portfolio', 
+      icon: FolderKanban, 
+      color: 'border-l-purple-500 hover:border-l-purple-600', 
+      tab: 'AssignedProjects',
+      hint: 'View portfolio'
+    },
+    { 
+      label: 'Active Tasks', 
+      value: `${stats.activeTasks} Task${stats.activeTasks !== 1 ? 's' : ''}`, 
+      sub: `${stats.inReviewCount} Pending Review`, 
+      icon: CheckSquare, 
+      color: 'border-l-indigo-500 hover:border-l-indigo-600', 
+      tab: 'SprintBoard',
+      hint: 'Inspect tasks'
+    },
+    { 
+      label: 'Sprint Health Score', 
+      value: `${stats.avgSprintScore}/100`, 
+      sub: `${stats.activeSprintsCount} Active Sprint${stats.activeSprintsCount !== 1 ? 's' : ''}`, 
+      icon: Layers, 
+      color: 'border-l-emerald-600 hover:border-l-emerald-700', 
+      tab: 'ProjectHealth',
+      hint: 'View analytics'
+    },
+    { 
+      label: 'Squad Availability', 
+      value: `${stats.availableDevsCount}/${stats.teamDevsCount} Ready`, 
+      sub: 'Ready for Next Task', 
+      icon: Cpu, 
+      color: 'border-l-amber-500 hover:border-l-amber-600', 
+      tab: 'Developers',
+      hint: 'Manage squad'
+    },
+  ];
+
+  const quickActions = [
+    { label: 'Sprint Kanban Board', tab: 'SprintBoard', icon: Layers, desc: 'Drag-and-drop workflow & deliverables' },
+    { label: 'Assigned Projects', tab: 'AssignedProjects', icon: FolderKanban, desc: 'Active project health & task progress' },
+    { label: 'Developers Roster', tab: 'Developers', icon: Users, desc: 'Virtual team capacity & task allocation' },
+    { label: 'Repository Activity', tab: 'Repository', icon: GitBranch, desc: 'Live commits, branches & code changes' },
+    { label: 'Code Quality Hub', tab: 'CodeQuality', icon: Cpu, desc: 'SonarQube metrics, debt & code smells' },
+    { label: 'Project Health', tab: 'ProjectHealth', icon: Activity, desc: 'Technical health trends & test coverage' },
+    { label: 'Team Reports', tab: 'Reports', icon: FileText, desc: 'Developer velocity & completion rates' },
   ];
 
   return (
     <div className="space-y-6 font-sans text-slate-900 dark:text-slate-100 warm:text-[#342314]">
-      <Breadcrumb activeTab="Dashboard" title="Team Lead Workstation" />
+      <Breadcrumb activeTab="Dashboard" title="Team Lead Workstation" onNavigate={handleNav} />
 
       {/* Theme-Aware Header Banner */}
       <div className="relative p-6 rounded-2xl aureon-theme-banner overflow-hidden transition-all duration-300 shadow-xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div className="relative z-10">
           <div className="flex items-center gap-2">
-            <span className="px-2.5 py-0.5 rounded-full bg-white/20 text-white font-mono text-[10px] uppercase font-bold tracking-wider">
+            <span className="px-2.5 py-0.5 rounded-full bg-white/20 text-white font-mono text-[10px] uppercase font-bold tracking-wider flex items-center gap-1.5 shadow-xs">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
               Tech Lead: {userName}
             </span>
           </div>
           <h1 className="text-2xl font-black tracking-tight text-white mt-1.5">{userName}'s Lead Execution Hub</h1>
-          <p className="text-xs banner-subtext mt-1 max-w-xl">
+          <p className="text-xs banner-subtext mt-1 max-w-xl text-white/90">
             Oversee code quality, review pull requests, allocate tasks to team developers, and manage sprint deliverables for PM assigned projects.
           </p>
         </div>
-        <div className="flex flex-wrap gap-2 relative z-10">
+        <div className="flex flex-wrap gap-2.5 relative z-10">
           <button
-            onClick={() => onNavigate('SprintBoard')}
-            className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-white/20 hover:bg-white/30 text-white text-xs font-bold border border-white/30 shadow-md transition-all hover:scale-105"
+            onClick={() => handleNav('SprintBoard')}
+            className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-white/20 hover:bg-white/35 active:scale-95 text-white text-xs font-bold border border-white/30 shadow-md transition-all duration-150 cursor-pointer hover:shadow-lg"
           >
-            <Layers className="w-3.5 h-3.5" /> Sprint Kanban Board
+            <Layers className="w-4 h-4" /> Sprint Kanban Board
+          </button>
+          <button
+            onClick={() => handleNav('Developers')}
+            className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/25 active:scale-95 text-white text-xs font-bold border border-white/20 shadow-sm transition-all duration-150 cursor-pointer"
+          >
+            <Users className="w-4 h-4" /> Developer Roster
           </button>
         </div>
       </div>
 
-      {/* Summary Widgets Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+      {/* Summary Widgets Grid - Interactive Clickable Cards with Rich Hover */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         {widgets.map((w, i) => {
           const Icon = w.icon;
           return (
-            <div key={i} className={`p-4 rounded-xl bg-white dark:bg-slate-900 warm:bg-[#e8dbbe] border-l-4 ${w.color} border-y border-r border-slate-200 dark:border-slate-800 warm:border-[#cbb68e] shadow-sm transition-all hover:shadow-md`}>
-              <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 warm:text-[#69523c]">
-                <span className="text-[11px] font-semibold">{w.label}</span>
-                <Icon className="w-4 h-4 text-slate-400 warm:text-[#69523c]" />
+            <div
+              key={i}
+              role="button"
+              tabIndex={0}
+              onClick={() => handleNav(w.tab)}
+              onKeyDown={(e) => e.key === 'Enter' && handleNav(w.tab)}
+              title={`Click to open ${w.tab}`}
+              className={`p-4 rounded-xl bg-white dark:bg-slate-900 warm:bg-[#e8dbbe] border-l-4 ${w.color} border-y border-r border-slate-200 dark:border-slate-800 warm:border-[#cbb68e] shadow-sm transition-all duration-200 hover:shadow-lg hover:-translate-y-1 hover:border-slate-300 dark:hover:border-slate-700 cursor-pointer group active:scale-[0.98] flex flex-col justify-between`}
+            >
+              <div>
+                <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 warm:text-[#69523c]">
+                  <span className="text-[11px] font-semibold">{w.label}</span>
+                  <div className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 warm:bg-[#dac8a8] text-slate-500 dark:text-slate-300 group-hover:bg-indigo-50 dark:group-hover:bg-indigo-950/60 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                    <Icon className="w-4 h-4" />
+                  </div>
+                </div>
+                <div className="text-lg font-bold text-slate-900 dark:text-slate-100 warm:text-[#342314] mt-2 truncate">
+                  {w.value}
+                </div>
+                <div className="text-[10px] text-slate-500 dark:text-slate-400 warm:text-[#69523c] mt-1 truncate">
+                  {w.sub}
+                </div>
               </div>
-              <div className="text-lg font-bold text-slate-900 dark:text-slate-100 warm:text-[#342314] mt-2 truncate">{w.value}</div>
-              <div className="text-[10px] text-slate-500 dark:text-slate-400 warm:text-[#69523c] mt-1">{w.sub}</div>
+              <div className="pt-3 mt-2 border-t border-slate-100 dark:border-slate-800/60 flex items-center justify-between text-[10px] font-bold text-indigo-600 dark:text-indigo-400">
+                <span className="opacity-75 group-hover:opacity-100 transition-opacity">{w.hint}</span>
+                <ArrowRight className="w-3.5 h-3.5 transform group-hover:translate-x-1 transition-transform" />
+              </div>
             </div>
           );
         })}
+      </div>
+
+      {/* Quick Action Navigation Buttons Grid */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+            <Sparkles className="w-3.5 h-3.5 text-indigo-500" />
+            Quick Lead Actions & Workspace Modules
+          </h2>
+          <span className="text-[10px] text-slate-400 font-mono">Click any card to jump directly</span>
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
+          {quickActions.map((qa, idx) => {
+            const Icon = qa.icon;
+            return (
+              <button
+                key={idx}
+                onClick={() => handleNav(qa.tab)}
+                className="p-3 rounded-xl bg-white dark:bg-slate-900 warm:bg-[#e8dbbe] border border-slate-200 dark:border-slate-800 warm:border-[#cbb68e] shadow-xs hover:shadow-md hover:border-indigo-400 dark:hover:border-indigo-500 hover:-translate-y-0.5 active:scale-95 transition-all duration-150 text-left cursor-pointer group flex flex-col justify-between"
+              >
+                <div className="w-7 h-7 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mb-2 group-hover:scale-110 group-hover:bg-indigo-600 group-hover:text-white transition-all">
+                  <Icon className="w-3.5 h-3.5" />
+                </div>
+                <div>
+                  <div className="text-xs font-bold text-slate-900 dark:text-white truncate group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                    {qa.label}
+                  </div>
+                  <div className="text-[10px] text-slate-400 line-clamp-1 mt-0.5">
+                    {qa.desc}
+                  </div>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Live Data Section from PostgreSQL Database */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        {/* Scoped Projects (Real DB Data) */}
+        <div className="lg:col-span-2 space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <FolderKanban className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                Scoped Projects Portfolio (Database Records)
+              </h2>
+              <p className="text-[11px] text-slate-500">Live projects assigned in PostgreSQL with calculated progress.</p>
+            </div>
+            <button
+              onClick={() => handleNav('AssignedProjects')}
+              className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 flex items-center gap-1 cursor-pointer hover:underline"
+            >
+              View All ({rawProjects.length}) <ChevronRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
+          {rawProjects.length === 0 ? (
+            <div className="p-8 text-center bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 text-xs text-slate-400">
+              {loading ? 'Loading projects from database...' : 'No assigned projects found in database.'}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {rawProjects.slice(0, 4).map((p) => {
+                const projTasks = rawTasks.filter(t => t.project_id === p.id || t.project_name === p.name);
+                const doneTasks = projTasks.filter(t => t.status === 'DONE' || t.status === 'COMPLETED');
+                const total = projTasks.length > 0 ? projTasks.length : 0;
+                const completed = doneTasks.length;
+                const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+                return (
+                  <div
+                    key={p.id}
+                    className="p-4 rounded-2xl bg-white dark:bg-slate-900 warm:bg-[#e8dbbe] border border-slate-200 dark:border-slate-800 warm:border-[#cbb68e] shadow-sm hover:shadow-md hover:border-indigo-300 dark:hover:border-indigo-700 transition-all flex flex-col justify-between space-y-3"
+                  >
+                    <div>
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-mono text-[10px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60 px-2 py-0.5 rounded border border-indigo-200 dark:border-indigo-800">
+                          {p.id ? String(p.id).substring(0, 8) : 'PRJ'}
+                        </span>
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                          p.status === 'IN_PROGRESS' 
+                            ? 'bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300 border border-blue-200 dark:border-blue-800' 
+                            : 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
+                        }`}>
+                          {p.status || 'ACTIVE'}
+                        </span>
+                      </div>
+                      <h3 className="text-sm font-bold text-slate-900 dark:text-white mt-2 truncate">
+                        {p.name || p.project_name}
+                      </h3>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-2 mt-1">
+                        {p.description || 'No description recorded in database.'}
+                      </p>
+                    </div>
+
+                    <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                      <div className="flex justify-between text-[11px] text-slate-500">
+                        <span>Health Score:</span>
+                        <strong className="text-emerald-600 font-bold">{p.health_score || 90}/100</strong>
+                      </div>
+                      <div className="flex justify-between text-[11px] text-slate-500">
+                        <span>Task Completion:</span>
+                        <strong className="text-slate-900 dark:text-white font-mono">{completed}/{total} ({pct}%)</strong>
+                      </div>
+                      <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                        <div className="h-full bg-indigo-600 rounded-full" style={{ width: `${pct}%` }} />
+                      </div>
+                      <div className="pt-2 flex gap-2">
+                        <button
+                          onClick={() => handleNav('SprintBoard')}
+                          className="flex-1 py-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/50 hover:bg-indigo-600 hover:text-white text-indigo-700 dark:text-indigo-300 text-[11px] font-bold transition-all text-center cursor-pointer"
+                        >
+                          Sprint Board
+                        </button>
+                        <button
+                          onClick={() => handleNav('ProjectHealth')}
+                          className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-[11px] font-bold text-slate-700 dark:text-slate-300 transition-all cursor-pointer"
+                        >
+                          Health
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Active Tasks Table (Real DB Data) */}
+          <div className="pt-2 space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                  <CheckSquare className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                  Active Deliverable Tasks (Live DB)
+                </h2>
+                <p className="text-[11px] text-slate-500">Real tasks fetched from PostgreSQL database.</p>
+              </div>
+              <button
+                onClick={() => handleNav('SprintBoard')}
+                className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 flex items-center gap-1 cursor-pointer hover:underline"
+              >
+                Kanban View ({rawTasks.length}) <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            <div className="bg-white dark:bg-slate-900 warm:bg-[#e8dbbe] rounded-2xl border border-slate-200 dark:border-slate-800 warm:border-[#cbb68e] overflow-hidden shadow-xs">
+              <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                {rawTasks.slice(0, 5).map((t) => (
+                  <div
+                    key={t.id}
+                    onClick={() => handleNav('SprintBoard')}
+                    className="p-3.5 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors cursor-pointer group"
+                  >
+                    <div className="min-w-0 flex-1 pr-3">
+                      <div className="flex items-center gap-2">
+                        <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase ${
+                          t.priority === 'CRITICAL' ? 'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300' :
+                          t.priority === 'HIGH' ? 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300' :
+                          'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300'
+                        }`}>
+                          {t.priority || 'NORMAL'}
+                        </span>
+                        <h4 className="text-xs font-bold text-slate-900 dark:text-white truncate group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                          {t.title}
+                        </h4>
+                      </div>
+                      <div className="flex items-center gap-3 text-[10px] text-slate-400 mt-1">
+                        <span>Project: <strong className="text-slate-600 dark:text-slate-300">{t.project_name || t.project || 'General'}</strong></span>
+                        <span>Assignee: <strong className="text-indigo-600 dark:text-indigo-400">{t.assignee_name || t.assigned_to || 'Unassigned'}</strong></span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3 shrink-0">
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                        t.status === 'DONE' || t.status === 'COMPLETED' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300' :
+                        t.status === 'IN_REVIEW' || t.status === 'REVIEW' ? 'bg-purple-50 text-purple-700 dark:bg-purple-950 dark:text-purple-300' :
+                        t.status === 'IN_PROGRESS' ? 'bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300' :
+                        'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
+                      }`}>
+                        {t.status || 'TODO'}
+                      </span>
+                      <ArrowRight className="w-3.5 h-3.5 text-slate-300 group-hover:text-indigo-600 group-hover:translate-x-0.5 transition-all" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Right Column: Squad Developers & Sprints */}
+        <div className="space-y-6">
+          {/* Engineering Squad Live Availability */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                  <Users className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                  Engineering Squad Status
+                </h2>
+                <p className="text-[11px] text-slate-500">Live availability from database.</p>
+              </div>
+              <button
+                onClick={() => handleNav('Developers')}
+                className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 flex items-center gap-1 cursor-pointer hover:underline"
+              >
+                Roster <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            <div className="bg-white dark:bg-slate-900 warm:bg-[#e8dbbe] rounded-2xl border border-slate-200 dark:border-slate-800 warm:border-[#cbb68e] divide-y divide-slate-100 dark:divide-slate-800 shadow-xs overflow-hidden">
+              {rawDevs.length === 0 ? (
+                <div className="p-4 text-center text-xs text-slate-400">Loading squad developers...</div>
+              ) : (
+                rawDevs.slice(0, 5).map((d) => (
+                  <div
+                    key={d.id}
+                    onClick={() => handleNav('Developers')}
+                    className="p-3 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors cursor-pointer group"
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="w-7 h-7 rounded-full bg-indigo-600 text-white font-bold text-[10px] flex items-center justify-center shrink-0">
+                        {(d.name || d.full_name || 'D').charAt(0).toUpperCase()}
+                      </div>
+                      <div className="min-w-0">
+                        <h4 className="text-xs font-bold text-slate-900 dark:text-white truncate group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                          {d.name || d.full_name}
+                        </h4>
+                        <p className="text-[10px] text-slate-400 truncate">{d.designation || 'Engineer'}</p>
+                      </div>
+                    </div>
+                    <div className="text-right shrink-0">
+                      {d.is_available ? (
+                        <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
+                          Ready
+                        </span>
+                      ) : (
+                        <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300">
+                          {d.active_tasks_count || 1} Busy
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ))
+              )}
+              <div className="p-2.5 bg-slate-50 dark:bg-slate-950 text-center">
+                <button
+                  onClick={() => handleNav('Developers')}
+                  className="w-full py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-xs transition-all cursor-pointer flex items-center justify-center gap-1"
+                >
+                  <Plus className="w-3.5 h-3.5" /> Allocate Task to Developer
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Active Sprints Status */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                  <Layers className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                  Active Sprints (Live DB)
+                </h2>
+                <p className="text-[11px] text-slate-500">Live sprint progress.</p>
+              </div>
+              <button
+                onClick={() => handleNav('SprintBoard')}
+                className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 flex items-center gap-1 cursor-pointer hover:underline"
+              >
+                Sprint Board <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            <div className="bg-white dark:bg-slate-900 warm:bg-[#e8dbbe] rounded-2xl border border-slate-200 dark:border-slate-800 warm:border-[#cbb68e] divide-y divide-slate-100 dark:divide-slate-800 shadow-xs overflow-hidden">
+              {rawSprints.length === 0 ? (
+                <div className="p-4 text-center text-xs text-slate-400">Loading sprints...</div>
+              ) : (
+                rawSprints.slice(0, 4).map((s) => (
+                  <div
+                    key={s.id}
+                    onClick={() => handleNav('SprintBoard')}
+                    className="p-3 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors cursor-pointer group space-y-1.5"
+                  >
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-xs font-bold text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors truncate max-w-[180px]">
+                        {s.name || s.sprint_name}
+                      </h4>
+                      <span className="text-[10px] font-mono font-bold text-indigo-600 dark:text-indigo-400">
+                        Score: {s.sprint_score !== undefined ? s.sprint_score : 100}/100
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between text-[10px] text-slate-400">
+                      <span>{s.project_name || s.project || 'Project'}</span>
+                      <span>{s.end_date ? `Ends ${s.end_date}` : 'Active'}</span>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+        </div>
+
       </div>
     </div>
   );

@@ -53,6 +53,15 @@ def create_app():
             if len(parts) != 3 or not token.startswith('ey'):
                 if 'HTTP_AUTHORIZATION' in request.environ:
                     del request.environ['HTTP_AUTHORIZATION']
+            else:
+                try:
+                    from flask_jwt_extended import decode_token
+                    decode_token(token)
+                except Exception:
+                    # Token is expired, signature-mismatched, or stale from a previous session.
+                    # Remove it from request.environ so optional auth endpoints can serve real DB data seamlessly.
+                    if 'HTTP_AUTHORIZATION' in request.environ:
+                        del request.environ['HTTP_AUTHORIZATION']
 
     # Ensure CORS headers on every response and preflight OPTIONS request
     @app.after_request

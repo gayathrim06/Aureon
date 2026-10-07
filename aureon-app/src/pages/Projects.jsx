@@ -4,8 +4,9 @@ import { Table, TableRow, TableCell } from '../components/common/Table';
 import { Badge } from '../components/common/Badge';
 import { Button } from '../components/common/Button';
 import { Modal } from '../components/common/Modal';
-import { FolderKanban, Plus, Search, Filter, Layers, UserCheck, Users, Shield, ArrowRight, CheckCircle2, Clock, Activity, AlertTriangle, X, CheckSquare, Sparkles, Hash } from 'lucide-react';
+import { FolderKanban, Plus, Search, Filter, Layers, UserCheck, Users, Shield, ArrowRight, CheckCircle2, Clock, Activity, AlertTriangle, X, CheckSquare, Sparkles, Hash, GitBranch, GitCommit, GitPullRequest, ExternalLink, RefreshCw } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { TeamWorkload } from '../roles/pm/TeamWorkload';
 
 export const Projects = () => {
   const { user, showToast } = useAuth();
@@ -16,6 +17,17 @@ export const Projects = () => {
   const [statusFilter, setStatusFilter] = useState('All');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('projects'); // 'projects' or 'workload'
+
+  // Git Feature State
+  const [gitModalOpen, setGitModalOpen] = useState(false);
+  const [selectedProjectForGit, setSelectedProjectForGit] = useState(null);
+  const [gitRepoDetails, setGitRepoDetails] = useState({});
+  const [gitCommits, setGitCommits] = useState([]);
+  const [gitSyncing, setGitSyncing] = useState(false);
+  const [connectModalOpen, setConnectModalOpen] = useState(false);
+  const [targetProjForConnect, setTargetProjForConnect] = useState(null);
+  const [gitUrlInput, setGitUrlInput] = useState('');
+  const [githubRepoUrl, setGithubRepoUrl] = useState('');
 
   // PM Form State for Project Creation & Team Allocation
   const [projectName, setProjectName] = useState('');
@@ -207,7 +219,95 @@ export const Projects = () => {
     setProjectName('');
     setProjectDesc('');
     setProjectObjectives('');
+    setGithubRepoUrl('');
     setIsModalOpen(false);
+  };
+
+  const handleOpenGitCommits = async (project) => {
+    setSelectedProjectForGit(project);
+    setGitModalOpen(true);
+    setGitSyncing(true);
+    const repoId = project.repository?.id;
+    if (repoId) {
+      try {
+        const rawToken = sessionStorage.getItem('aureon_jwt_access_token') || localStorage.getItem('aureon_jwt_access_token') || sessionStorage.getItem('aureon_access_token');
+        const headers = rawToken ? { 'Authorization': `Bearer ${rawToken}` } : {};
+        const res = await fetch(`http://127.0.0.1:8000/api/v1/repositories/${repoId}`, { headers });
+        if (res.ok) {
+          const data = await res.json();
+          setGitRepoDetails(data.repository || {});
+          setGitCommits(data.repository?.commits || []);
+        }
+      } catch (err) {
+        console.error('Failed to fetch repo commits:', err);
+      } finally {
+        setGitSyncing(false);
+      }
+    } else {
+      setGitSyncing(false);
+    }
+  };
+
+  const handleSyncCommitsNow = async () => {
+    const repoId = selectedProjectForGit?.repository?.id || gitRepoDetails?.id;
+    if (!repoId) return;
+    setGitSyncing(true);
+    try {
+      const rawToken = sessionStorage.getItem('aureon_jwt_access_token') || localStorage.getItem('aureon_jwt_access_token') || sessionStorage.getItem('aureon_access_token');
+      const headers = rawToken ? { 'Authorization': `Bearer ${rawToken}` } : {};
+      const res = await fetch(`http://127.0.0.1:8000/api/v1/repositories/${repoId}/sync`, {
+        method: 'POST',
+        headers
+      });
+      if (res.ok) {
+        // Refetch repo details
+        const rRes = await fetch(`http://127.0.0.1:8000/api/v1/repositories/${repoId}`, { headers });
+        if (rRes.ok) {
+          const rData = await rRes.json();
+          setGitRepoDetails(rData.repository || {});
+          setGitCommits(rData.repository?.commits || []);
+        }
+        await fetchProjectsAndTasks();
+        showToast('Successfully synchronized with GitHub!', 'success');
+      } else {
+        showToast('Sync completed (no new commits detected)', 'info');
+      }
+    } catch (e) {
+      showToast('Error syncing with GitHub: ' + e.message, 'error');
+    } finally {
+      setGitSyncing(false);
+    }
+  };
+
+  const handleConnectRepoSubmit = async (e) => {
+    e.preventDefault();
+    if (!gitUrlInput.trim() || !targetProjForConnect) return;
+    setGitSyncing(true);
+    try {
+      const rawToken = sessionStorage.getItem('aureon_jwt_access_token') || localStorage.getItem('aureon_jwt_access_token') || sessionStorage.getItem('aureon_access_token');
+      const headers = rawToken ? { 'Authorization': `Bearer ${rawToken}`, 'Content-Type': 'application/json' } : { 'Content-Type': 'application/json' };
+      const res = await fetch('http://127.0.0.1:8000/api/v1/repositories/connect', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          project_id: targetProjForConnect.id,
+          repository_url: gitUrlInput.trim()
+        })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        showToast('GitHub repository connected successfully!', 'success');
+        setConnectModalOpen(false);
+        setGitUrlInput('');
+        await fetchProjectsAndTasks();
+      } else {
+        showToast(data.message || 'Failed to connect repository', 'error');
+      }
+    } catch (err) {
+      showToast('Error: ' + err.message, 'error');
+    } finally {
+      setGitSyncing(false);
+    }
   };
 
   const filteredProjects = projectsList.filter((p) => {
@@ -324,7 +424,7 @@ export const Projects = () => {
               </Button>
             </div>
           ) : (
-            <Table headers={['Project Code & Name', 'Assigned Team Lead (PM Selected)', 'Allocated Virtual Team', 'Tech Stack & Requirements', 'Status', 'Priority', 'Target Deadline']}>
+            <Table headers={['Project Code & Name', 'Assigned Team Lead (PM Selected)', 'Allocated Virtual Team', 'Git Repository & Live Commits', 'Tech Stack & Requirements', 'Status', 'Priority', 'Target Deadline']}>
               {filteredProjects.map((proj) => (
                 <TableRow key={proj.id || proj.name}>
                   <TableCell>
@@ -354,6 +454,57 @@ export const Projects = () => {
                     </div>
                   </TableCell>
                   <TableCell>
+                    {proj.repository || proj.github_repo_url ? (
+                      <div className="space-y-1.5 min-w-[190px]">
+                        <div className="flex items-center gap-1.5">
+                          <GitBranch className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
+                          <a 
+                            href={proj.repository?.url || proj.github_repo_url} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="font-mono text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1 truncate max-w-[150px]"
+                            title={proj.repository?.full_name || proj.github_repo_name || 'GitHub Repository'}
+                          >
+                            {proj.repository?.name || proj.github_repo_name || 'verona-organics'}
+                            <ExternalLink className="w-2.5 h-2.5 opacity-70 shrink-0" />
+                          </a>
+                        </div>
+                        <div className="flex items-center gap-1.5 text-[10px]">
+                          <span className="font-mono px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-semibold border border-slate-200 dark:border-slate-700">
+                            {proj.repository?.default_branch || 'main'}
+                          </span>
+                          <span className="text-slate-400">•</span>
+                          <span className="font-semibold text-slate-600 dark:text-slate-400">
+                            {proj.repository?.commits_count ?? 0} commits
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleOpenGitCommits(proj)}
+                          className="w-full text-left px-2 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-950/70 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 text-[10px] font-bold border border-indigo-200 dark:border-indigo-800 transition flex items-center justify-between"
+                        >
+                          <span className="flex items-center gap-1">
+                            <GitCommit className="w-3 h-3 text-indigo-600" />
+                            Live Commits & Sync
+                          </span>
+                          <ArrowRight className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setTargetProjForConnect(proj);
+                          setGitUrlInput('');
+                          setConnectModalOpen(true);
+                        }}
+                        className="px-2.5 py-1.5 rounded-xl border border-dashed border-indigo-300 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 text-[11px] font-bold flex items-center gap-1.5 transition"
+                      >
+                        <Plus className="w-3 h-3" /> Connect GitHub
+                      </button>
+                    )}
+                  </TableCell>
+                  <TableCell>
                     <div className="text-[11px]">
                       <div className="font-mono text-slate-700 dark:text-slate-300 font-bold">{proj.tech_stack || 'Python, Flask, React'}</div>
                       <div className="text-[10px] text-slate-500 truncate max-w-xs">
@@ -380,106 +531,8 @@ export const Projects = () => {
           )}
         </Card>
       ) : (
-        /* WORKLOAD & CAPACITY MONITOR WITH REAL DATABASE NUMBERS */
-        <div className="space-y-6">
-          <div className="p-4 rounded-2xl bg-indigo-50/80 dark:bg-indigo-950/50 warm:bg-[#f3e8d2] border border-indigo-200 dark:border-indigo-800 warm:border-[#cbb68e] text-xs">
-            <h3 className="font-extrabold text-indigo-900 dark:text-indigo-200 text-sm flex items-center gap-2">
-              <Users className="w-4 h-4 text-indigo-600" /> Virtual Team Capacity & Task Finish Monitor (Live Database Metrics)
-            </h3>
-            <p className="text-indigo-700 dark:text-indigo-300 mt-1">
-              Real-time metrics: Check every member's active tasks, completed tasks, and workload capacity before assigning them to new project modules.
-            </p>
-          </div>
-
-          {/* Senior Team Leads Grid */}
-          <div className="space-y-3">
-            <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-500">Project Team Leads (3 Senior Leads)</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {availableLeads.map((lead) => (
-                <div key={lead.id} className="p-4 rounded-2xl bg-white dark:bg-slate-900 warm:bg-[#e8dbbe] border border-slate-200 dark:border-slate-800 warm:border-[#cbb68e] shadow-sm space-y-3">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 uppercase">👑 Team Lead</span>
-                      <h4 className="text-sm font-extrabold text-slate-900 dark:text-white warm:text-[#342314]">{lead.name}</h4>
-                      <p className="text-[11px] text-slate-500">{lead.title}</p>
-                    </div>
-                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                      lead.status === 'AVAILABLE' ? 'bg-emerald-50 text-emerald-600 border border-emerald-200' : 'bg-amber-50 text-amber-600 border border-amber-200'
-                    }`}>
-                      {lead.status === 'AVAILABLE' ? '✓ Available' : '⚠️ High Workload'}
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-2 text-center text-xs">
-                    <div className="p-2 rounded-xl bg-slate-50 dark:bg-slate-950">
-                      <span className="text-[10px] text-slate-400 block">Active Tasks</span>
-                      <span className="font-bold text-indigo-600 text-sm">{lead.activeTasks}</span>
-                    </div>
-                    <div className="p-2 rounded-xl bg-slate-50 dark:bg-slate-950">
-                      <span className="text-[10px] text-slate-400 block">Completed</span>
-                      <span className="font-bold text-emerald-600 text-sm">{lead.completedTasks}</span>
-                    </div>
-                    <div className="p-2 rounded-xl bg-slate-50 dark:bg-slate-950">
-                      <span className="text-[10px] text-slate-400 block">Projects</span>
-                      <span className="font-bold text-purple-600 text-sm">{lead.projectsCount}</span>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Developers & QA Testers Roster Grid */}
-          <div className="space-y-3">
-            <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-500">Developers & QA Testers Workload Roster</h3>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              {availableMembers.map((member) => (
-                <div key={member.id} className="p-4 rounded-2xl bg-white dark:bg-slate-900 warm:bg-[#e8dbbe] border border-slate-200 dark:border-slate-800 warm:border-[#cbb68e] shadow-sm space-y-3">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <span className={`text-[10px] font-bold uppercase ${member.type === 'QA' ? 'text-rose-600' : 'text-blue-600'}`}>
-                        {member.type === 'QA' ? '🧪 QA Tester' : '💻 Developer'}
-                      </span>
-                      <h4 className="text-xs font-extrabold text-slate-900 dark:text-white warm:text-[#342314]">{member.name}</h4>
-                      <p className="text-[10px] text-slate-500">{member.role}</p>
-                    </div>
-                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                      member.status === 'AVAILABLE' ? 'bg-emerald-50 text-emerald-600 border border-emerald-200' : 'bg-rose-50 text-rose-600 border border-rose-200'
-                    }`}>
-                      {member.status === 'AVAILABLE' ? '✓ Ready' : '⚠️ Busy'}
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2 text-[10px]">
-                    <div className="p-2 rounded-xl bg-slate-50 dark:bg-slate-950">
-                      <span className="text-slate-400 block">Active Tasks</span>
-                      <span className="font-bold text-blue-600 text-xs">{member.activeTasks}</span>
-                    </div>
-                    <div className="p-2 rounded-xl bg-slate-50 dark:bg-slate-950">
-                      <span className="text-slate-400 block">Finished Tasks</span>
-                      <span className="font-bold text-emerald-600 text-xs">{member.completedTasks}</span>
-                    </div>
-                  </div>
-
-                  <div>
-                    <div className="flex justify-between text-[10px] mb-1 font-semibold">
-                      <span className="text-slate-500">Task Finish Rate</span>
-                      <span className="text-indigo-600 dark:text-indigo-400 font-bold">{member.finishRate}</span>
-                    </div>
-                    <div className="w-full h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
-                      <div
-                        className={`h-full rounded-full ${
-                          member.workloadPct >= 75 ? 'bg-rose-500' : member.workloadPct >= 50 ? 'bg-amber-500' : 'bg-emerald-500'
-                        }`}
-                        style={{ width: `${member.workloadPct}%` }}
-                      />
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
+        /* 2-SIDED WORKLOAD & CAPACITY MONITOR: DEV VS QA, EXP VS FRESHER, HIGH-WORK VS FREE, PROJECT PROGRESS */
+        <TeamWorkload embedMode={true} />
       )}
 
       {/* PM INITIALIZE PROJECT & TEAM ALLOCATION MODAL */}
@@ -512,6 +565,20 @@ export const Projects = () => {
                   className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs"
                 />
               </div>
+            </div>
+
+            <div>
+              <label className="block font-bold mb-1">GitHub Repository URL (Optional)</label>
+              <input
+                type="url"
+                placeholder="https://github.com/aureon-maker/verona-organics"
+                value={githubRepoUrl}
+                onChange={(e) => setGithubRepoUrl(e.target.value)}
+                className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs font-mono"
+              />
+              <p className="text-[10px] text-slate-400 mt-1">
+                Attach an existing GitHub repository to enable live commit tracking, branch sync, and developer analytics.
+              </p>
             </div>
 
             <div>
@@ -648,6 +715,147 @@ export const Projects = () => {
             </Button>
             <Button type="submit" variant="primary" icon={Plus}>
               Save & Initialize Project Structure
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* LIVE GIT COMMITS & UPDATIONS DRAWER / MODAL */}
+      <Modal 
+        isOpen={gitModalOpen} 
+        onClose={() => setGitModalOpen(false)} 
+        title={`Git Feature: Live Commits & Updations — ${selectedProjectForGit?.name || 'Project'}`}
+      >
+        <div className="space-y-4 text-xs max-h-[75vh] overflow-y-auto pr-1">
+          {/* Header Banner */}
+          <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div>
+              <div className="flex items-center gap-2">
+                <GitBranch className="w-4 h-4 text-indigo-600" />
+                <span className="font-extrabold text-sm text-slate-900 dark:text-white">
+                  {gitRepoDetails.full_name || selectedProjectForGit?.repository?.full_name || 'verona-organics'}
+                </span>
+                <span className="px-2 py-0.5 rounded-md bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 font-mono text-[10px] font-bold">
+                  {gitRepoDetails.default_branch || selectedProjectForGit?.repository?.default_branch || 'main'}
+                </span>
+              </div>
+              <a 
+                href={gitRepoDetails.repository_url || selectedProjectForGit?.repository?.url || 'https://github.com/aureon-maker/verona-organics'} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-[11px] text-indigo-500 hover:underline flex items-center gap-1 mt-0.5"
+              >
+                {gitRepoDetails.repository_url || selectedProjectForGit?.repository?.url || 'https://github.com/aureon-maker/verona-organics'} <ExternalLink className="w-3 h-3" />
+              </a>
+            </div>
+
+            <Button 
+              variant="primary" 
+              size="sm" 
+              icon={RefreshCw} 
+              isLoading={gitSyncing} 
+              onClick={handleSyncCommitsNow}
+            >
+              Sync Commits from GitHub
+            </Button>
+          </div>
+
+          {/* Commits List or Empty Guide */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <span className="font-extrabold uppercase tracking-wider text-slate-500 text-[10px] flex items-center gap-1.5">
+                <GitCommit className="w-3.5 h-3.5 text-indigo-600" />
+                Live Commits & Pushes ({gitCommits.length})
+              </span>
+              <span className="text-[10px] text-slate-400">
+                Synced with GitHub REST API
+              </span>
+            </div>
+
+            {gitCommits.length > 0 ? (
+              <div className="space-y-2">
+                {gitCommits.map((c, idx) => (
+                  <div key={idx} className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs flex items-start justify-between gap-3">
+                    <div className="space-y-1">
+                      <p className="font-bold text-slate-900 dark:text-white text-xs">
+                        {c.commit_message || 'Commit update'}
+                      </p>
+                      <div className="flex items-center gap-2 text-[10px] text-slate-500">
+                        <span className="font-semibold text-indigo-600 dark:text-indigo-400">{c.author_name || 'Developer'}</span>
+                        <span>•</span>
+                        <span>{c.commit_date ? new Date(c.commit_date).toLocaleString() : 'Recent'}</span>
+                      </div>
+                    </div>
+                    {c.commit_url && (
+                      <a 
+                        href={c.commit_url} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="px-2 py-1 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-mono text-[10px] hover:bg-slate-200 flex items-center gap-1 shrink-0 font-bold"
+                      >
+                        {c.commit_sha ? c.commit_sha.substring(0, 7) : 'Commit'}
+                        <ExternalLink className="w-2.5 h-2.5 opacity-60" />
+                      </a>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="p-5 rounded-2xl bg-indigo-50/50 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800/60 text-center space-y-3">
+                <div className="w-10 h-10 rounded-2xl bg-indigo-100 dark:bg-indigo-900/60 text-indigo-600 flex items-center justify-center mx-auto">
+                  <GitBranch className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="font-bold text-sm text-slate-900 dark:text-white">Repository Connected — Waiting for First Push</h4>
+                  <p className="text-[11px] text-slate-500 max-w-md mx-auto mt-1">
+                    Your GitHub repository is active. Once you push your local commits to GitHub, click <strong>"Sync Commits from GitHub"</strong> above to see all updates, messages, authors, and SHA hashes right here.
+                  </p>
+                </div>
+
+                <div className="text-left bg-slate-900 text-slate-200 p-3 rounded-xl font-mono text-[11px] max-w-lg mx-auto space-y-1">
+                  <div className="text-slate-400 text-[10px] mb-1 font-sans"># Push your code to GitHub:</div>
+                  <div>git remote add origin https://github.com/aureon-maker/verona-organics.git</div>
+                  <div>git branch -M main</div>
+                  <div>git push -u origin main</div>
+                </div>
+
+                <Button variant="outline" size="sm" icon={RefreshCw} isLoading={gitSyncing} onClick={handleSyncCommitsNow}>
+                  Check / Sync Commits Now
+                </Button>
+              </div>
+            )}
+          </div>
+        </div>
+      </Modal>
+
+      {/* CONNECT REPOSITORY MODAL */}
+      <Modal
+        isOpen={connectModalOpen}
+        onClose={() => setConnectModalOpen(false)}
+        title={`Connect GitHub Repository to ${targetProjForConnect?.name || 'Project'}`}
+      >
+        <form onSubmit={handleConnectRepoSubmit} className="space-y-4 text-xs">
+          <div>
+            <label className="block font-bold mb-1">GitHub Repository URL *</label>
+            <input
+              type="url"
+              required
+              placeholder="https://github.com/aureon-maker/verona-organics"
+              value={gitUrlInput}
+              onChange={(e) => setGitUrlInput(e.target.value)}
+              className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs font-mono font-bold"
+            />
+            <p className="text-[10px] text-slate-500 mt-1">
+              Provide public or authorized GitHub repo URL (e.g. <code>https://github.com/owner/repository</code>).
+            </p>
+          </div>
+
+          <div className="pt-3 border-t border-slate-200 dark:border-slate-800 flex justify-end gap-2">
+            <Button type="button" variant="secondary" onClick={() => setConnectModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button type="submit" variant="primary" icon={GitBranch} isLoading={gitSyncing}>
+              Connect & Sync Repository
             </Button>
           </div>
         </form>
