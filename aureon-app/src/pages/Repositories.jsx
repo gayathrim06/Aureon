@@ -34,13 +34,13 @@ export const Repositories = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-extrabold text-[#F8FAFC]">Connected Repositories</h2>
-          <p className="text-xs text-[#94A3B8] mt-1">Live Git repositories hosted on PostgreSQL database</p>
+          <p className="text-xs text-[#94A3B8] mt-1">Synchronized GitHub repositories linked to Aureon projects</p>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" icon={RefreshCw} onClick={fetchRepos} isLoading={loading}>
             Refresh
           </Button>
-          <Button variant="primary" icon={Plus} onClick={() => showToast('Create repository via Repositories Hub', 'info')}>
+          <Button variant="primary" icon={Plus} onClick={() => showToast('Connect a GitHub repository via Repositories Hub or Project Settings', 'info')}>
             New Repository
           </Button>
         </div>
@@ -48,13 +48,13 @@ export const Repositories = () => {
 
       <Card>
         <CardHeader>
-          <CardTitle icon={GitBranch}>Repository Health & Hosting</CardTitle>
+          <CardTitle icon={GitBranch}>Repository Health & GitHub Synchronization</CardTitle>
           <Badge variant="success" dot font-semibold>{repositories.length} Active Repositories</Badge>
         </CardHeader>
 
         {repositories.length === 0 ? (
           <div className="p-8 text-center text-xs text-gray-400">
-            No repositories hosted yet. Create one using the Lite Git Repository Hosting module.
+            No GitHub repositories connected yet. Connect repositories via Repositories Hub or Project Settings.
           </div>
         ) : (
           <Table headers={['Repository Name', 'Default Branch', 'Latest Commit & Developer Update', 'Status', 'Visibility']}>

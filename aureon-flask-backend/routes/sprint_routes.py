@@ -19,19 +19,36 @@ def _parse_uuid(val):
         return None
 
 def _get_auth_user():
-    user_id = get_jwt_identity()
-    user = None
-    if user_id:
-        u_uuid = _parse_uuid(user_id)
-        user = User.query.get(u_uuid or user_id)
-    if not user:
-        admin_user = User.query.filter_by(email='admin@aureon.com').first()
-        if not admin_user:
-            admin_role = Role.query.filter_by(code='ROLE_ADMIN').first()
-            if admin_role:
-                admin_user = User.query.filter_by(role_id=admin_role.id).first()
-        user = admin_user or User.query.first()
-    return user
+    try:
+        user_id = get_jwt_identity()
+        if user_id:
+            u_uuid = _parse_uuid(user_id)
+            user = User.query.get(u_uuid or user_id)
+            if user:
+                return user
+    except Exception:
+        pass
+
+    # Check X-User-Id and X-User-Email headers
+    u_param = request.headers.get('X-User-Id') or request.args.get('user_id')
+    if u_param:
+        u_uuid = _parse_uuid(u_param)
+        user = User.query.get(u_uuid or u_param)
+        if user:
+            return user
+
+    email_param = request.headers.get('X-User-Email') or request.args.get('email')
+    if email_param:
+        user = User.query.filter(User.email.ilike(email_param.strip())).first()
+        if user:
+            return user
+
+    admin_user = User.query.filter_by(email='admin@aureon.com').first()
+    if not admin_user:
+        admin_role = Role.query.filter_by(code='ROLE_ADMIN').first()
+        if admin_role:
+            admin_user = User.query.filter_by(role_id=admin_role.id).first()
+    return admin_user or User.query.first()
 
 def _find_sprint(sprint_id):
     if not sprint_id:

@@ -80,7 +80,21 @@ export const DevSprintTasks = ({ onShowToast }) => {
       if (tasksRes.ok) {
         const tasksData = await tasksRes.json();
         if (tasksData.success && tasksData.tasks) {
-          setTasks(tasksData.tasks);
+          const myUserId = String(user?.id || '').toLowerCase();
+          const myEmail = String(user?.email || '').toLowerCase();
+          const myName = String(user?.name || user?.full_name || '').toLowerCase();
+
+          const scoped = tasksData.tasks.filter(t => {
+            const assignId = String(t.assigned_to_id || t.assigned_to || '').toLowerCase();
+            const assignName = String(t.assignee_name || t.assigned_user?.display_name || '').toLowerCase();
+            const assignEmail = String(t.assignee_email || t.assigned_user?.email || '').toLowerCase();
+            
+            if (myUserId && assignId === myUserId) return true;
+            if (myEmail && (assignEmail === myEmail || assignId === myEmail)) return true;
+            if (myName && assignName && (assignName.includes(myName) || myName.includes(assignName))) return true;
+            return false;
+          });
+          setTasks(scoped);
         }
       }
     } catch (err) {

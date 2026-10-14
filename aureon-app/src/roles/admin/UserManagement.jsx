@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Breadcrumb } from '../../components/common/Breadcrumb';
 import { DataTable } from '../../components/common/DataTable';
 import { Modal } from '../../components/common/Modal';
 import { useAuth } from '../../context/AuthContext';
-import { UserPlus, Trash2, RefreshCw } from 'lucide-react';
+import { UserPlus, Trash2, RefreshCw, Filter, ArrowUpDown, ChevronDown } from 'lucide-react';
 import { getAuthHeaders } from '../../services/apiClient';
 
 const REAL_20_USERS = [
@@ -34,6 +34,8 @@ export const UserManagement = ({ onShowToast }) => {
   const [usersList, setUsersList] = useState(REAL_20_USERS);
   const [isLoading, setIsLoading] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedRole, setSelectedRole] = useState('ALL');
+  const [sortBy, setSortBy] = useState('default');
 
   const [formData, setFormData] = useState({
     name: '',
@@ -115,6 +117,59 @@ export const UserManagement = ({ onShowToast }) => {
     onShowToast && onShowToast({ type: 'info', title: 'User Deprovisioned', message: `${usr.name} removed from workspace.` });
   };
 
+  const getNormalizedUserRole = (u) => {
+    if (!u) return 'DEV';
+    const rawRole = String(u.role_code || u.role_name || (typeof u.role === 'string' ? u.role : u.role?.code) || '').toUpperCase().replace('ROLE_', '');
+    const title = String(u.designation || u.title || '').toUpperCase();
+    if (rawRole.includes('LEAD') || title.includes('LEAD') || title.includes('TECH LEAD')) return 'LEAD';
+    if (rawRole.includes('PM') || rawRole.includes('PROJECT') || title.includes('PROJECT MANAGER') || title.includes('PROGRAM MANAGER') || title.includes('SCRUM')) return 'PM';
+    if (rawRole.includes('QA') || rawRole.includes('QUALITY') || rawRole.includes('AUDIT') || title.includes('QA') || title.includes('TESTER')) return 'QA';
+    if (rawRole.includes('ADMIN') || title.includes('CTO') || title.includes('ADMIN')) return 'ADMIN';
+    return 'DEV';
+  };
+
+  const roleCounts = useMemo(() => {
+    const counts = { ALL: usersList.length, LEAD: 0, PM: 0, DEV: 0, QA: 0, ADMIN: 0 };
+    usersList.forEach(u => {
+      const r = getNormalizedUserRole(u);
+      if (counts[r] !== undefined) {
+        counts[r]++;
+      }
+    });
+    return counts;
+  }, [usersList]);
+
+  const processedUsers = useMemo(() => {
+    let result = [...usersList];
+
+    // Filter by Role
+    if (selectedRole !== 'ALL') {
+      result = result.filter(u => getNormalizedUserRole(u) === selectedRole);
+    }
+
+    // Role priority for sorting: Team Lead -> Project Manager -> Developer -> Quality Engineer -> Admin
+    const rolePriority = { 'LEAD': 1, 'PM': 2, 'DEV': 3, 'QA': 4, 'ADMIN': 5 };
+
+    if (sortBy === 'role') {
+      result.sort((a, b) => {
+        const orderA = rolePriority[getNormalizedUserRole(a)] || 99;
+        const orderB = rolePriority[getNormalizedUserRole(b)] || 99;
+        if (orderA !== orderB) return orderA - orderB;
+        return (a.name || '').localeCompare(b.name || '');
+      });
+    } else if (sortBy === 'name_asc') {
+      result.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+    } else if (sortBy === 'name_desc') {
+      result.sort((a, b) => (b.name || '').localeCompare(a.name || ''));
+    } else if (sortBy === 'department') {
+      result.sort((a, b) => (a.department || '').localeCompare(b.department || ''));
+    } else if (sortBy === 'status') {
+      result.sort((a, b) => (a.status === 'ACTIVE' ? -1 : 1));
+    }
+
+    return result;
+  }, [usersList, selectedRole, sortBy]);
+
   const userColumns = [
     {
       header: 'USER NAME',
@@ -142,10 +197,22 @@ export const UserManagement = ({ onShowToast }) => {
       accessor: 'role',
       key: 'role',
       cell: (val, row) => {
-        const rStr = String((typeof val === 'string' && val ? val : row?.role) || 'ROLE_DEV').replace('ROLE_', '');
+        const item = row || {};
+        const rStr = getNormalizedUserRole(item);
+        const roleMeta = {
+          'LEAD': { label: 'Team Lead', badge: 'LEAD', style: 'bg-blue-50 dark:bg-blue-950/60 warm:bg-[#dbeafe] text-blue-600 dark:text-blue-400 warm:text-blue-800 border-blue-200 dark:border-blue-800 warm:border-blue-300' },
+          'PM': { label: 'Project Manager', badge: 'PM', style: 'bg-purple-50 dark:bg-purple-950/60 warm:bg-[#f3e8ff] text-purple-600 dark:text-purple-400 warm:text-purple-800 border-purple-200 dark:border-purple-800 warm:border-purple-300' },
+          'DEV': { label: 'Developer', badge: 'DEV', style: 'bg-emerald-50 dark:bg-emerald-950/60 warm:bg-[#dcfce7] text-emerald-600 dark:text-emerald-400 warm:text-emerald-800 border-emerald-200 dark:border-emerald-800 warm:border-emerald-300' },
+          'QA': { label: 'Quality Engineer', badge: 'QA', style: 'bg-amber-50 dark:bg-amber-950/60 warm:bg-[#fef3c7] text-amber-600 dark:text-amber-400 warm:text-amber-800 border-amber-200 dark:border-amber-800 warm:border-amber-300' },
+          'ADMIN': { label: 'Administrator', badge: 'ADMIN', style: 'bg-rose-50 dark:bg-rose-950/60 warm:bg-[#ffe4e6] text-rose-600 dark:text-rose-400 warm:text-rose-800 border-rose-200 dark:border-rose-800 warm:border-rose-300' },
+        }[rStr] || { label: rStr, badge: rStr, style: 'bg-indigo-50 dark:bg-indigo-950/60 warm:bg-[#f3e8d2] text-indigo-600 dark:text-indigo-400 warm:text-[#b45309] border-indigo-200 dark:border-indigo-800 warm:border-[#b8a074]' };
+
         return (
-          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-indigo-50 dark:bg-indigo-950/60 warm:bg-[#f3e8d2] text-indigo-600 dark:text-indigo-400 warm:text-[#b45309] border border-indigo-200 dark:border-indigo-800 warm:border-[#b8a074]">
-            {rStr}
+          <span 
+            title={roleMeta.label}
+            className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${roleMeta.style}`}
+          >
+            {roleMeta.badge}
           </span>
         );
       }
@@ -217,10 +284,94 @@ export const UserManagement = ({ onShowToast }) => {
         </div>
       </div>
 
+      {/* Quick Role Filter Badges */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+        {[
+          { key: 'ALL', label: 'All Users', count: roleCounts.ALL },
+          { key: 'LEAD', label: 'Team Lead', count: roleCounts.LEAD },
+          { key: 'PM', label: 'Project Manager', count: roleCounts.PM },
+          { key: 'DEV', label: 'Developer', count: roleCounts.DEV },
+          { key: 'QA', label: 'Quality Engineer', count: roleCounts.QA },
+          { key: 'ADMIN', label: 'Administrator', count: roleCounts.ADMIN }
+        ].map(tab => {
+          const isActive = selectedRole === tab.key;
+          return (
+            <button
+              key={tab.key}
+              type="button"
+              onClick={() => setSelectedRole(tab.key)}
+              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap shadow-2xs ${
+                isActive
+                  ? 'bg-indigo-600 dark:bg-indigo-600 warm:bg-[#b45309] text-white shadow-sm ring-2 ring-indigo-500/30 dark:ring-indigo-400/30'
+                  : 'bg-white dark:bg-slate-900 warm:bg-[#e8dbbe] border border-slate-200 dark:border-slate-800 warm:border-[#cbb68e] text-slate-600 dark:text-slate-300 warm:text-[#342314] hover:bg-slate-100 dark:hover:bg-slate-800/80 hover:text-slate-900 dark:hover:text-white'
+              }`}
+            >
+              <span>{tab.label}</span>
+              <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-extrabold ${
+                isActive
+                  ? 'bg-white/20 text-white'
+                  : 'bg-slate-100 dark:bg-slate-800 warm:bg-[#d8c7a6] text-slate-600 dark:text-slate-300'
+              }`}>
+                {tab.count}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
       <DataTable
         columns={userColumns}
-        data={usersList}
+        data={processedUsers}
         searchPlaceholder="Search system accounts by name, email, department..."
+        filterControls={
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Filter by Role Dropdown */}
+            <div className="relative">
+              <select
+                value={selectedRole}
+                onChange={(e) => setSelectedRole(e.target.value)}
+                className="appearance-none pl-8 pr-7 py-2 rounded-lg border border-slate-200 dark:border-slate-800 warm:border-[#b8a074] bg-slate-50 dark:bg-slate-900 warm:bg-[#f3e8d2] text-xs font-semibold text-slate-800 dark:text-slate-200 warm:text-[#342314] focus:outline-none focus:ring-2 focus:ring-indigo-500/50 cursor-pointer"
+              >
+                <option value="ALL">Filter: All Roles ({roleCounts.ALL})</option>
+                <option value="LEAD">Team Lead ({roleCounts.LEAD})</option>
+                <option value="PM">Project Manager ({roleCounts.PM})</option>
+                <option value="DEV">Developer ({roleCounts.DEV})</option>
+                <option value="QA">Quality Engineer ({roleCounts.QA})</option>
+                <option value="ADMIN">Administrator ({roleCounts.ADMIN})</option>
+              </select>
+              <Filter className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
+              <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
+            </div>
+
+            {/* Sort by Role / Name Dropdown */}
+            <div className="relative">
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                className="appearance-none pl-8 pr-7 py-2 rounded-lg border border-slate-200 dark:border-slate-800 warm:border-[#b8a074] bg-slate-50 dark:bg-slate-900 warm:bg-[#f3e8d2] text-xs font-semibold text-slate-800 dark:text-slate-200 warm:text-[#342314] focus:outline-none focus:ring-2 focus:ring-indigo-500/50 cursor-pointer"
+              >
+                <option value="default">Sort: Default</option>
+                <option value="role">Sort: Role (Lead → PM → Dev → QA)</option>
+                <option value="name_asc">Sort: Name (A to Z)</option>
+                <option value="name_desc">Sort: Name (Z to A)</option>
+                <option value="department">Sort: Department</option>
+                <option value="status">Sort: Status (Active first)</option>
+              </select>
+              <ArrowUpDown className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
+              <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
+            </div>
+
+            {(selectedRole !== 'ALL' || sortBy !== 'default') && (
+              <button
+                type="button"
+                onClick={() => { setSelectedRole('ALL'); setSortBy('default'); }}
+                className="px-2.5 py-1.5 rounded-lg text-xs font-semibold text-indigo-600 dark:text-indigo-400 warm:text-[#b45309] hover:bg-indigo-50 dark:hover:bg-indigo-950/60 warm:hover:bg-[#f3e8d2] transition-colors"
+              >
+                Reset
+              </button>
+            )}
+          </div>
+        }
       />
 
       {isModalOpen && (

@@ -37,7 +37,7 @@ def _get_authenticated_user():
         user_id = get_jwt_identity()
         if user_id:
             u_uuid = _parse_uuid(user_id)
-            return User.query.get(u_uuid or user_id)
+            return db.session.get(User, u_uuid or user_id)
     except Exception:
         pass
     return None
@@ -51,13 +51,14 @@ def _get_user_role_code(user):
 def _get_permitted_project_ids(user):
     """
     Returns set of project UUIDs permitted for user based on Aureon RBAC hierarchy:
+    - Unauthenticated: set() (no access)
     - ROLE_ADMIN: None (unrestricted/full access)
     - ROLE_PM: Only projects where manager_id == user.id or user in ProjectMember
     - ROLE_LEAD: Only projects where lead_id == user.id or user is team_leader of a Team in that project, or in ProjectMember
     - ROLE_DEV / ROLE_QA: Only projects where user is ProjectMember or TeamMember of a team in that project
     """
     if not user:
-        return None  # Unrestricted fallback for tests/development without tokens
+        return set()  # Unauthenticated / invalid user has ZERO permitted projects
 
     role_code = _get_user_role_code(user)
     if role_code in ('ROLE_ADMIN', 'ADMIN'):
@@ -98,23 +99,23 @@ def _get_permitted_project_ids(user):
         # Member of team assigned to project
         t_members = TeamMember.query.filter_by(user_id=user.id).all()
         for tm in t_members:
-            t = Team.query.get(tm.team_id)
+            t = db.session.get(Team, tm.team_id)
             if t and t.project_id:
                 permitted.add(t.project_id)
-
 
     return permitted
 
 def _has_repo_read_access(user, repo):
     """
     Verifies user has permission to view repository and its details.
+    - Unauthenticated: False
     - ADMIN: Full access
     - PM: Only repositories belonging to their projects
     - TEAM_LEADER: Only repositories related to their assigned project/team
-    - DEVELOPER: Only permitted repository/project information
+    - DEVELOPER / QA: Only repositories belonging to their assigned projects
     """
-    if not user:
-        return True
+    if not user or not repo:
+        return False
 
     role_code = _get_user_role_code(user)
     if role_code in ('ROLE_ADMIN', 'ADMIN'):
@@ -132,13 +133,14 @@ def _has_repo_read_access(user, repo):
 def _has_repo_write_access(user, repo, action="modify"):
     """
     Verifies permission to connect, sync, or disconnect repositories:
+    - Unauthenticated: False
     - ADMIN: Full access
     - PM: Can connect, sync, delete for their projects
     - TEAM_LEADER: Can sync for their assigned projects/teams; cannot delete; can connect only if project lead
-    - DEVELOPER: Read-only; cannot connect, sync, or delete
+    - DEVELOPER / QA: Read-only; cannot connect, sync, or delete
     """
-    if not user:
-        return True
+    if not user or not repo:
+        return False
 
     role_code = _get_user_role_code(user)
     if role_code in ('ROLE_ADMIN', 'ADMIN'):
@@ -152,16 +154,16 @@ def _has_repo_write_access(user, repo, action="modify"):
     if permitted_pids is None:
         return True
 
-    if not repo or not repo.project_id or repo.project_id not in permitted_pids:
+    if not repo.project_id or repo.project_id not in permitted_pids:
         return False
 
     if role_code in ('ROLE_LEAD', 'TEAM_LEAD', 'TEAM_LEADER', 'LEAD'):
         if action == "delete":
             return False  # Disconnecting repositories reserved for PM and Admin
-        if action == "sync":
+        if action in ("sync", "analyze"):
             return True
         if action == "connect":
-            proj = Project.query.get(repo.project_id)
+            proj = db.session.get(Project, repo.project_id)
             return bool(proj and proj.lead_id == user.id)
 
     if role_code in ('ROLE_PM', 'PROJECT_MANAGER', 'PM'):
@@ -198,9 +200,11 @@ def _find_repo(repo_id):
 @repository_bp.route('/', methods=['GET', 'POST'])
 @repository_bp.route('', methods=['GET', 'POST'])
 @repository_bp.route('/connect', methods=['POST'])
-@jwt_required(optional=True)
+@jwt_required()
 def manage_repositories():
     user = _get_authenticated_user()
+    if not user:
+        return jsonify({'success': False, 'message': 'Authentication required.'}), 401
 
     # ─── GET: LIST REPOSITORIES BASED ON RBAC ───
     if request.method == 'GET':
@@ -222,7 +226,7 @@ def manage_repositories():
         for r in gh_repos:
             data = r.to_dict()
             if r.project_id:
-                proj = Project.query.get(r.project_id)
+                proj = db.session.get(Project, r.project_id)
                 data['project_name'] = proj.name if proj else None
             else:
                 data['project_name'] = None
@@ -272,38 +276,44 @@ def manage_repositories():
         max_prs = min(int(data.get('max_prs', 50)), 100)
         max_contributors = min(int(data.get('max_contributors', 50)), 100)
 
-        # RBAC Check: Developers cannot connect repositories
-        if user:
-            role_code = _get_user_role_code(user)
-            if role_code in ('ROLE_DEV', 'DEVELOPER', 'ROLE_QA', 'QA'):
-                return jsonify({
-                    'success': False,
-                    'message': 'Access denied: Developers do not have permission to connect repositories.'
-                }), 403
+        # 1. RBAC Check on User Role
+        role_code = _get_user_role_code(user)
+        if role_code in ('ROLE_DEV', 'DEVELOPER', 'ROLE_QA', 'QA'):
+            return jsonify({
+                'success': False,
+                'message': 'Access denied: Developers and QA engineers do not have permission to connect repositories.'
+            }), 403
 
-        # 1. Validate URL Presence
+        # 2. Validate URL Presence
         if not repo_url:
             return jsonify({
                 'success': False,
                 'message': 'GitHub repository URL is required. (e.g., https://github.com/owner/repository)'
             }), 400
 
-        # 2. Extract and Validate owner & repo
+        # 3. Extract and Validate owner & repo
         try:
             owner, repo_name = GitHubService.parse_github_url(repo_url)
         except ValueError as e:
             return jsonify({'success': False, 'message': str(e)}), 400
 
-        # 3. Validate Project & RBAC permissions for PM / Leads
+        # 4. Validate Project & RBAC permissions for PM / Leads
         project_id = _parse_uuid(project_id_raw)
         project = None
         if project_id:
-            project = Project.query.get(project_id)
+            project = db.session.get(Project, project_id)
             if not project:
                 return jsonify({'success': False, 'message': f"Project with ID '{project_id_raw}' not found."}), 404
 
             # Enforce that PM / Lead only connects to their permitted projects
-            if user:
+            if role_code in ('ROLE_LEAD', 'TEAM_LEAD', 'TEAM_LEADER', 'LEAD'):
+                if project.lead_id != user.id:
+                    return jsonify({
+                        'success': False,
+                        'message': 'Access denied: Team leads can only connect repositories to projects they lead.'
+                    }), 403
+
+            if role_code in ('ROLE_PM', 'PROJECT_MANAGER', 'PM'):
                 permitted_pids = _get_permitted_project_ids(user)
                 if permitted_pids is not None and project_id not in permitted_pids:
                     return jsonify({
@@ -312,7 +322,7 @@ def manage_repositories():
                     }), 403
         else:
             # Non-admin users must specify a permitted project
-            if user and _get_user_role_code(user) not in ('ROLE_ADMIN', 'ADMIN'):
+            if role_code not in ('ROLE_ADMIN', 'ADMIN'):
                 return jsonify({
                     'success': False,
                     'message': 'Project ID is required. Non-admin users must connect repositories to an assigned project.'
@@ -542,13 +552,16 @@ def manage_repositories():
 
 @repository_bp.route('/<string:repo_id>', methods=['GET'])
 @repository_bp.route('/<string:repo_id>/', methods=['GET'])
-@jwt_required(optional=True)
+@jwt_required()
 def get_repository_by_id(repo_id):
+    user = _get_authenticated_user()
+    if not user:
+        return jsonify({'success': False, 'message': 'Authentication required.'}), 401
+
     repo, is_gh = _find_repo(repo_id)
     if not repo:
         return jsonify({'success': False, 'message': 'Repository not found.'}), 404
 
-    user = _get_authenticated_user()
     if not _has_repo_read_access(user, repo):
         return jsonify({
             'success': False,
@@ -578,13 +591,16 @@ def get_repository_by_id(repo_id):
 
 @repository_bp.route('/<string:repo_id>/sync', methods=['POST', 'PATCH', 'PUT'])
 @repository_bp.route('/<string:repo_id>/sync/', methods=['POST', 'PATCH', 'PUT'])
-@jwt_required(optional=True)
+@jwt_required()
 def sync_repository(repo_id):
+    user = _get_authenticated_user()
+    if not user:
+        return jsonify({'success': False, 'message': 'Authentication required.'}), 401
+
     repo, is_gh = _find_repo(repo_id)
     if not repo:
         return jsonify({'success': False, 'message': 'Repository not found.'}), 404
 
-    user = _get_authenticated_user()
     if not _has_repo_write_access(user, repo, action="sync"):
         return jsonify({
             'success': False,
@@ -736,9 +752,12 @@ def sync_repository(repo_id):
 
 @repository_bp.route('/commits', methods=['GET'])
 @repository_bp.route('/commits/', methods=['GET'])
-@jwt_required(optional=True)
+@jwt_required()
 def list_all_permitted_commits():
     user = _get_authenticated_user()
+    if not user:
+        return jsonify({'success': False, 'message': 'Authentication required.'}), 401
+
     permitted_pids = _get_permitted_project_ids(user)
 
     query = GitHubRepository.query.filter_by(is_active=True)
@@ -777,9 +796,12 @@ def list_all_permitted_commits():
 
 @repository_bp.route('/pull-requests', methods=['GET'])
 @repository_bp.route('/pull-requests/', methods=['GET'])
-@jwt_required(optional=True)
+@jwt_required()
 def list_all_permitted_pull_requests():
     user = _get_authenticated_user()
+    if not user:
+        return jsonify({'success': False, 'message': 'Authentication required.'}), 401
+
     permitted_pids = _get_permitted_project_ids(user)
 
     query = GitHubRepository.query.filter_by(is_active=True)
@@ -811,13 +833,16 @@ def list_all_permitted_pull_requests():
 
 @repository_bp.route('/<string:repo_id>/commits', methods=['GET'])
 @repository_bp.route('/<string:repo_id>/commits/', methods=['GET'])
-@jwt_required(optional=True)
+@jwt_required()
 def list_repository_commits(repo_id):
+    user = _get_authenticated_user()
+    if not user:
+        return jsonify({'success': False, 'message': 'Authentication required.'}), 401
+
     repo, is_gh = _find_repo(repo_id)
     if not repo:
         return jsonify({'success': False, 'message': 'Repository not found.'}), 404
 
-    user = _get_authenticated_user()
     if not _has_repo_read_access(user, repo):
         return jsonify({'success': False, 'message': 'Access denied: You do not have permission to view this repository.'}), 403
 
@@ -843,25 +868,67 @@ def list_repository_commits(repo_id):
 
 @repository_bp.route('/<string:repo_id>/commits', methods=['POST'])
 @repository_bp.route('/<string:repo_id>/commits/', methods=['POST'])
-@jwt_required(optional=True)
+@jwt_required()
 def create_developer_commit(repo_id):
     """
     Records a developer commit / push event to the repository.
-    Allows developers, leads, and PMs to log new commits or push updates,
-    which instantly updates the commit stream, last commit details, and activity timeline.
+    Strictly validates JWT authentication, project assignment, and author identity.
+    Prevents IDOR and cross-developer impersonation.
     """
+    user = _get_authenticated_user()
+    if not user:
+        return jsonify({'success': False, 'message': 'Authentication required.'}), 401
+
     repo, is_gh = _find_repo(repo_id)
     if not repo:
         return jsonify({'success': False, 'message': 'Repository not found.'}), 404
 
-    user = _get_authenticated_user()
+    role_code = _get_user_role_code(user)
+
+    # 1. Project Assignment / Scope Validation
+    if role_code not in ('ROLE_ADMIN', 'ADMIN'):
+        if not repo.project_id:
+            return jsonify({'success': False, 'message': 'Access denied: Repository is not associated with an authorized project.'}), 403
+        permitted_pids = _get_permitted_project_ids(user)
+        if permitted_pids is not None and repo.project_id not in permitted_pids:
+            return jsonify({
+                'success': False,
+                'message': 'Access denied: You are not assigned to the project associated with this repository.'
+            }), 403
+
     data = request.get_json() or {}
     message = (data.get('commit_message') or data.get('message') or '').strip()
     if not message:
         return jsonify({'success': False, 'message': 'Commit message is required.'}), 400
 
-    author_name = (data.get('author_name') or (user.display_name if user else 'Developer')).strip()
-    author_email = (data.get('author_email') or (user.email if user else 'dev@aureon.com')).strip()
+    # 2. Prevent Developer Impersonation / IDOR
+    if role_code in ('ROLE_DEV', 'DEVELOPER', 'ROLE_QA', 'QA'):
+        req_author_name = (data.get('author_name') or '').strip()
+        req_author_email = (data.get('author_email') or '').strip()
+
+        # If developer explicitly supplies a different author identity, reject the IDOR attempt
+        user_display = (user.display_name or user.username or '').strip().lower()
+        user_email = (user.email or '').strip().lower()
+
+        if req_author_name and req_author_name.lower() != user_display and req_author_name.lower() != (user.username or '').strip().lower():
+            return jsonify({
+                'success': False,
+                'message': f"Access denied: Developers cannot record commits under another author's identity ('{req_author_name}')."
+            }), 403
+
+        if req_author_email and req_author_email.lower() != user_email:
+            return jsonify({
+                'success': False,
+                'message': f"Access denied: Developers cannot record commits under another author's email ('{req_author_email}')."
+            }), 403
+
+        author_name = user.display_name or user.username or 'Developer'
+        author_email = user.email or 'dev@aureon.com'
+    else:
+        # PM, Lead, and Admin can record on behalf of project members or themselves
+        author_name = (data.get('author_name') or user.display_name or user.username or 'Developer').strip()
+        author_email = (data.get('author_email') or user.email or 'dev@aureon.com').strip()
+
     branch = (data.get('branch') or getattr(repo, 'default_branch', 'main') or 'main').strip()
 
     import hashlib, time
@@ -890,9 +957,11 @@ def create_developer_commit(repo_id):
     else:
         legacy_c = Commit(
             repository_id=repo.id,
-            hash=raw_hash,
+            user_id=user.id,
+            commit_hash=raw_hash,
             author_name=author_name,
-            message=message,
+            commit_message=message,
+            commit_date=now,
             timestamp=now
         )
         db.session.add(legacy_c)
@@ -908,13 +977,16 @@ def create_developer_commit(repo_id):
 
 @repository_bp.route('/<string:repo_id>/pull-requests', methods=['GET'])
 @repository_bp.route('/<string:repo_id>/pull-requests/', methods=['GET'])
-@jwt_required(optional=True)
+@jwt_required()
 def list_repository_pull_requests(repo_id):
+    user = _get_authenticated_user()
+    if not user:
+        return jsonify({'success': False, 'message': 'Authentication required.'}), 401
+
     repo, is_gh = _find_repo(repo_id)
     if not repo:
         return jsonify({'success': False, 'message': 'Repository not found.'}), 404
 
-    user = _get_authenticated_user()
     if not _has_repo_read_access(user, repo):
         return jsonify({'success': False, 'message': 'Access denied: You do not have permission to view this repository.'}), 403
 
@@ -938,13 +1010,16 @@ def list_repository_pull_requests(repo_id):
 
 @repository_bp.route('/<string:repo_id>/contributors', methods=['GET'])
 @repository_bp.route('/<string:repo_id>/contributors/', methods=['GET'])
-@jwt_required(optional=True)
+@jwt_required()
 def list_repository_contributors(repo_id):
+    user = _get_authenticated_user()
+    if not user:
+        return jsonify({'success': False, 'message': 'Authentication required.'}), 401
+
     repo, is_gh = _find_repo(repo_id)
     if not repo:
         return jsonify({'success': False, 'message': 'Repository not found.'}), 404
 
-    user = _get_authenticated_user()
     if not _has_repo_read_access(user, repo):
         return jsonify({'success': False, 'message': 'Access denied: You do not have permission to view this repository.'}), 403
 
@@ -963,13 +1038,16 @@ def list_repository_contributors(repo_id):
 
 @repository_bp.route('/<string:repo_id>/branches', methods=['GET'])
 @repository_bp.route('/<string:repo_id>/branches/', methods=['GET'])
-@jwt_required(optional=True)
+@jwt_required()
 def list_repository_branches(repo_id):
+    user = _get_authenticated_user()
+    if not user:
+        return jsonify({'success': False, 'message': 'Authentication required.'}), 401
+
     repo, is_gh = _find_repo(repo_id)
     if not repo:
         return jsonify({'success': False, 'message': 'Repository not found.'}), 404
 
-    user = _get_authenticated_user()
     if not _has_repo_read_access(user, repo):
         return jsonify({'success': False, 'message': 'Access denied: You do not have permission to view this repository.'}), 403
 
@@ -982,8 +1060,8 @@ def list_repository_branches(repo_id):
 
     return jsonify({
         'success': True,
-        'count': 1,
-        'branches': [{'name': repo.default_branch, 'commit_sha': 'HEAD', 'protected': True}]
+        'count': 1 if repo.default_branch else 0,
+        'branches': [{'name': repo.default_branch, 'commit_sha': 'HEAD', 'protected': True}] if repo.default_branch else []
     }), 200
 
 
@@ -991,13 +1069,16 @@ def list_repository_branches(repo_id):
 
 @repository_bp.route('/<string:repo_id>/files', methods=['GET'])
 @repository_bp.route('/<string:repo_id>/files/', methods=['GET'])
-@jwt_required(optional=True)
+@jwt_required()
 def get_repository_files(repo_id):
+    user = _get_authenticated_user()
+    if not user:
+        return jsonify({'success': False, 'message': 'Authentication required.'}), 401
+
     repo, is_gh = _find_repo(repo_id)
     if not repo:
         return jsonify({'success': False, 'message': 'Repository not found.'}), 404
 
-    user = _get_authenticated_user()
     if not _has_repo_read_access(user, repo):
         return jsonify({'success': False, 'message': 'Access denied: You do not have permission to view this repository.'}), 403
 
@@ -1020,13 +1101,16 @@ def get_repository_files(repo_id):
 
 @repository_bp.route('/<string:repo_id>/risks', methods=['GET'])
 @repository_bp.route('/<string:repo_id>/risks/', methods=['GET'])
-@jwt_required(optional=True)
+@jwt_required()
 def get_repository_risks(repo_id):
+    user = _get_authenticated_user()
+    if not user:
+        return jsonify({'success': False, 'message': 'Authentication required.'}), 401
+
     repo, is_gh = _find_repo(repo_id)
     if not repo:
         return jsonify({'success': False, 'message': 'Repository not found.'}), 404
 
-    user = _get_authenticated_user()
     if not _has_repo_read_access(user, repo):
         return jsonify({'success': False, 'message': 'Access denied: You do not have permission to view this repository.'}), 403
 
@@ -1047,13 +1131,16 @@ def get_repository_risks(repo_id):
 
 @repository_bp.route('/<string:repo_id>', methods=['DELETE'])
 @repository_bp.route('/<string:repo_id>/', methods=['DELETE'])
-@jwt_required(optional=True)
+@jwt_required()
 def delete_repository(repo_id):
+    user = _get_authenticated_user()
+    if not user:
+        return jsonify({'success': False, 'message': 'Authentication required.'}), 401
+
     repo, is_gh = _find_repo(repo_id)
     if not repo:
         return jsonify({'success': False, 'message': 'Repository not found.'}), 404
 
-    user = _get_authenticated_user()
     if not _has_repo_write_access(user, repo, action="delete"):
         return jsonify({
             'success': False,
@@ -1068,8 +1155,8 @@ def delete_repository(repo_id):
     else:
         db.session.delete(repo)
 
-    user_email = user.email if user else 'system@aureon.com'
-    user_role = _get_user_role_code(user) if user else 'ROLE_ADMIN'
+    user_email = user.email or 'system@aureon.com'
+    user_role = _get_user_role_code(user)
     try:
         log = AuditLog(
             user_email=user_email,
@@ -1089,11 +1176,21 @@ def delete_repository(repo_id):
 
 @repository_bp.route('/<string:repo_id>/analyze', methods=['POST'])
 @repository_bp.route('/<string:repo_id>/analyze/', methods=['POST'])
-@jwt_required(optional=True)
+@jwt_required()
 def analyze_repository(repo_id):
+    user = _get_authenticated_user()
+    if not user:
+        return jsonify({'success': False, 'message': 'Authentication required.'}), 401
+
     repo, is_gh = _find_repo(repo_id)
     if not repo:
         return jsonify({'success': False, 'message': 'Repository not found.'}), 404
+
+    if not _has_repo_write_access(user, repo, action="analyze") and _get_user_role_code(user) not in ('ROLE_ADMIN', 'ADMIN', 'ROLE_PM', 'ROLE_LEAD'):
+        return jsonify({
+            'success': False,
+            'message': 'Access denied: You do not have permission to trigger analysis on this repository.'
+        }), 403
 
     report = CodeQualityReport(
         repository_id=repo.id,
@@ -1120,11 +1217,18 @@ def analyze_repository(repo_id):
 
 @repository_bp.route('/<string:repo_id>/quality', methods=['GET'])
 @repository_bp.route('/<string:repo_id>/quality/', methods=['GET'])
-@jwt_required(optional=True)
+@jwt_required()
 def get_repository_quality(repo_id):
+    user = _get_authenticated_user()
+    if not user:
+        return jsonify({'success': False, 'message': 'Authentication required.'}), 401
+
     repo, is_gh = _find_repo(repo_id)
     if not repo:
         return jsonify({'success': False, 'message': 'Repository not found.'}), 404
+
+    if not _has_repo_read_access(user, repo):
+        return jsonify({'success': False, 'message': 'Access denied: You do not have permission to view quality reports for this repository.'}), 403
 
     reports = CodeQualityReport.query.filter_by(repository_id=repo.id).all()
     return jsonify({

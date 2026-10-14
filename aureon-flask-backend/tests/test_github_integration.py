@@ -20,7 +20,7 @@ def test_parse_github_url_valid_formats():
         ("https://github.com/facebook/react.git", ("facebook", "react")),
         ("http://github.com/facebook/react/", ("facebook", "react")),
         ("facebook/react", ("facebook", "react")),
-        ("https://www.github.com/gayathrim06/Aureon", ("gayathrim06", "Aureon")),
+        ("https://www.github.com/aureon-maker/thrift-in-campus", ("aureon-maker", "thrift-in-campus")),
         ("git@github.com:pallets/flask.git", ("pallets", "flask"))
     ]
     for url, expected in test_cases:
@@ -127,14 +127,22 @@ def test_tree_source_code_language_filtering():
 
 # ━━━ 4. ENDPOINT INTEGRATION TESTS ━━━
 
-def test_connect_repository_validation_failures(client):
-    # Missing URL
-    resp = client.post('/api/v1/repositories/connect', json={})
+def test_connect_repository_validation_failures(client, app):
+    # 1. Unauthenticated request receives 401
+    resp_unauth = client.post('/api/v1/repositories/connect', json={})
+    assert resp_unauth.status_code == 401
+
+    with app.app_context():
+        admin = User.query.filter_by(email='admin@aureon.com').first()
+        admin_headers = {'Authorization': f'Bearer {create_access_token(identity=str(admin.id))}'}
+
+    # 2. Missing URL with valid admin token receives 400
+    resp = client.post('/api/v1/repositories/connect', headers=admin_headers, json={})
     assert resp.status_code == 400
     assert 'required' in resp.json['message'].lower()
 
-    # Invalid URL
-    resp = client.post('/api/v1/repositories/connect', json={'repository_url': 'ftp://invalid'})
+    # 3. Invalid URL format receives 400
+    resp = client.post('/api/v1/repositories/connect', headers=admin_headers, json={'repository_url': 'ftp://invalid'})
     assert resp.status_code == 400
 
 
@@ -201,8 +209,12 @@ def test_connect_and_sync_repository_success(mock_tree, mock_contribs, mock_prs,
         'source_files': [{'path': 'app.py', 'size': 120, 'language': 'Python'}]
     }
 
+    with app.app_context():
+        admin = User.query.filter_by(email='admin@aureon.com').first()
+        admin_headers = {'Authorization': f'Bearer {create_access_token(identity=str(admin.id))}'}
+
     # 1. Connect Repository
-    res = client.post('/api/v1/repositories/connect', json={
+    res = client.post('/api/v1/repositories/connect', headers=admin_headers, json={
         'repository_url': f"https://github.com/aureon-test/{unique_name}"
     })
     assert res.status_code == 201
@@ -215,37 +227,37 @@ def test_connect_and_sync_repository_success(mock_tree, mock_contribs, mock_prs,
     repo_id = data['repository']['id']
 
     # 2. Test Duplicate Rejection
-    res_dup = client.post('/api/v1/repositories/connect', json={
+    res_dup = client.post('/api/v1/repositories/connect', headers=admin_headers, json={
         'repository_url': f"https://github.com/aureon-test/{unique_name}"
     })
     assert res_dup.status_code == 409
     assert 'already connected' in res_dup.json['message'].lower()
 
     # 3. List Repositories
-    res_list = client.get('/api/v1/repositories')
+    res_list = client.get('/api/v1/repositories', headers=admin_headers)
     assert res_list.status_code == 200
     assert any(r['id'] == repo_id for r in res_list.json['repositories'])
 
     # 4. Get Repository By ID
-    res_get = client.get(f"/api/v1/repositories/{repo_id}")
+    res_get = client.get(f"/api/v1/repositories/{repo_id}", headers=admin_headers)
     assert res_get.status_code == 200
     assert res_get.json['repository']['id'] == repo_id
     assert len(res_get.json['repository']['commits']) == 1
 
     # 5. Get Commits Sub-resource
-    res_commits = client.get(f"/api/v1/repositories/{repo_id}/commits")
+    res_commits = client.get(f"/api/v1/repositories/{repo_id}/commits", headers=admin_headers)
     assert res_commits.status_code == 200
     assert res_commits.json['count'] == 1
     assert res_commits.json['commits'][0]['commit_sha'] == '1a2b3c4d5e6f'
 
     # 6. Get Pull Requests Sub-resource
-    res_prs = client.get(f"/api/v1/repositories/{repo_id}/pull-requests")
+    res_prs = client.get(f"/api/v1/repositories/{repo_id}/pull-requests", headers=admin_headers)
     assert res_prs.status_code == 200
     assert res_prs.json['count'] == 1
     assert res_prs.json['pull_requests'][0]['pr_number'] == 1
 
     # 7. Get Contributors Sub-resource
-    res_contribs = client.get(f"/api/v1/repositories/{repo_id}/contributors")
+    res_contribs = client.get(f"/api/v1/repositories/{repo_id}/contributors", headers=admin_headers)
     assert res_contribs.status_code == 200
     assert res_contribs.json['count'] == 1
     assert res_contribs.json['contributors'][0]['username'] == 'lead_dev'
@@ -259,12 +271,12 @@ def test_connect_and_sync_repository_success(mock_tree, mock_contribs, mock_prs,
         'commit_date': now_iso,
         'commit_url': f"https://github.com/aureon-test/{unique_name}/commit/2b3c4d5e6f7g"
     })
-    res_sync = client.post(f"/api/v1/repositories/{repo_id}/sync")
+    res_sync = client.post(f"/api/v1/repositories/{repo_id}/sync", headers=admin_headers)
     assert res_sync.status_code == 200
     assert res_sync.json['new_commits_added'] == 1
 
     # 9. Disconnect Repository
-    res_del = client.delete(f"/api/v1/repositories/{repo_id}")
+    res_del = client.delete(f"/api/v1/repositories/{repo_id}", headers=admin_headers)
     assert res_del.status_code == 200
     assert res_del.json['success'] is True
 
@@ -420,13 +432,17 @@ def test_private_repository_permission_handling():
 def test_token_never_exposed_in_api(client, app):
     """Verifies that GITHUB_TOKEN is never exposed in any API response payload."""
     secret_token = 'ghp_super_secret_test_token_never_expose_9876543210'
+    with app.app_context():
+        admin = User.query.filter_by(email='admin@aureon.com').first()
+        admin_headers = {'Authorization': f'Bearer {create_access_token(identity=str(admin.id))}'}
+
     with patch.object(app.config, 'get', side_effect=lambda k, default=None: secret_token if k == 'GITHUB_TOKEN' else default):
         # 1. Test repository listing
-        res = client.get('/api/v1/repositories')
+        res = client.get('/api/v1/repositories', headers=admin_headers)
         assert secret_token not in res.data.decode('utf-8')
 
         # 2. Test repository error responses
-        res_err = client.post('/api/v1/repositories/connect', json={'repository_url': 'invalid'})
+        res_err = client.post('/api/v1/repositories/connect', headers=admin_headers, json={'repository_url': 'invalid'})
         assert secret_token not in res_err.data.decode('utf-8')
 
 
@@ -436,6 +452,9 @@ def test_token_never_exposed_in_api(client, app):
 def test_commit_pr_contributor_deduplication(mock_contribs, mock_prs, mock_commits, client, app):
     """Verifies that synchronizing identical commits, PRs, and contributors does not create duplicate database records."""
     with app.app_context():
+        admin = User.query.filter_by(email='admin@aureon.com').first()
+        admin_headers = {'Authorization': f'Bearer {create_access_token(identity=str(admin.id))}'}
+
         u_name = f"dedup-test-{uuid.uuid4().hex[:6]}"
         repo = GitHubRepository(
             owner="aureon-test",
@@ -458,7 +477,7 @@ def test_commit_pr_contributor_deduplication(mock_contribs, mock_prs, mock_commi
         ]
 
         # First sync
-        res1 = client.post(f'/api/v1/repositories/{repo.id}/sync')
+        res1 = client.post(f'/api/v1/repositories/{repo.id}/sync', headers=admin_headers)
         assert res1.status_code == 200
         assert res1.json['new_commits_added'] == 1
 
@@ -467,7 +486,7 @@ def test_commit_pr_contributor_deduplication(mock_contribs, mock_prs, mock_commi
         contribs_c1 = GitHubContributor.query.filter_by(repository_id=repo.id).count()
 
         # Second sync with identical data
-        res2 = client.post(f'/api/v1/repositories/{repo.id}/sync')
+        res2 = client.post(f'/api/v1/repositories/{repo.id}/sync', headers=admin_headers)
         assert res2.status_code == 200
         assert res2.json['new_commits_added'] == 0  # No new commits added!
 

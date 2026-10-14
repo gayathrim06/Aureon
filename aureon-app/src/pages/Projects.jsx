@@ -7,6 +7,7 @@ import { Modal } from '../components/common/Modal';
 import { FolderKanban, Plus, Search, Filter, Layers, UserCheck, Users, Shield, ArrowRight, CheckCircle2, Clock, Activity, AlertTriangle, X, CheckSquare, Sparkles, Hash, GitBranch, GitCommit, GitPullRequest, ExternalLink, RefreshCw } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { TeamWorkload } from '../roles/pm/TeamWorkload';
+import { getAuthHeaders } from '../services/apiClient';
 
 export const Projects = () => {
   const { user, showToast } = useAuth();
@@ -47,9 +48,7 @@ export const Projects = () => {
   const [rawMembers, setRawMembers] = useState([]);
 
   const fetchProjectsAndTasks = async () => {
-    const rawToken = sessionStorage.getItem('aureon_jwt_access_token') || localStorage.getItem('aureon_jwt_access_token') || sessionStorage.getItem('aureon_access_token');
-    const isRealJwt = rawToken && rawToken.startsWith('ey') && rawToken.split('.').length === 3;
-    const headers = isRealJwt ? { 'Authorization': `Bearer ${rawToken}` } : {};
+    const headers = getAuthHeaders();
 
     try {
       const [projRes, taskRes, usersRes] = await Promise.all([
@@ -60,7 +59,25 @@ export const Projects = () => {
 
       if (projRes.ok) {
         const pData = await projRes.json();
-        setProjectsList(pData.projects || []);
+        const allProjs = pData.projects || [];
+        const scopedProjs = (!user || user.role === 'ROLE_ADMIN')
+          ? allProjs
+          : allProjs.filter(p => {
+              const uId = String(user.id || '');
+              const uName = (user.name || user.full_name || '').toLowerCase().trim();
+              const pMgrId = String(p.manager_id || '');
+              const pMgrName = (p.manager_name || '').toLowerCase().trim();
+              const pLeadId = String(p.lead_id || '');
+              const pLeadName = (p.lead_name || '').toLowerCase().trim();
+              if (user.role === 'ROLE_PM') {
+                return (pMgrId && pMgrId === uId) || (pMgrName && uName && (pMgrName === uName || pMgrName.includes(uName) || uName.includes(pMgrName)));
+              }
+              if (user.role === 'ROLE_LEAD') {
+                return (pLeadId && pLeadId === uId) || (pLeadName && uName && (pLeadName === uName || pLeadName.includes(uName) || uName.includes(pLeadName)));
+              }
+              return true;
+            });
+        setProjectsList(scopedProjs);
       } else {
         setProjectsList([]);
       }

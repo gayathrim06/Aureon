@@ -64,14 +64,27 @@ def get_quality_summary():
 
     for p in projects:
         report = CodeQualityReport.query.filter_by(project_id=p.id).order_by(CodeQualityReport.analysis_date.desc()).first()
-        q_score = report.quality_score if report else (p.health_score or 90)
-        gate = 'PASSED' if q_score >= 80 else 'WARNING'
-        if gate == 'PASSED':
-            passed_count += 1
-        bugs_count = report.pylint_errors if report else 0
-        smells_count = report.pylint_warnings if report else 1
-        total_bugs += bugs_count
-        total_smells += smells_count
+        if report:
+            q_score = report.quality_score or 0
+            gate = 'PASSED' if q_score >= 80 else 'WARNING'
+            if gate == 'PASSED':
+                passed_count += 1
+            bugs_count = report.pylint_errors or 0
+            smells_count = report.pylint_warnings or 0
+            total_bugs += bugs_count
+            total_smells += smells_count
+            cov_val = f"{round(max(0.0, min(100.0, q_score)), 1)}%"
+            tech_debt = f"{max(1, 10 - int(q_score / 10))}d"
+            rating = 'A' if q_score >= 85 else 'B'
+            last_scan = report.analysis_date.strftime('%Y-%m-%d') if report.analysis_date else 'Recent'
+        else:
+            gate = 'NOT_CONNECTED'
+            bugs_count = 0
+            smells_count = 0
+            cov_val = 'N/A'
+            tech_debt = 'NO DATA'
+            rating = 'N/A'
+            last_scan = 'No CI Data'
 
         project_items.append({
             'id': str(p.id),
@@ -80,14 +93,16 @@ def get_quality_summary():
             'qualityGate': gate,
             'bugs': bugs_count,
             'codeSmells': smells_count,
-            'coverage': f"{round(max(70.0, min(99.0, q_score * 0.95)), 1)}%",
-            'technicalDebt': f"{max(1, 10 - int(q_score / 10))}d",
-            'rating': 'A' if q_score >= 85 else 'B',
-            'lastScan': report.analysis_date.strftime('%Y-%m-%d') if (report and report.analysis_date) else 'Recent'
+            'coverage': cov_val,
+            'technicalDebt': tech_debt,
+            'rating': rating,
+            'lastScan': last_scan
         })
 
-    overall_gate = 'PASSED' if (passed_count >= len(projects) * 0.7 or len(projects) == 0) else 'WARNING'
-    avg_cov = f"{round(sum(float(p['coverage'].replace('%','')) for p in project_items) / max(1, len(project_items)), 1)}%" if project_items else '92.5%'
+    reports_exist = any(p['qualityGate'] != 'NOT_CONNECTED' for p in project_items)
+    overall_gate = 'PASSED' if (reports_exist and passed_count >= len(project_items) * 0.7) else ('NOT_CONNECTED' if not reports_exist else 'WARNING')
+    valid_covs = [float(p['coverage'].replace('%', '')) for p in project_items if p['coverage'] != 'N/A']
+    avg_cov = f"{round(sum(valid_covs) / len(valid_covs), 1)}%" if valid_covs else 'N/A'
 
     return jsonify({
         'success': True,

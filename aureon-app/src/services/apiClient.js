@@ -24,7 +24,17 @@ export const getAuthToken = () => {
 
 export const getAuthHeaders = () => {
   const token = getAuthToken();
-  return token ? { 'Authorization': `Bearer ${token}` } : {};
+  const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+  try {
+    const savedUser = sessionStorage.getItem('aureon_current_user') || localStorage.getItem('aureon_current_user');
+    if (savedUser) {
+      const u = JSON.parse(savedUser);
+      if (u.id) headers['X-User-Id'] = String(u.id);
+      if (u.email) headers['X-User-Email'] = String(u.email);
+      if (u.role || u.role_name) headers['X-User-Role'] = String(u.role || u.role_name);
+    }
+  } catch (e) {}
+  return headers;
 };
 
 export const apiClient = async (endpoint, options = {}) => {

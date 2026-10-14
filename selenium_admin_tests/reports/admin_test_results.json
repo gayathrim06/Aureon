@@ -1,0 +1,218 @@
+[
+  {
+    "id": "TC-ADM-01",
+    "name": "Admin Authentication with Valid Credentials",
+    "category": "Authentication & RBAC",
+    "description": "Verify successful authentication of System Administrator using corporate email and PBKDF2 hash credentials.",
+    "status": "PASS",
+    "duration": 13.14,
+    "screenshot": "C:\\Users\\91894\\OneDrive\\Desktop\\MCA project main and mini\\selenium_admin_tests\\screenshots\\01_admin_login_success.png"
+  },
+  {
+    "id": "TC-ADM-02",
+    "name": "Admin Role Workspace Indicator Badge",
+    "category": "Authentication & RBAC",
+    "description": "Verify header displays role-isolated 'Workspace: ADMIN Portal' indicating correct RBAC route guard execution.",
+    "status": "PASS",
+    "duration": 0.07,
+    "screenshot": "C:\\Users\\91894\\OneDrive\\Desktop\\MCA project main and mini\\selenium_admin_tests\\screenshots\\02_admin_workspace_badge.png"
+  },
+  {
+    "id": "TC-ADM-03",
+    "name": "Administrator User Profile Verification",
+    "category": "Authentication & RBAC",
+    "description": "Verify authenticated user's header badge renders the designated administrator identity ('GAYATHRI M').",
+    "status": "PASS",
+    "duration": 0.07,
+    "screenshot": "C:\\Users\\91894\\OneDrive\\Desktop\\MCA project main and mini\\selenium_admin_tests\\screenshots\\03_admin_user_profile.png"
+  },
+  {
+    "id": "TC-ADM-04",
+    "name": "Executive Admin Dashboard KPI Rendering",
+    "category": "Dashboard Analytics",
+    "description": "Verify executive analytics command center loads KPI cards: Total Users, Active Projects, System Health.",
+    "status": "PASS",
+    "duration": 2.71,
+    "screenshot": "C:\\Users\\91894\\OneDrive\\Desktop\\MCA project main and mini\\selenium_admin_tests\\screenshots\\04_dashboard_metrics.png"
+  },
+  {
+    "id": "TC-ADM-05",
+    "name": "Dashboard Live Analytics Refresh Action",
+    "category": "Dashboard Analytics",
+    "description": "Click 'Refresh Analytics' button and ensure asynchronous metrics telemetry updates without runtime errors.",
+    "status": "PASS",
+    "duration": 1.47,
+    "screenshot": "C:\\Users\\91894\\OneDrive\\Desktop\\MCA project main and mini\\selenium_admin_tests\\screenshots\\05_refresh_analytics.png"
+  },
+  {
+    "id": "TC-ADM-06",
+    "name": "User Directory & Account Management View",
+    "category": "User Management",
+    "description": "Navigate to Users tab and verify the system account directory table loads with user records from PostgreSQL.",
+    "status": "PASS",
+    "duration": 3.12,
+    "screenshot": "C:\\Users\\91894\\OneDrive\\Desktop\\MCA project main and mini\\selenium_admin_tests\\screenshots\\06_user_management_table.png"
+  },
+  {
+    "id": "TC-ADM-07",
+    "name": "User Directory Search & Multi-Field Filtering",
+    "category": "User Management",
+    "description": "Search for a specific employee ('krish') in the table search input and verify reactive row filtering.",
+    "status": "PASS",
+    "duration": 2.14,
+    "screenshot": "C:\\Users\\91894\\OneDrive\\Desktop\\MCA project main and mini\\selenium_admin_tests\\screenshots\\07_user_search_krish.png"
+  },
+  {
+    "id": "TC-ADM-08",
+    "name": "User Directory Search Filter Reset",
+    "category": "User Management",
+    "description": "Clear search query and verify full enterprise user roster is restored in the paginated table.",
+    "status": "PASS",
+    "duration": 2.19,
+    "screenshot": "C:\\Users\\91894\\OneDrive\\Desktop\\MCA project main and mini\\selenium_admin_tests\\screenshots\\08_user_filter_reset.png"
+  },
+  {
+    "id": "TC-ADM-09",
+    "name": "User Provisioning Modal Dialog Display",
+    "category": "User Management",
+    "description": "Click 'Add Team Member' button and verify modal opens with input fields for full name, email, role, and department.",
+    "status": "PASS",
+    "duration": 0.99,
+    "screenshot": "C:\\Users\\91894\\OneDrive\\Desktop\\MCA project main and mini\\selenium_admin_tests\\screenshots\\09_add_user_modal_open.png"
+  },
+  {
+    "id": "TC-ADM-10",
+    "name": "Provision New Team Member Form Submission",
+    "category": "User Management",
+    "description": "Submit user provisioning form with new user details and verify instant table insertion & toast notification.",
+    "status": "PASS",
+    "duration": 6.87,
+    "screenshot": "C:\\Users\\91894\\OneDrive\\Desktop\\MCA project main and mini\\selenium_admin_tests\\screenshots\\10_user_provisioned_success.png"
+  },
+  {
+    "id": "TC-ADM-11",
+    "name": "User Deprovisioning & Removal Action",
+    "category": "User Management",
+    "description": "Click user deprovision (trash) button on the provisioned account and verify removal from active roster.",
+    "status": "PASS",
+    "duration": 3.21,
+    "screenshot": "C:\\Users\\91894\\OneDrive\\Desktop\\MCA project main and mini\\selenium_admin_tests\\screenshots\\11_user_deprovision_success.png"
+  },
+  {
+    "id": "TC-ADM-12",
+    "name": "RBAC Roles & Permissions Matrix Inspection",
+    "category": "Roles & Permissions",
+    "description": "Navigate to Roles & Permissions tab and verify the 5 system authorization profiles are rendered with active privileges.",
+    "status": "PASS",
+    "duration": 3.94,
+    "screenshot": "C:\\Users\\91894\\OneDrive\\Desktop\\MCA project main and mini\\selenium_admin_tests\\screenshots\\12_roles_permissions_view.png"
+  },
+  {
+    "id": "TC-ADM-13",
+    "name": "Roles Directory Dynamic API Synchronization",
+    "category": "Roles & Permissions",
+    "description": "Click 'Refresh Roles' button to synchronize active role policies directly from the database endpoint.",
+    "status": "PASS",
+    "duration": 1.43,
+    "screenshot": "C:\\Users\\91894\\OneDrive\\Desktop\\MCA project main and mini\\selenium_admin_tests\\screenshots\\13_refresh_roles_success.png"
+  },
+  {
+    "id": "TC-ADM-14",
+    "name": "Global Projects Directory & Health Score Audit",
+    "category": "Projects & Resource Oversight",
+    "description": "Navigate to Projects view and verify system projects table loads with health scores, deadlines, and tech lead assignments.",
+    "status": "PASS",
+    "duration": 3.0,
+    "screenshot": "C:\\Users\\91894\\OneDrive\\Desktop\\MCA project main and mini\\selenium_admin_tests\\screenshots\\14_projects_directory.png"
+  },
+  {
+    "id": "TC-ADM-15",
+    "name": "Projects Directory Search & Filtering",
+    "category": "Projects & Resource Oversight",
+    "description": "Filter projects by search term ('Verona') and verify reactive filtering of project records.",
+    "status": "PASS",
+    "duration": 3.32,
+    "screenshot": "C:\\Users\\91894\\OneDrive\\Desktop\\MCA project main and mini\\selenium_admin_tests\\screenshots\\15_projects_search_success.png"
+  },
+  {
+    "id": "TC-ADM-16",
+    "name": "Engineering Teams Directory & Allocation Overview",
+    "category": "Projects & Resource Oversight",
+    "description": "Navigate to Teams view and verify engineering squad allocations, team lead assignments, and capacity bars.",
+    "status": "PASS",
+    "duration": 3.94,
+    "screenshot": "C:\\Users\\91894\\OneDrive\\Desktop\\MCA project main and mini\\selenium_admin_tests\\screenshots\\16_teams_directory.png"
+  },
+  {
+    "id": "TC-ADM-17",
+    "name": "System Audit Trail & Security Event Logs Ledger",
+    "category": "Audit & Compliance",
+    "description": "Navigate to Audit Logs tab and verify PostgreSQL-backed security events table with timestamp and event details.",
+    "status": "PASS",
+    "duration": 3.96,
+    "screenshot": "C:\\Users\\91894\\OneDrive\\Desktop\\MCA project main and mini\\selenium_admin_tests\\screenshots\\17_audit_logs_ledger.png"
+  },
+  {
+    "id": "TC-ADM-18",
+    "name": "Audit Logs Live Refresh Action",
+    "category": "Audit & Compliance",
+    "description": "Trigger 'Refresh Logs' button and confirm dynamic fetch of newest audit log entries.",
+    "status": "PASS",
+    "duration": 1.39,
+    "screenshot": "C:\\Users\\91894\\OneDrive\\Desktop\\MCA project main and mini\\selenium_admin_tests\\screenshots\\18_refresh_audit_logs.png"
+  },
+  {
+    "id": "TC-ADM-19",
+    "name": "System Diagnostics & Telemetry Logs",
+    "category": "System Diagnostics",
+    "description": "Navigate to System Logs module and verify diagnostic log table with severity level pills (INFO, WARN, ERROR).",
+    "status": "PASS",
+    "duration": 2.93,
+    "screenshot": "C:\\Users\\91894\\OneDrive\\Desktop\\MCA project main and mini\\selenium_admin_tests\\screenshots\\19_system_logs_view.png"
+  },
+  {
+    "id": "TC-ADM-20",
+    "name": "Platform Security & JWT Policy Settings View",
+    "category": "Platform Settings",
+    "description": "Navigate to Settings tab and verify JWT expiration, password complexity, and lockout policy controls.",
+    "status": "PASS",
+    "duration": 3.93,
+    "screenshot": "C:\\Users\\91894\\OneDrive\\Desktop\\MCA project main and mini\\selenium_admin_tests\\screenshots\\20_platform_settings.png"
+  },
+  {
+    "id": "TC-ADM-21",
+    "name": "Platform Configuration Save & Toast Trigger",
+    "category": "Platform Settings",
+    "description": "Click 'Save Configuration' button and verify state changes to 'Saved!' with persistent local storage update.",
+    "status": "PASS",
+    "duration": 1.43,
+    "screenshot": "C:\\Users\\91894\\OneDrive\\Desktop\\MCA project main and mini\\selenium_admin_tests\\screenshots\\21_save_settings_success.png"
+  },
+  {
+    "id": "TC-ADM-22",
+    "name": "Multi-Mode UI Theme Customization (Dark/Light/Warm)",
+    "category": "UI & Personalization",
+    "description": "Trigger top header theme switcher toggle and verify HTML class updates dynamically between dark and light themes.",
+    "status": "PASS",
+    "duration": 2.85,
+    "screenshot": "C:\\Users\\91894\\OneDrive\\Desktop\\MCA project main and mini\\selenium_admin_tests\\screenshots\\22_theme_toggle_success.png"
+  },
+  {
+    "id": "TC-ADM-23",
+    "name": "Administrator Session Termination & Secure Logout",
+    "category": "Authentication & RBAC",
+    "description": "Open top user dropdown, click 'Secure Logout' and verify session storage token cleanup and redirection to landing/login.",
+    "status": "PASS",
+    "duration": 4.83,
+    "screenshot": "C:\\Users\\91894\\OneDrive\\Desktop\\MCA project main and mini\\selenium_admin_tests\\screenshots\\23_admin_logout_success.png"
+  },
+  {
+    "id": "TC-ADM-24",
+    "name": "Unauthorized Access & Invalid Password Rejection",
+    "category": "Security & Access Control",
+    "description": "Attempt authentication using invalid password and verify access rejection and security error alert.",
+    "status": "PASS",
+    "duration": 7.63,
+    "screenshot": "C:\\Users\\91894\\OneDrive\\Desktop\\MCA project main and mini\\selenium_admin_tests\\screenshots\\24_invalid_login_rejected.png"
+  }
+]

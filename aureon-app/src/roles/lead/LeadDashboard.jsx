@@ -65,20 +65,54 @@ export const LeadDashboard = ({ onNavigate }) => {
         devs = aData.developers || [];
       }
 
-      setRawProjects(projects);
-      setRawTasks(tasks);
-      setRawSprints(sprints);
+      // Scope projects strictly to this Team Lead's assigned project portfolio
+      const myProjects = projects.filter(p => {
+        if (!user || user.role === 'ROLE_ADMIN') return true;
+        const uId = String(user.id || '');
+        const uName = (user.name || user.full_name || '').toLowerCase().trim();
+        const uEmail = (user.email || '').toLowerCase().trim();
+        const pLeadId = String(p.lead_id || '');
+        const pLeadName = (p.lead_name || '').toLowerCase().trim();
+        const pLeadEmail = (p.lead_email || '').toLowerCase().trim();
+
+        if ((pLeadId && uId && pLeadId === uId) ||
+            (pLeadEmail && uEmail && pLeadEmail === uEmail) ||
+            (pLeadName && uName && (pLeadName === uName || pLeadName.includes(uName) || uName.includes(pLeadName)))) {
+          return true;
+        }
+        if (p.members && Array.isArray(p.members)) {
+          return p.members.some(m => String(m.id || m.user_id) === uId || (m.email && m.email.toLowerCase() === uEmail));
+        }
+        return false;
+      });
+
+      const myProjectIds = myProjects.map(p => String(p.id));
+      const myProjectNames = myProjects.map(p => (p.name || '').toLowerCase());
+
+      // Filter tasks to only this Lead's assigned project deliverables
+      const myTasks = user?.role === 'ROLE_ADMIN' 
+        ? tasks 
+        : tasks.filter(t => myProjectIds.includes(String(t.project_id)) || myProjectNames.includes((t.project_name || '').toLowerCase()));
+
+      // Filter sprints to only this Lead's assigned project iterations
+      const mySprints = user?.role === 'ROLE_ADMIN'
+        ? sprints
+        : sprints.filter(s => myProjectIds.includes(String(s.project_id)));
+
+      setRawProjects(myProjects);
+      setRawTasks(myTasks);
+      setRawSprints(mySprints);
       setRawDevs(devs);
 
-      const activeTasks = tasks.filter(t => !['COMPLETED', 'DONE', 'CLOSED'].includes(t.status));
-      const inReviewCount = tasks.filter(t => t.status === 'IN_REVIEW' || t.status === 'REVIEW').length;
+      const activeTasks = myTasks.filter(t => !['COMPLETED', 'DONE', 'CLOSED'].includes(t.status));
+      const inReviewCount = myTasks.filter(t => t.status === 'IN_REVIEW' || t.status === 'REVIEW').length;
       
       // Look for any active/in-progress sprints matching database statuses
-      const activeSprints = sprints.filter(s => 
+      const activeSprints = mySprints.filter(s => 
         ['ACTIVE', 'IN_PROGRESS', 'IN PROGRESS', 'STARTED', 'PLANNING'].includes((s.status || '').toUpperCase())
       );
       
-      const sprintScores = sprints
+      const sprintScores = mySprints
         .map(s => s.sprint_score !== undefined && s.sprint_score !== null ? Number(s.sprint_score) : null)
         .filter(score => score !== null);
       
@@ -91,7 +125,7 @@ export const LeadDashboard = ({ onNavigate }) => {
       setStats({
         activeTasks: activeTasks.length,
         inReviewCount,
-        activeProjects: projects.length,
+        activeProjects: myProjects.length,
         activeSprintsCount: activeSprints.length,
         avgSprintScore: avgScore,
         teamDevsCount: devs.length,

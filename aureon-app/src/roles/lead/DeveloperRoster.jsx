@@ -3,7 +3,7 @@ import { Breadcrumb } from '../../components/common/Breadcrumb';
 import { Modal } from '../../components/common/Modal';
 import { useAuth } from '../../context/AuthContext';
 import { logAuditEvent } from '../../services/auditLogger';
-import { Users, CheckSquare, Plus, Layers, ShieldCheck, UserCheck, CheckCircle2, Clock } from 'lucide-react';
+import { Users, CheckSquare, Plus, Layers, ShieldCheck, UserCheck, CheckCircle2, Clock, Filter, Search, ArrowUpDown, ChevronDown } from 'lucide-react';
 import { getAuthHeaders } from '../../services/apiClient';
 
 export const DeveloperRoster = ({ onShowToast }) => {
@@ -13,6 +13,11 @@ export const DeveloperRoster = ({ onShowToast }) => {
   const [projectsList, setProjectsList] = useState([]);
   const [sprintsList, setSprintsList] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // Filter & Sort State
+  const [selectedRole, setSelectedRole] = useState('ALL');
+  const [sortBy, setSortBy] = useState('default');
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Modal States
   const [taskModalDev, setTaskModalDev] = useState(null);
@@ -86,7 +91,16 @@ export const DeveloperRoster = ({ onShowToast }) => {
       let loadedProjs = [];
       if (pRes.ok) {
         const pData = await pRes.json();
-        loadedProjs = pData.projects || [];
+        const allProjs = pData.projects || [];
+        loadedProjs = user?.role === 'ROLE_ADMIN'
+          ? allProjs
+          : allProjs.filter(p => {
+              const uId = String(user?.id || '');
+              const uName = (user?.name || user?.full_name || '').toLowerCase().trim();
+              const pLeadId = String(p.lead_id || '');
+              const pLeadName = (p.lead_name || '').toLowerCase().trim();
+              return (pLeadId && pLeadId === uId) || (pLeadName && uName && (pLeadName === uName || pLeadName.includes(uName) || uName.includes(pLeadName)));
+            });
         setProjectsList(loadedProjs);
         if (loadedProjs.length > 0) {
           setTaskFormData(prev => ({ ...prev, projectId: loadedProjs[0].id }));
@@ -96,7 +110,11 @@ export const DeveloperRoster = ({ onShowToast }) => {
 
       if (sRes.ok) {
         const sData = await sRes.json();
-        const spr = sData.sprints || [];
+        const allSpr = sData.sprints || [];
+        const myProjIds = loadedProjs.map(p => String(p.id));
+        const spr = user?.role === 'ROLE_ADMIN'
+          ? allSpr
+          : allSpr.filter(s => myProjIds.includes(String(s.project_id)));
         setSprintsList(spr);
         if (spr.length > 0) {
           setTaskFormData(prev => ({ ...prev, sprintId: spr[0].id }));
@@ -214,6 +232,49 @@ export const DeveloperRoster = ({ onShowToast }) => {
     setSprintModalDev(null);
   };
 
+  const processedUsers = React.useMemo(() => {
+    let list = usersList.map(u => {
+      const desig = (u.designation || '').toLowerCase();
+      const r = (u.role_name || u.role || '').toUpperCase();
+      let roleCat = 'DEV';
+      let roleLabel = 'Developer';
+      if (r.includes('QA') || desig.includes('qa') || desig.includes('test')) {
+        roleCat = 'QA';
+        roleLabel = 'Quality Engineer';
+      } else if (r.includes('LEAD') || desig.includes('lead')) {
+        roleCat = 'LEAD';
+        roleLabel = 'Team Lead';
+      }
+      return { ...u, roleCategory: roleCat, roleLabel };
+    });
+
+    if (selectedRole !== 'ALL') {
+      list = list.filter(u => u.roleCategory === selectedRole);
+    }
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      list = list.filter(u => (u.full_name || u.name || '').toLowerCase().includes(q) || (u.email || '').toLowerCase().includes(q) || (u.designation || '').toLowerCase().includes(q));
+    }
+
+    if (sortBy === 'role') {
+      const roleOrder = { LEAD: 1, DEV: 2, QA: 3 };
+      list.sort((a, b) => (roleOrder[a.roleCategory] || 99) - (roleOrder[b.roleCategory] || 99));
+    } else if (sortBy === 'name_asc') {
+      list.sort((a, b) => (a.full_name || a.name || '').localeCompare(b.full_name || b.name || ''));
+    } else if (sortBy === 'name_desc') {
+      list.sort((a, b) => (b.full_name || b.name || '').localeCompare(a.full_name || a.name || ''));
+    } else if (sortBy === 'availability') {
+      list.sort((a, b) => (a.is_available === b.is_available ? 0 : a.is_available ? -1 : 1));
+    }
+    return list;
+  }, [usersList, selectedRole, sortBy, searchQuery]);
+
+  const devCounts = {
+    ALL: usersList.length,
+    DEV: usersList.filter(u => !((u.designation || '').toLowerCase().includes('qa') || (u.role || '').includes('QA'))).length,
+    QA: usersList.filter(u => ((u.designation || '').toLowerCase().includes('qa') || (u.role || '').includes('QA'))).length,
+  };
+
   return (
     <div className="space-y-6 font-sans text-slate-900 dark:text-slate-100 warm:text-[#342314]">
       <Breadcrumb activeTab="Developer Roster" />
@@ -229,9 +290,99 @@ export const DeveloperRoster = ({ onShowToast }) => {
         </p>
       </div>
 
+      {/* Quick Role Filter Badges */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+        {[
+          { key: 'ALL', label: 'All Engineers', count: devCounts.ALL },
+          { key: 'DEV', label: 'Software Developers', count: devCounts.DEV },
+          { key: 'QA', label: 'Quality Engineers', count: devCounts.QA }
+        ].map(tab => {
+          const isActive = selectedRole === tab.key;
+          return (
+            <button
+              key={tab.key}
+              type="button"
+              onClick={() => setSelectedRole(tab.key)}
+              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap shadow-2xs ${
+                isActive
+                  ? 'bg-indigo-600 text-white shadow-sm ring-2 ring-indigo-500/30'
+                  : 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/80 hover:text-slate-900 dark:hover:text-white'
+              }`}
+            >
+              <span>{tab.label}</span>
+              <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-extrabold ${
+                isActive
+                  ? 'bg-white/20 text-white'
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
+              }`}>
+                {tab.count}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Filter & Sort Controls Bar */}
+      <div className="p-3.5 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs flex flex-wrap items-center justify-between gap-3">
+        <div className="relative w-full sm:w-64">
+          <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
+          <input
+            type="text"
+            placeholder="Search developers by name, role, email..."
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            className="w-full pl-9 pr-3 py-1.5 bg-slate-50 dark:bg-slate-800/60 text-xs text-slate-900 dark:text-white border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+          />
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Role Filter Dropdown */}
+          <div className="relative">
+            <select
+              value={selectedRole}
+              onChange={(e) => setSelectedRole(e.target.value)}
+              className="appearance-none pl-8 pr-7 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-800 dark:text-slate-200 cursor-pointer"
+            >
+              <option value="ALL">Filter: All Roles ({devCounts.ALL})</option>
+              <option value="DEV">Developer ({devCounts.DEV})</option>
+              <option value="QA">Quality Engineer ({devCounts.QA})</option>
+            </select>
+            <Filter className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
+            <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
+          </div>
+
+          {/* Sort Dropdown */}
+          <div className="relative">
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              className="appearance-none pl-8 pr-7 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-800 dark:text-slate-200 cursor-pointer"
+            >
+              <option value="default">Sort: Default</option>
+              <option value="role">Sort: Role (Dev → QA)</option>
+              <option value="name_asc">Sort: Name (A to Z)</option>
+              <option value="name_desc">Sort: Name (Z to A)</option>
+              <option value="availability">Sort: Availability (Free First)</option>
+            </select>
+            <ArrowUpDown className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
+            <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
+          </div>
+
+          {(selectedRole !== 'ALL' || sortBy !== 'default' || searchQuery) && (
+            <button
+              type="button"
+              onClick={() => { setSelectedRole('ALL'); setSortBy('default'); setSearchQuery(''); }}
+              className="px-2.5 py-1 text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer"
+            >
+              Reset
+            </button>
+          )}
+        </div>
+      </div>
+
       {/* Roster Cards Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-        {usersList.map((u) => {
+        {processedUsers.map((u) => {
           const uName = u.full_name || u.name || u.username || 'Team Member';
           const devId = u.id || u.user_id;
           const userTasks = tasksList.filter(t => {

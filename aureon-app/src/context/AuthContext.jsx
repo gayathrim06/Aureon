@@ -210,6 +210,13 @@ export const AuthProvider = ({ children }) => {
 
         showToast(`Welcome back, ${loggedUser.name}! Authenticated via REST API.`, 'success');
         return { success: true, user: loggedUser };
+      } else {
+        const errData = await drfRes.json().catch(() => ({}));
+        setFailedLoginsCount(prev => prev + 1);
+        return { 
+          success: false, 
+          message: errData.message || errData.error || 'Invalid corporate email or password. Please check your credentials.' 
+        };
       }
     } catch (err) {
       console.warn("Backend API offline or unreachable. Engaging seamless authentication fallback.");

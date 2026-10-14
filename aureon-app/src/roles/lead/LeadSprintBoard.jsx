@@ -46,18 +46,34 @@ export const LeadSprintBoard = ({ onShowToast, initialView = 'kanban' }) => {
         fetch('http://127.0.0.1:8000/api/v1/users/', { headers })
       ]);
 
+      let myTeams = [];
+      if (tmRes.ok) {
+        const tmData = await tmRes.json();
+        const allTeams = tmData.teams || [];
+        myTeams = user?.role === 'ROLE_ADMIN' 
+          ? allTeams 
+          : allTeams.filter(t => {
+              const uId = String(user?.id || '');
+              const uName = (user?.name || user?.full_name || '').toLowerCase().trim();
+              const tLeaderId = String(t.team_leader_id || t.lead_id || '');
+              const tLeaderName = (t.leader_name || t.leader || '').toLowerCase().trim();
+              return (tLeaderId && tLeaderId === uId) || (tLeaderName && uName && (tLeaderName === uName || tLeaderName.includes(uName) || uName.includes(tLeaderName)));
+            });
+        setTeamsList(myTeams);
+      }
+
       if (spRes.ok) {
         const spData = await spRes.json();
         const spList = spData.sprints || [];
-        setSprints(spList);
-        if (spList.length > 0 && !selectedSprintId) {
-          setSelectedSprintId(spList[0].id);
+        const myTeamIds = myTeams.map(t => String(t.id));
+        const myProjectIds = myTeams.map(t => String(t.project_id)).filter(Boolean);
+        const scopedSprints = user?.role === 'ROLE_ADMIN'
+          ? spList
+          : spList.filter(s => myTeamIds.includes(String(s.team_id)) || myProjectIds.includes(String(s.project_id)));
+        setSprints(scopedSprints);
+        if (scopedSprints.length > 0 && !selectedSprintId) {
+          setSelectedSprintId(scopedSprints[0].id);
         }
-      }
-
-      if (tmRes.ok) {
-        const tmData = await tmRes.json();
-        setTeamsList(tmData.teams || []);
       }
 
       if (usRes.ok) {
@@ -68,7 +84,13 @@ export const LeadSprintBoard = ({ onShowToast, initialView = 'kanban' }) => {
 
       if (tkRes.ok) {
         const tkData = await tkRes.json();
-        setTasks(tkData.tasks || []);
+        const allTasks = tkData.tasks || [];
+        const myTeamIds = myTeams.map(t => String(t.id));
+        const myProjectIds = myTeams.map(t => String(t.project_id)).filter(Boolean);
+        const scopedTasks = user?.role === 'ROLE_ADMIN'
+          ? allTasks
+          : allTasks.filter(t => myTeamIds.includes(String(t.team_id)) || myProjectIds.includes(String(t.project_id)));
+        setTasks(scopedTasks);
       }
     } catch (err) {
       console.error('Failed to load lead sprint board data:', err);

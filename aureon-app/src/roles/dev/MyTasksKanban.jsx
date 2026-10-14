@@ -36,7 +36,22 @@ export const MyTasksKanban = ({ onShowToast }) => {
       if (res.ok) {
         const data = await res.json();
         if (data.success && data.tasks) {
-          const formatted = data.tasks.map((t) => ({
+          const myUserId = String(user?.id || '').toLowerCase();
+          const myEmail = String(user?.email || '').toLowerCase();
+          const myName = String(user?.name || user?.full_name || '').toLowerCase();
+
+          const scoped = data.tasks.filter(t => {
+            const assignId = String(t.assigned_to_id || t.assigned_to || '').toLowerCase();
+            const assignName = String(t.assignee_name || t.assigned_user?.display_name || '').toLowerCase();
+            const assignEmail = String(t.assignee_email || t.assigned_user?.email || '').toLowerCase();
+            
+            if (myUserId && assignId === myUserId) return true;
+            if (myEmail && (assignEmail === myEmail || assignId === myEmail)) return true;
+            if (myName && assignName && (assignName.includes(myName) || myName.includes(assignName))) return true;
+            return false;
+          });
+
+          const formatted = scoped.map((t) => ({
             id: t.id,
             title: t.title || 'Untitled Task',
             status: t.status === 'IN_REVIEW' ? 'REVIEW' : (t.status || 'TODO'),

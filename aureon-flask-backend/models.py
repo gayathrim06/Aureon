@@ -1067,6 +1067,8 @@ class GitHubRepository(db.Model):
             'commits_count': len(self.commits) if self.commits else 0,
             'pull_requests_count': len(self.pull_requests) if self.pull_requests else 0,
             'contributors_count': len(self.contributors) if self.contributors else 0,
+            'branches_count': 1 if (self.default_branch and len(self.commits) > 0) else 0,
+            'size': 0,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None
         }

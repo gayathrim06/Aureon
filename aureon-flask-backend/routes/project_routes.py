@@ -29,6 +29,21 @@ def _get_auth_user():
                 return user
     except Exception:
         pass
+
+    # Check X-User-Id and X-User-Email headers
+    u_param = request.headers.get('X-User-Id') or request.args.get('user_id')
+    if u_param:
+        u_uuid = _parse_uuid(u_param)
+        user = User.query.get(u_uuid or u_param)
+        if user:
+            return user
+
+    email_param = request.headers.get('X-User-Email') or request.args.get('email')
+    if email_param:
+        user = User.query.filter(User.email.ilike(email_param.strip())).first()
+        if user:
+            return user
+
     admin_user = User.query.filter_by(email='admin@aureon.com').first()
     if not admin_user:
         admin_role = Role.query.filter_by(code='ROLE_ADMIN').first()
@@ -53,9 +68,11 @@ def manage_projects():
     scope = get_user_scope(user)
 
     if request.method == 'GET':
-        query = Project.query.filter_by(is_active=True)
-        if not scope.is_admin:
-            query = query.filter(Project.id.in_(scope.project_ids))
+        if scope.is_admin:
+            include_inactive = request.args.get('include_inactive') == 'true' or request.args.get('all') == 'true'
+            query = Project.query if include_inactive else Project.query.filter_by(is_active=True)
+        else:
+            query = Project.query.filter_by(is_active=True).filter(Project.id.in_(scope.project_ids))
         projects = query.all()
         return jsonify({'success': True, 'count': len(projects), 'projects': [p.to_dict() for p in projects]}), 200
 

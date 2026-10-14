@@ -6,7 +6,7 @@ import {
   FolderKanban, Layers, CheckSquare, Clock, Calendar, Activity, 
   GitBranch, Bug, Users, Plus, FileText, AlertCircle, TrendingUp, Cpu, BarChart2,
   CheckCircle2, Shield, UserCheck, Code2, AlertTriangle, Send, Edit3, ArrowRight,
-  Filter, Sparkles, ChevronRight, Hash, Play, PauseCircle, CheckSquare2, XSquare
+  Filter, Sparkles, ChevronRight, Hash, Play, PauseCircle, CheckSquare2, XSquare, ListTodo
 } from 'lucide-react';
 import { getAuthHeaders } from '../../services/apiClient';
 
@@ -234,25 +234,6 @@ export const PmDashboard = ({ onNavigate }) => {
     <div className="space-y-6 font-sans text-slate-900 dark:text-slate-100 warm:text-[#342314]">
       <Breadcrumb activeTab="Dashboard" title="Project Manager Workspace" />
 
-      {/* Governance Scope Notice Banner */}
-      <div className="p-4 rounded-2xl bg-indigo-50/80 dark:bg-indigo-950/50 warm:bg-[#f3e8d2] border border-indigo-200 dark:border-indigo-800 warm:border-[#cbb68e] shadow-xs flex items-center justify-between text-xs">
-        <div className="flex items-center gap-3">
-          <Shield className="w-5 h-5 text-indigo-600 dark:text-indigo-400 shrink-0" />
-          <div>
-            <strong className="text-indigo-900 dark:text-indigo-200 warm:text-[#342314] font-extrabold">Project Manager Governance Rule:</strong>
-            <span className="text-indigo-700 dark:text-indigo-300 warm:text-[#69523c] ml-1.5 font-medium">
-              PM creates projects, sets deadlines & priorities, assigns Team Lead & Team Members. Team Lead allocates technical work.
-            </span>
-          </div>
-        </div>
-        <button
-          onClick={() => setIsCreateModalOpen(true)}
-          className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold text-xs shadow-md shrink-0 flex items-center gap-1.5 transition-all hover:scale-105"
-        >
-          <Plus className="w-4 h-4" /> Create New Project
-        </button>
-      </div>
-
       {/* Theme-Aware PM Header Banner */}
       <div className="relative p-6 rounded-2xl aureon-theme-banner overflow-hidden transition-all duration-300 shadow-xl flex flex-col md:flex-row justify-between items-start md:items-center gap-6 border border-white/20">
         <div className="relative z-10">
@@ -276,36 +257,57 @@ export const PmDashboard = ({ onNavigate }) => {
             style={{ color: '#1e1b4b' }}
           >
             <Plus className="w-4 h-4 text-indigo-600 shrink-0" style={{ color: '#4f46e5' }} />
-            <span style={{ color: '#1e1b4b', fontWeight: 800 }}>Initialize Project</span>
+            <span style={{ color: '#1e1b4b', fontWeight: 800 }}>Create New Project</span>
           </button>
           <button
             onClick={() => onNavigate && onNavigate('Projects')}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/20 hover:bg-white/30 text-white font-extrabold text-xs border border-white/30 shadow-md transition-all hover:scale-105"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/20 hover:bg-white/30 text-white font-extrabold text-xs border border-white/30 shadow-md transition-all hover:scale-105 cursor-pointer"
           >
             <FolderKanban className="w-4 h-4" /> All Projects Hub
+          </button>
+          <button
+            onClick={() => onNavigate && onNavigate('Backlog')}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/20 hover:bg-white/30 text-white font-extrabold text-xs border border-white/30 shadow-md transition-all hover:scale-105 cursor-pointer"
+          >
+            <ListTodo className="w-4 h-4" /> Backlog
+          </button>
+          <button
+            onClick={() => onNavigate && onNavigate('TeamMembers')}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/20 hover:bg-white/30 text-white font-extrabold text-xs border border-white/30 shadow-md transition-all hover:scale-105 cursor-pointer"
+          >
+            <Users className="w-4 h-4" /> Team Roster
           </button>
         </div>
       </div>
 
-      {/* PM Executive Metrics Cards */}
+      {/* PM Executive Metrics Cards - Fully Interactive & Clickable */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         {/* Card 1: Active Projects */}
-        <div className="p-4 rounded-xl bg-white dark:bg-slate-900 warm:bg-[#e8dbbe] border-l-4 border-l-blue-500 border-y border-r border-slate-200 dark:border-slate-800 warm:border-[#cbb68e] shadow-sm">
+        <div 
+          onClick={() => onNavigate && onNavigate('Projects')}
+          className="p-4 rounded-xl bg-white dark:bg-slate-900 warm:bg-[#e8dbbe] border-l-4 border-l-blue-500 border-y border-r border-slate-200 dark:border-slate-800 warm:border-[#cbb68e] shadow-sm hover:shadow-md hover:border-blue-400 dark:hover:border-blue-500 hover:-translate-y-0.5 transition-all cursor-pointer group"
+        >
           <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 warm:text-[#69523c]">
             <span className="text-[11px] font-bold uppercase tracking-wider">Total Projects</span>
-            <FolderKanban className="w-4 h-4 text-blue-500" />
+            <FolderKanban className="w-4 h-4 text-blue-500 group-hover:scale-110 transition-transform" />
           </div>
           <div className="text-2xl font-black text-slate-900 dark:text-white warm:text-[#342314] mt-2">{totalProjects} Projects</div>
           <div className="text-[10px] text-slate-500 dark:text-slate-400 warm:text-[#69523c] mt-1 font-semibold">
             {planningProjects} Planning • {activeProjects} Active • {completedProjects} Done
           </div>
+          <div className="text-[10px] text-blue-600 dark:text-blue-400 font-bold mt-2 flex items-center gap-1 group-hover:translate-x-1 transition-transform">
+            View all projects →
+          </div>
         </div>
 
         {/* Card 2: Team Leads Assigned */}
-        <div className="p-4 rounded-xl bg-white dark:bg-slate-900 warm:bg-[#e8dbbe] border-l-4 border-l-indigo-500 border-y border-r border-slate-200 dark:border-slate-800 warm:border-[#cbb68e] shadow-sm">
+        <div 
+          onClick={() => onNavigate && onNavigate('TeamMembers')}
+          className="p-4 rounded-xl bg-white dark:bg-slate-900 warm:bg-[#e8dbbe] border-l-4 border-l-indigo-500 border-y border-r border-slate-200 dark:border-slate-800 warm:border-[#cbb68e] shadow-sm hover:shadow-md hover:border-indigo-400 dark:hover:border-indigo-500 hover:-translate-y-0.5 transition-all cursor-pointer group"
+        >
           <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 warm:text-[#69523c]">
             <span className="text-[11px] font-bold uppercase tracking-wider">Team Leads Assigned</span>
-            <UserCheck className="w-4 h-4 text-indigo-500" />
+            <UserCheck className="w-4 h-4 text-indigo-500 group-hover:scale-110 transition-transform" />
           </div>
           <div className="text-2xl font-black text-slate-900 dark:text-white warm:text-[#342314] mt-2">
             {projectsList.filter(p => p.lead_name && p.lead_name !== 'Unassigned Lead').length} Leads
@@ -313,13 +315,19 @@ export const PmDashboard = ({ onNavigate }) => {
           <div className="text-[10px] text-slate-500 dark:text-slate-400 warm:text-[#69523c] mt-1 font-semibold">
             Linked to projects
           </div>
+          <div className="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold mt-2 flex items-center gap-1 group-hover:translate-x-1 transition-transform">
+            View assigned leads →
+          </div>
         </div>
 
         {/* Card 3: Total Developers & QA */}
-        <div className="p-4 rounded-xl bg-white dark:bg-slate-900 warm:bg-[#e8dbbe] border-l-4 border-l-purple-500 border-y border-r border-slate-200 dark:border-slate-800 warm:border-[#cbb68e] shadow-sm">
+        <div 
+          onClick={() => onNavigate && onNavigate('TeamMembers')}
+          className="p-4 rounded-xl bg-white dark:bg-slate-900 warm:bg-[#e8dbbe] border-l-4 border-l-purple-500 border-y border-r border-slate-200 dark:border-slate-800 warm:border-[#cbb68e] shadow-sm hover:shadow-md hover:border-purple-400 dark:hover:border-purple-500 hover:-translate-y-0.5 transition-all cursor-pointer group"
+        >
           <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 warm:text-[#69523c]">
             <span className="text-[11px] font-bold uppercase tracking-wider">Team Member Roster</span>
-            <Users className="w-4 h-4 text-purple-500" />
+            <Users className="w-4 h-4 text-purple-500 group-hover:scale-110 transition-transform" />
           </div>
           <div className="text-2xl font-black text-slate-900 dark:text-white warm:text-[#342314] mt-2">
             {availableMembers.length} Members
@@ -327,13 +335,19 @@ export const PmDashboard = ({ onNavigate }) => {
           <div className="text-[10px] text-slate-500 dark:text-slate-400 warm:text-[#69523c] mt-1 font-semibold">
             5 Developers • 3 QA Testers
           </div>
+          <div className="text-[10px] text-purple-600 dark:text-purple-400 font-bold mt-2 flex items-center gap-1 group-hover:translate-x-1 transition-transform">
+            View member capacity →
+          </div>
         </div>
 
         {/* Card 4: Deadline Tracking */}
-        <div className="p-4 rounded-xl bg-white dark:bg-slate-900 warm:bg-[#e8dbbe] border-l-4 border-l-amber-500 border-y border-r border-slate-200 dark:border-slate-800 warm:border-[#cbb68e] shadow-sm">
+        <div 
+          onClick={() => onNavigate && onNavigate('Milestones')}
+          className="p-4 rounded-xl bg-white dark:bg-slate-900 warm:bg-[#e8dbbe] border-l-4 border-l-amber-500 border-y border-r border-slate-200 dark:border-slate-800 warm:border-[#cbb68e] shadow-sm hover:shadow-md hover:border-amber-400 dark:hover:border-amber-500 hover:-translate-y-0.5 transition-all cursor-pointer group"
+        >
           <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 warm:text-[#69523c]">
             <span className="text-[11px] font-bold uppercase tracking-wider">Deadline Alert</span>
-            <Clock className="w-4 h-4 text-amber-500" />
+            <Clock className="w-4 h-4 text-amber-500 group-hover:scale-110 transition-transform" />
           </div>
           <div className="text-2xl font-black text-slate-900 dark:text-white warm:text-[#342314] mt-2">
             {totalProjects > 0 ? 'On Track' : 'No Deadlines'}
@@ -341,17 +355,26 @@ export const PmDashboard = ({ onNavigate }) => {
           <div className="text-[10px] text-slate-500 dark:text-slate-400 warm:text-[#69523c] mt-1 font-semibold">
             Schedule risk monitored
           </div>
+          <div className="text-[10px] text-amber-600 dark:text-amber-400 font-bold mt-2 flex items-center gap-1 group-hover:translate-x-1 transition-transform">
+            Open milestones calendar →
+          </div>
         </div>
 
         {/* Card 5: Project Health */}
-        <div className="p-4 rounded-xl bg-white dark:bg-slate-900 warm:bg-[#e8dbbe] border-l-4 border-l-emerald-500 border-y border-r border-slate-200 dark:border-slate-800 warm:border-[#cbb68e] shadow-sm">
+        <div 
+          onClick={() => onNavigate && onNavigate('ProjectHealth')}
+          className="p-4 rounded-xl bg-white dark:bg-slate-900 warm:bg-[#e8dbbe] border-l-4 border-l-emerald-500 border-y border-r border-slate-200 dark:border-slate-800 warm:border-[#cbb68e] shadow-sm hover:shadow-md hover:border-emerald-400 dark:hover:border-emerald-500 hover:-translate-y-0.5 transition-all cursor-pointer group"
+        >
           <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 warm:text-[#69523c]">
             <span className="text-[11px] font-bold uppercase tracking-wider">Overall Health</span>
-            <Activity className="w-4 h-4 text-emerald-500" />
+            <Activity className="w-4 h-4 text-emerald-500 group-hover:scale-110 transition-transform" />
           </div>
           <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400 warm:text-[#b45309] mt-2">100%</div>
           <div className="text-[10px] text-slate-500 dark:text-slate-400 warm:text-[#69523c] mt-1 font-semibold">
             BCNF Governance Normal
+          </div>
+          <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold mt-2 flex items-center gap-1 group-hover:translate-x-1 transition-transform">
+            AI health insights →
           </div>
         </div>
       </div>
@@ -415,12 +438,18 @@ export const PmDashboard = ({ onNavigate }) => {
               >
                 {/* Top Row: Title, Priority, Status Dropdown */}
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-200/80 dark:border-slate-800/80 pb-3">
-                  <div>
-                    <div className="flex items-center gap-2">
+                  <div 
+                    onClick={() => onNavigate && onNavigate('Projects')}
+                    className="cursor-pointer group flex-1"
+                  >
+                    <div className="flex items-center gap-2 flex-wrap">
                       <span className="px-2 py-0.5 rounded-md bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 font-mono text-[10px] font-bold border border-indigo-200 dark:border-indigo-800">
                         {proj.id}
                       </span>
-                      <h3 className="text-base font-black text-slate-900 dark:text-white warm:text-[#342314]">{proj.name}</h3>
+                      <h3 className="text-base font-black text-slate-900 dark:text-white warm:text-[#342314] group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors flex items-center gap-1.5">
+                        {proj.name}
+                        <ArrowRight className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" />
+                      </h3>
                       <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold border uppercase ${
                         proj.priority === 'CRITICAL' ? 'bg-rose-100 text-rose-700 border-rose-300' :
                         proj.priority === 'HIGH' ? 'bg-amber-100 text-amber-800 border-amber-300' : 'bg-blue-100 text-blue-800 border-blue-300'
@@ -437,7 +466,7 @@ export const PmDashboard = ({ onNavigate }) => {
                     <select
                       value={proj.status}
                       onChange={(e) => handleUpdateStatus(proj.id, e.target.value)}
-                      className="p-1.5 px-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-bold text-slate-900 dark:text-white"
+                      className="p-1.5 px-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-bold text-slate-900 dark:text-white cursor-pointer"
                     >
                       <option value="PLANNING">Planning</option>
                       <option value="ACTIVE">Active</option>
@@ -452,18 +481,25 @@ export const PmDashboard = ({ onNavigate }) => {
                 {/* Grid Info: Team Lead, Team Members, Tech Stack, Timeline */}
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-xs">
                   {/* Column 1: Team Lead */}
-                  <div className="p-3 rounded-xl bg-white dark:bg-slate-900 warm:bg-[#e8dbbe] border border-slate-200 dark:border-slate-800 warm:border-[#cbb68e]">
+                  <div 
+                    onClick={() => onNavigate && onNavigate('TeamMembers')}
+                    className="p-3 rounded-xl bg-white dark:bg-slate-900 warm:bg-[#e8dbbe] border border-slate-200 dark:border-slate-800 warm:border-[#cbb68e] hover:border-indigo-400 dark:hover:border-indigo-600 cursor-pointer transition-all group"
+                  >
                     <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider block mb-1">
                       👑 Assigned Team Lead
                     </span>
-                    <div className="font-extrabold text-slate-900 dark:text-white warm:text-[#342314]">
+                    <div className="font-extrabold text-slate-900 dark:text-white warm:text-[#342314] group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
                       {proj.lead_name || 'Unassigned Lead'}
                     </div>
                     <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">Responsible for Technical Work Allocation</p>
+                    <span className="text-[9px] text-indigo-500 font-bold mt-1 inline-block">View lead workload →</span>
                   </div>
 
                   {/* Column 2: Team Members */}
-                  <div className="p-3 rounded-xl bg-white dark:bg-slate-900 warm:bg-[#e8dbbe] border border-slate-200 dark:border-slate-800 warm:border-[#cbb68e]">
+                  <div 
+                    onClick={() => onNavigate && onNavigate('TeamMembers')}
+                    className="p-3 rounded-xl bg-white dark:bg-slate-900 warm:bg-[#e8dbbe] border border-slate-200 dark:border-slate-800 warm:border-[#cbb68e] hover:border-purple-400 dark:hover:border-purple-600 cursor-pointer transition-all group"
+                  >
                     <span className="text-[10px] font-bold text-purple-600 dark:text-purple-400 uppercase tracking-wider block mb-1">
                       👥 Allocated Virtual Team
                     </span>
@@ -478,6 +514,7 @@ export const PmDashboard = ({ onNavigate }) => {
                         <span className="text-[10px] text-slate-400 italic">No members assigned</span>
                       )}
                     </div>
+                    <span className="text-[9px] text-purple-500 font-bold mt-1.5 inline-block">Manage team roster →</span>
                   </div>
 
                   {/* Column 3: Tech Stack & Requirements */}
@@ -494,17 +531,60 @@ export const PmDashboard = ({ onNavigate }) => {
                   </div>
 
                   {/* Column 4: Timeline & Target Deadline */}
-                  <div className="p-3 rounded-xl bg-white dark:bg-slate-900 warm:bg-[#e8dbbe] border border-slate-200 dark:border-slate-800 warm:border-[#cbb68e]">
+                  <div 
+                    onClick={() => onNavigate && onNavigate('Milestones')}
+                    className="p-3 rounded-xl bg-white dark:bg-slate-900 warm:bg-[#e8dbbe] border border-slate-200 dark:border-slate-800 warm:border-[#cbb68e] hover:border-amber-400 dark:hover:border-amber-600 cursor-pointer transition-all group"
+                  >
                     <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider block mb-1">
                       ⏱️ Deadline & Progress
                     </span>
-                    <div className="font-mono text-[11px] font-bold text-slate-900 dark:text-white">
+                    <div className="font-mono text-[11px] font-bold text-slate-900 dark:text-white group-hover:text-amber-600 transition-colors">
                       Target: {proj.deadline || proj.target_deadline || '2026-11-30'}
                     </div>
                     <div className="w-full bg-slate-200 dark:bg-slate-700 h-2 rounded-full mt-1.5 overflow-hidden">
                       <div className="bg-indigo-600 h-full rounded-full" style={{ width: `${proj.progress || 0}%` }} />
                     </div>
+                    <span className="text-[9px] text-amber-600 font-bold mt-1 inline-block">Track milestones →</span>
                   </div>
+                </div>
+
+                {/* Interactive Project Action Toolbar */}
+                <div className="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-slate-200/80 dark:border-slate-800/80 text-xs">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <button
+                      onClick={() => onNavigate && onNavigate('Projects')}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-xs hover:shadow-md transition-all cursor-pointer"
+                    >
+                      <FolderKanban className="w-3.5 h-3.5" /> Project Hub
+                    </button>
+                    <button
+                      onClick={() => onNavigate && onNavigate('Backlog')}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs transition-all cursor-pointer"
+                    >
+                      <ListTodo className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" /> Backlog
+                    </button>
+                    <button
+                      onClick={() => onNavigate && onNavigate('Sprints')}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs transition-all cursor-pointer"
+                    >
+                      <Layers className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" /> Sprint Planning
+                    </button>
+                    <button
+                      onClick={() => onNavigate && onNavigate('TeamMembers')}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs transition-all cursor-pointer"
+                    >
+                      <Users className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> Team Workload
+                    </button>
+                    <button
+                      onClick={() => onNavigate && onNavigate('ProjectHealth')}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs transition-all cursor-pointer"
+                    >
+                      <Activity className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" /> AI Health
+                    </button>
+                  </div>
+                  <span className="text-[11px] text-slate-500 font-mono">
+                    Progress: <strong className="text-indigo-600 font-bold">{proj.progress || 0}%</strong>
+                  </span>
                 </div>
               </div>
             ))}

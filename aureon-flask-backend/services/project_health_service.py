@@ -1,5 +1,5 @@
 from extensions import db
-from models import Project, Task, Risk, CodeAnalysis, Sprint, Notification, ProjectHealthHistory, Repository, CodeQualityReport
+from models import Project, Task, Risk, CodeAnalysis, Sprint, Notification, ProjectHealthHistory, Repository, CodeQualityReport, GitHubRepository
 from services.github_risk_service import GitHubRiskService
 from datetime import date, datetime
 
@@ -151,15 +151,26 @@ class HealthCalculator:
 
     @staticmethod
     def _calculate_github_score(project_id):
-        repo = Repository.query.filter_by(project_id=project_id).first()
+        repo = GitHubRepository.query.filter_by(project_id=project_id, is_active=True).first()
+        is_gh = True
+        if not repo:
+            repo = Repository.query.filter_by(project_id=project_id).first()
+            is_gh = False
         if not repo:
             return {'score': None, 'available': False, 'risks': []}
-        # Gather related data
-        commits = []  # Simplified: assume commits are collected elsewhere
-        pull_requests = []
-        contributors = []
-        # Evaluate using existing service
-        res = GitHubRiskService.evaluate_repository_risks(repo, commits, pull_requests, contributors)
+
+        if is_gh:
+            commits = [c.to_dict() for c in repo.commits]
+            pull_requests = [p.to_dict() for p in repo.pull_requests]
+            contributors = [c.to_dict() for c in repo.contributors]
+            repo_dict = repo.to_dict()
+        else:
+            commits = [c.to_dict() for c in repo.commits] if hasattr(repo, 'commits') else []
+            pull_requests = []
+            contributors = []
+            repo_dict = repo.to_dict()
+
+        res = GitHubRiskService.evaluate_repository_risks(repo_dict, commits, pull_requests, contributors)
         return {'score': res.get('health_score'), 'available': True, 'risks': res.get('risks', [])}
 
     @staticmethod

@@ -32,7 +32,31 @@ export const LeadAssignedProjects = ({ onNavigate }) => {
         const pData = await pRes.json();
         const allProjs = pData.projects || [];
 
-        const formatted = allProjs.map(p => {
+        // Strictly enforce that Team Leads only see projects under their own technical leadership
+        const myAssignedProjs = allProjs.filter(p => {
+          if (!user) return false;
+          if (user.role === 'ROLE_ADMIN') return true;
+          const uId = String(user.id || '');
+          const uName = (user.name || user.full_name || '').toLowerCase().trim();
+          const uEmail = (user.email || '').toLowerCase().trim();
+          const pLeadId = String(p.lead_id || '');
+          const pLeadName = (p.lead_name || '').toLowerCase().trim();
+          const pLeadEmail = (p.lead_email || '').toLowerCase().trim();
+
+          const isDirectLead = (pLeadId && uId && pLeadId === uId) ||
+                               (pLeadEmail && uEmail && pLeadEmail === uEmail) ||
+                               (pLeadName && uName && (pLeadName === uName || pLeadName.includes(uName) || uName.includes(pLeadName)));
+
+          if (isDirectLead) return true;
+
+          if (p.members && Array.isArray(p.members)) {
+            return p.members.some(m => String(m.id || m.user_id) === uId || (m.email && m.email.toLowerCase() === uEmail));
+          }
+
+          return false;
+        });
+
+        const formatted = myAssignedProjs.map(p => {
           const projTasks = liveTasks.filter(t => t.project_id === p.id || t.project_name === p.name);
           const doneTasks = projTasks.filter(t => t.status === 'DONE' || t.status === 'COMPLETED');
           const total = projTasks.length;

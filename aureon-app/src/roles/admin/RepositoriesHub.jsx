@@ -54,6 +54,8 @@ export const RepositoriesHub = () => {
 
   const totalPRs = repositories.reduce((a, r) => a + (parseInt(r.openPRs) || 0), 0);
   const syncedCount = repositories.filter(r => r.status === 'SYNCED').length;
+  const totalStorageKB = repositories.reduce((acc, r) => acc + (r.size || r.raw?.size || 0), 0);
+  const storageDisplay = totalStorageKB > 0 ? `${(totalStorageKB / 1024).toFixed(1)} MB` : 'N/A';
 
   return (
     <div className="space-y-6">
@@ -78,7 +80,7 @@ export const RepositoriesHub = () => {
           { label: 'Total Repos', value: repositories.length, icon: GitBranch, color: 'border-l-cyan-500' },
           { label: 'Open PRs & Issues', value: totalPRs, icon: GitPullRequest, color: 'border-l-amber-500' },
           { label: 'Synced Repos', value: syncedCount, icon: CheckCircle2, color: 'border-l-emerald-500' },
-          { label: 'Storage Allocated', value: `${(repositories.length * 12.4).toFixed(1)} MB`, icon: HardDrive, color: 'border-l-slate-500' }
+          { label: 'Storage Allocated', value: storageDisplay, icon: HardDrive, color: 'border-l-slate-500' }
         ].map((w, i) => { const Icon = w.icon; return (
           <div key={i} className={`p-4 rounded-xl bg-white dark:bg-gray-800 border-l-4 ${w.color} border-y border-r border-gray-200 dark:border-gray-700 shadow-sm`}>
             <div className="flex items-center justify-between text-gray-500"><span className="text-[11px] font-semibold">{w.label}</span><Icon className="w-4 h-4 text-gray-400" /></div>

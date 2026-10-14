@@ -41,9 +41,9 @@ export const PmRepositoryView = () => {
             language: r.language || 'TypeScript',
             platform: 'GitHub',
             defaultBranch: r.default_branch || 'main',
-            branches: 3,
+            branches: r.branches_count != null ? r.branches_count : (r.default_branch ? 1 : 0),
             openPRs: r.pull_requests_count || r.open_issues || 0,
-            coverage: r.health_score ? `${r.health_score}%` : '92%',
+            coverage: r.health_score != null ? `${r.health_score}%` : 'N/A',
             commitsCount: r.commits_count || (r.recent_commits ? r.recent_commits.length : 0),
             latestCommit: r.latest_commit || (r.recent_commits && r.recent_commits.length > 0 ? r.recent_commits[0] : null),
             lastCommitDate: r.last_commit_date,
@@ -316,7 +316,7 @@ export const PmRepositoryView = () => {
             {repositories[0]?.name || 'thrift-in-campus'}
           </div>
           <div className="text-[11px] text-cyan-600 dark:text-cyan-400 font-mono mt-1 truncate">
-            {repositories[0]?.latestCommit?.commit_sha?.substring(0, 7) || 'fd2f770'} (by {repositories[0]?.latestCommit?.author_name || 'gayathrim06'})
+            {repositories[0]?.latestCommit?.commit_sha?.substring(0, 7) || 'fd2f770'} (by {repositories[0]?.latestCommit?.author_name || 'aureon-maker'})
           </div>
         </div>
 

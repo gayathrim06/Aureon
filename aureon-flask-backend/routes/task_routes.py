@@ -32,6 +32,21 @@ def _get_auth_user():
                 return user
     except Exception:
         pass
+
+    # Check X-User-Id and X-User-Email headers
+    u_param = request.headers.get('X-User-Id') or request.args.get('user_id')
+    if u_param:
+        u_uuid = _parse_uuid(u_param)
+        user = User.query.get(u_uuid or u_param)
+        if user:
+            return user
+
+    email_param = request.headers.get('X-User-Email') or request.args.get('email')
+    if email_param:
+        user = User.query.filter(User.email.ilike(email_param.strip())).first()
+        if user:
+            return user
+
     admin_user = User.query.filter_by(email='admin@aureon.com').first()
     if not admin_user:
         admin_role = Role.query.filter_by(code='ROLE_ADMIN').first()
@@ -1161,11 +1176,11 @@ def get_developer_my_tasks():
         user = _get_auth_user()
 
     if not user:
-        tasks = Task.query.all()
-        return jsonify({'success': True, 'count': len(tasks), 'tasks': [t.to_dict() for t in tasks]}), 200
+        return jsonify({'success': True, 'count': 0, 'tasks': []}), 200
 
     u_uuid = user.id
     u_name = (user.display_name or user.username or '').strip().lower()
+    u_email = (user.email or '').strip().lower()
     all_tasks = Task.query.all()
     my_tasks = []
     seen_ids = set()
@@ -1176,9 +1191,18 @@ def get_developer_my_tasks():
         if t.assigned_to_id and str(t.assigned_to_id) == str(u_uuid):
             my_tasks.append(t)
             seen_ids.add(t.id)
-        elif t.assigned_user and u_name and (u_name in t.assigned_user.display_name.lower() or t.assigned_user.display_name.lower() in u_name):
-            my_tasks.append(t)
-            seen_ids.add(t.id)
+            continue
+        if t.assigned_user:
+            assignee_name = (t.assigned_user.display_name or t.assigned_user.username or '').strip().lower()
+            assignee_email = (t.assigned_user.email or '').strip().lower()
+            if u_name and (u_name in assignee_name or assignee_name in u_name):
+                my_tasks.append(t)
+                seen_ids.add(t.id)
+                continue
+            if u_email and assignee_email == u_email:
+                my_tasks.append(t)
+                seen_ids.add(t.id)
+                continue
 
     return jsonify({
         'success': True,

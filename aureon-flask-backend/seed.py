@@ -96,19 +96,26 @@ def seed_database():
         proj = Project(
             name='Verona Organic',
             description='E-Commerce Platform & Organic Distribution Engine',
-            status='ACTIVE',
-            is_active=True,
+            status='COMPLETED',
+            is_active=False,
             manager_id=eli_user.id if eli_user else None,
             lead_id=krish.id if krish else None
         )
         db.session.add(proj)
         db.session.flush()
+    else:
+        proj.status = 'COMPLETED'
+        proj.is_active = False
+
+    proj_finpulse = Project.query.filter(Project.name.ilike('%FinPulse%')).first()
+    proj_thrift = Project.query.filter(Project.name.ilike('%Thrift%')).first()
+    proj_auracloud = Project.query.filter(Project.name.ilike('%AuraCloud%')).first()
 
     default_teams = [
-        { 'name': 'Frontend UI Squad', 'description': 'User Experience', 'lead': krish, 'project': proj, 'members': [sainu, ram] },
-        { 'name': 'Backend Data Engine', 'description': 'Database & Analytics', 'lead': david, 'project': proj, 'members': [jiya, priya] },
-        { 'name': 'Core Infrastructure Guild', 'description': 'Engineering', 'lead': vikram, 'project': None, 'members': [alex, michael] },
-        { 'name': 'QA & Compliance Automation', 'description': 'Quality Assurance', 'lead': None, 'project': proj, 'members': [venu, feba, ananya] }
+        { 'name': 'Frontend UI Squad', 'description': 'User Experience', 'lead': krish, 'project': proj_thrift or proj, 'members': [sainu, ram] },
+        { 'name': 'Backend Data Engine', 'description': 'Database & Analytics', 'lead': david, 'project': proj_finpulse or proj, 'members': [jiya, priya] },
+        { 'name': 'Core Infrastructure Guild', 'description': 'Engineering', 'lead': vikram, 'project': proj_auracloud, 'members': [alex, michael] },
+        { 'name': 'QA & Compliance Automation', 'description': 'Quality Assurance', 'lead': None, 'project': None, 'members': [venu, feba, ananya] }
     ]
 
     for t_data in default_teams:

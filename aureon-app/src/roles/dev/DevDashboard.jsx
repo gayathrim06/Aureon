@@ -25,8 +25,8 @@ export const DevDashboard = ({ onNavigate }) => {
     try {
       setLoading(true);
       const url = user?.id 
-        ? `http://127.0.0.1:8000/api/v1/tasks/?assigned_to_id=${user.id}`
-        : 'http://127.0.0.1:8000/api/v1/tasks/';
+        ? `http://127.0.0.1:8000/api/v1/developer/my-tasks?user_id=${user.id}`
+        : 'http://127.0.0.1:8000/api/v1/developer/my-tasks';
 
       const res = await fetch(url, {
         headers: getAuthHeaders()
@@ -36,10 +36,21 @@ export const DevDashboard = ({ onNavigate }) => {
         const data = await res.json();
         const allTasks = data.tasks || [];
         
-        // Filter specifically for this user if user id exists
-        const userTasks = user?.id 
-          ? allTasks.filter(t => t.assigned_to_id === user.id || t.assigned_to === user.email || t.assigned_to === userName)
-          : allTasks;
+        // Strict client-side filter: only tasks assigned to this developer
+        const myUserId = String(user?.id || '').toLowerCase();
+        const myEmail = String(user?.email || '').toLowerCase();
+        const myName = String(userName || '').toLowerCase();
+
+        const userTasks = allTasks.filter(t => {
+          const assignId = String(t.assigned_to_id || t.assigned_to || '').toLowerCase();
+          const assignName = String(t.assignee_name || t.assigned_user?.display_name || '').toLowerCase();
+          const assignEmail = String(t.assignee_email || t.assigned_user?.email || '').toLowerCase();
+          
+          if (myUserId && assignId === myUserId) return true;
+          if (myEmail && (assignEmail === myEmail || assignId === myEmail)) return true;
+          if (myName && assignName && (assignName.includes(myName) || myName.includes(assignName))) return true;
+          return false;
+        });
 
         const active = userTasks.filter(t => !['COMPLETED', 'DONE', 'CLOSED'].includes(t.status));
         const completed = userTasks.filter(t => ['COMPLETED', 'DONE'].includes(t.status));

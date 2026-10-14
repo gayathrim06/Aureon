@@ -140,7 +140,7 @@ export const AppRouter = () => {
     users: 'Users',
     usermanagement: 'Users',
     auditlogs: 'AuditLogs',
-    rolespermissions: 'RolesPermissions',
+    rolespermissions: 'Users',
     organization: 'Organization',
     organizations: 'Organization',
     teams: 'Teams',
@@ -260,7 +260,7 @@ export const AppRouter = () => {
         case 'Dashboard': return <AdminDashboard onNavigate={navigateTab} />;
         case 'Users': return <UserManagement onShowToast={showToast} />;
         case 'AuditLogs': return <AuditLogsView />;
-        case 'RolesPermissions': return <RolesPermissions />;
+        case 'RolesPermissions': return <UserManagement onShowToast={showToast} />;
         case 'Organizations':
         case 'Organization': return <OrganizationView />;
         case 'Teams': return <TeamsView />;

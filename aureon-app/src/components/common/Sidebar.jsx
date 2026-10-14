@@ -1,7 +1,7 @@
 import React from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { 
-  LayoutDashboard, Building, Users, Shield, Users2, FolderKanban, GitBranch, 
+  LayoutDashboard, Building, Users, Users2, FolderKanban, GitBranch, 
   Activity, FileText, Server, Bell, Settings, Calendar, Award, Code2, 
   CheckSquare, GitPullRequest, AlertCircle, User, Cpu, Bug, FileCheck, Layers, Sparkles, ListTodo
 } from 'lucide-react';
@@ -30,7 +30,6 @@ export const Sidebar = ({ activeTab, onSelectTab }) => {
       { id: 'Dashboard', label: 'Dashboard', icon: LayoutDashboard },
       { id: 'Organization', label: 'Organization', icon: Building },
       { id: 'Users', label: 'Users', icon: Users },
-      { id: 'RolesPermissions', label: 'Roles & Permissions', icon: Shield },
       { id: 'Teams', label: 'Teams', icon: Users2 },
       { id: 'Projects', label: 'Projects', icon: FolderKanban },
       { id: 'Backlog', label: 'Backlog', icon: ListTodo },

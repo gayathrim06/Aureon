@@ -105,7 +105,7 @@ def setup_thrift_project():
             db.session.add(repo_mirror)
             print("Created Repository mirror")
 
-        # 4. Add authentic commits from gayathrim06/Thrift-on-Campus
+        # 4. Add authentic commits from aureon-maker/thrift-in-campus
         commits_data = [
             ('fd2f7706758b7d8e187666a609988055547543ca', 'Update README with live site link, repo url, and Render deployment instructions', '2026-09-25 09:37:22'),
             ('8fa69408ec816a92589c5db720a6375d10da1fd6', 'Update seed to force-update student password and add 1-click demo fill buttons', '2026-09-25 09:17:29'),
@@ -126,8 +126,8 @@ def setup_thrift_project():
                     repository_id=gh_repo.id,
                     github_commit_id=sha,
                     commit_sha=sha,
-                    author_name='gayathrim06',
-                    author_email='gayathrimanojkottayam@gmail.com',
+                    author_name='aureon-maker',
+                    author_email='dev@aureon.com',
                     commit_message=msg,
                     commit_date=c_date,
                     commit_url=f"https://github.com/aureon-maker/thrift-in-campus/commit/{sha[:7]}"
@@ -136,16 +136,16 @@ def setup_thrift_project():
                 print(f"Added GitHubCommit: {sha[:7]} - {msg[:40]}...")
 
         # Contributor
-        if not GitHubContributor.query.filter_by(repository_id=gh_repo.id, username='gayathrim06').first():
+        if not GitHubContributor.query.filter_by(repository_id=gh_repo.id, username='aureon-maker').first():
             contrib = GitHubContributor(
                 repository_id=gh_repo.id,
-                username='gayathrim06',
-                display_name='Gayathri Manoj',
+                username='aureon-maker',
+                display_name='Aureon Maker',
                 contributions=10,
-                profile_url='https://github.com/gayathrim06'
+                profile_url='https://github.com/aureon-maker'
             )
             db.session.add(contrib)
-            print("Added Contributor gayathrim06")
+            print("Added Contributor aureon-maker")
 
         # 5. Create Sprint 1
         sprint = Sprint.query.filter_by(project_id=project.id, name='Sprint 1: Core Marketplace & Student Auth').first()

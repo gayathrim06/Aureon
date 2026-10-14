@@ -20,10 +20,10 @@ export const QaRepositoryStatus = () => {
           const formatted = data.repositories.map(r => ({
             id: r.id,
             name: r.name || r.repo_name || 'Repository',
-            language: r.language || 'Python',
+            language: r.language || 'Other',
             platform: r.platform || 'GitHub',
-            coverage: r.health_score ? `${r.health_score}%` : '85%',
-            buildStatus: 'PASSING',
+            coverage: r.health_score != null ? `${r.health_score}%` : 'N/A',
+            buildStatus: 'No CI Data',
             lastCommit: r.last_commit_date ? new Date(r.last_commit_date).toLocaleString() : 'Recent',
             openPRs: r.pull_request_count || 0
           }));
@@ -43,8 +43,16 @@ export const QaRepositoryStatus = () => {
 
   const columns = [
     { key: 'name', label: 'Repository', render: (val, row) => (<div><div className="font-bold text-gray-900 dark:text-gray-100">{val}</div><div className="text-[10px] text-gray-500">{row.language} • {row.platform}</div></div>) },
-    { key: 'coverage', label: 'Test Coverage', render: (val) => { const n = parseFloat(val); return <span className={`font-bold ${n >= 80 ? 'text-emerald-600' : n >= 60 ? 'text-amber-600' : 'text-rose-600'}`}>{val}</span>; }},
-    { key: 'buildStatus', label: 'Build Status', render: (val) => <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 flex items-center gap-1 w-fit"><CheckCircle2 className="w-3 h-3" />{val || 'PASSING'}</span> },
+    { key: 'coverage', label: 'Test Coverage', render: (val) => {
+      if (!val || val === 'N/A') return <span className="text-gray-400 font-mono text-xs">N/A</span>;
+      const n = parseFloat(val);
+      return <span className={`font-bold ${n >= 80 ? 'text-emerald-600' : n >= 60 ? 'text-amber-600' : 'text-rose-600'}`}>{val}</span>;
+    }},
+    { key: 'buildStatus', label: 'Build Status', render: (val) => (
+      <span className={`px-2 py-0.5 rounded text-[10px] font-bold flex items-center gap-1 w-fit ${val === 'PASSING' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300' : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'}`}>
+        <Clock className="w-3 h-3" />{val || 'No CI Data'}
+      </span>
+    )},
     { key: 'lastCommit', label: 'Last Commit' },
     { key: 'openPRs', label: 'Open PRs', render: (val) => <span className="font-bold">{val}</span> }
   ];

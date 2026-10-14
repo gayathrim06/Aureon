@@ -29,6 +29,21 @@ def _get_auth_user():
                 return user
     except Exception:
         pass
+
+    # Check X-User-Id and X-User-Email headers
+    u_param = request.headers.get('X-User-Id') or request.args.get('user_id')
+    if u_param:
+        u_uuid = _parse_uuid(u_param)
+        user = User.query.get(u_uuid or u_param)
+        if user:
+            return user
+
+    email_param = request.headers.get('X-User-Email') or request.args.get('email')
+    if email_param:
+        user = User.query.filter(User.email.ilike(email_param.strip())).first()
+        if user:
+            return user
+
     admin_user = User.query.filter_by(email='admin@aureon.com').first()
     if not admin_user:
         admin_role = Role.query.filter_by(code='ROLE_ADMIN').first()
@@ -307,19 +322,13 @@ def remove_team_member(team_id, user_id):
 # ─── SCOPED TEAM LEAD APIs (`/api/v1/team-lead/...`) ─────────────────────────────
 
 def _get_auth_team_lead():
-    try:
-        user_id = get_jwt_identity()
-        if user_id:
-            u_uuid = _parse_uuid(user_id)
-            user = User.query.get(u_uuid or user_id)
-            if user:
-                return user
-    except Exception:
-        pass
+    user = _get_auth_user()
+    if user and user.role_name == 'ROLE_LEAD':
+        return user
     lead_role = Role.query.filter_by(code='ROLE_LEAD').first()
     if lead_role:
         return User.query.filter_by(role_id=lead_role.id).first()
-    return User.query.first()
+    return user or User.query.first()
 
 @team_lead_bp.route('/my-team', methods=['GET'])
 @team_lead_bp.route('/my-team/', methods=['GET'])
