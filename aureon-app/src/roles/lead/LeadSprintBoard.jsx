@@ -3,7 +3,7 @@ import { Breadcrumb } from '../../components/common/Breadcrumb';
 import { Modal } from '../../components/common/Modal';
 import { useAuth } from '../../context/AuthContext';
 import { logAuditEvent } from '../../services/auditLogger';
-import { Layers, CheckCircle2, ArrowRight, GitBranch, Plus, UserCheck, Calendar, Filter, Target, List, LayoutGrid, Search, Clock, CheckSquare, Users } from 'lucide-react';
+import { Layers, CheckCircle2, ArrowRight, GitBranch, Plus, UserCheck, Calendar, Filter, Target, List, LayoutGrid, Search, Clock, CheckSquare, Users, Edit3, Trash2, X, RefreshCw, RotateCcw, Play } from 'lucide-react';
 import { getAuthHeaders } from '../../services/apiClient';
 
 export const LeadSprintBoard = ({ onShowToast, initialView = 'kanban' }) => {
@@ -17,6 +17,14 @@ export const LeadSprintBoard = ({ onShowToast, initialView = 'kanban' }) => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [viewMode, setViewMode] = useState(initialView || 'kanban');
   const [searchTerm, setSearchTerm] = useState('');
+
+  // Filtering states
+  const [selectedDevFilter, setSelectedDevFilter] = useState('ALL');
+  const [statusFilter, setStatusFilter] = useState('ALL');
+
+  // Edit Task State
+  const [editingTask, setEditingTask] = useState(null);
+  const [editSubmitting, setEditSubmitting] = useState(false);
 
   // Multi-Task / Batch Sprint Assignment State
   const [selectedTaskIds, setSelectedTaskIds] = useState([]);
@@ -167,14 +175,39 @@ export const LeadSprintBoard = ({ onShowToast, initialView = 'kanban' }) => {
     }
   }, [teamDevelopers]);
 
-  const filteredTasks = selectedSprint
-    ? tasks.filter(t => (t.sprint_id && String(t.sprint_id) === String(selectedSprint.id)) || (t.sprint_name && t.sprint_name === selectedSprint.name))
-    : tasks;
+  const sprintTasks = useMemo(() => {
+    if (!selectedSprint) return tasks;
+    return tasks.filter(t => (t.sprint_id && String(t.sprint_id) === String(selectedSprint.id)) || (t.sprint_name && t.sprint_name === selectedSprint.name));
+  }, [tasks, selectedSprint]);
+
+  const filteredTasks = useMemo(() => {
+    let list = sprintTasks;
+    if (selectedDevFilter !== 'ALL') {
+      const devObj = teamDevelopers.find(d => String(d.id) === String(selectedDevFilter));
+      const targetName = (devObj?.full_name || devObj?.name || '').toLowerCase();
+      list = list.filter(t => 
+        String(t.assigned_to_id) === String(selectedDevFilter) ||
+        (t.assignee && targetName && t.assignee.toLowerCase().includes(targetName)) ||
+        (t.assignee_name && targetName && t.assignee_name.toLowerCase().includes(targetName))
+      );
+    }
+    return list;
+  }, [sprintTasks, selectedDevFilter, teamDevelopers]);
 
   const displayedTableTasks = useMemo(() => {
-    if (!searchTerm.trim()) return filteredTasks;
+    let list = filteredTasks;
+    if (statusFilter !== 'ALL') {
+      if (statusFilter === 'DONE') {
+        list = list.filter(t => t.status === 'DONE' || t.status === 'COMPLETED');
+      } else if (statusFilter === 'REVIEW') {
+        list = list.filter(t => t.status === 'REVIEW' || t.status === 'IN_REVIEW');
+      } else {
+        list = list.filter(t => t.status === statusFilter);
+      }
+    }
+    if (!searchTerm.trim()) return list;
     const q = searchTerm.toLowerCase();
-    return filteredTasks.filter(t => 
+    return list.filter(t => 
       (t.title && t.title.toLowerCase().includes(q)) ||
       (t.ticket_code && t.ticket_code.toLowerCase().includes(q)) ||
       (t.assignee && t.assignee.toLowerCase().includes(q)) ||
@@ -182,7 +215,7 @@ export const LeadSprintBoard = ({ onShowToast, initialView = 'kanban' }) => {
       (t.status && t.status.toLowerCase().includes(q)) ||
       (t.priority && t.priority.toLowerCase().includes(q))
     );
-  }, [filteredTasks, searchTerm]);
+  }, [filteredTasks, statusFilter, searchTerm]);
 
   const columns = [
     { key: 'TODO', label: '📋 Backlog / To Do', color: 'border-t-slate-500 bg-slate-500/5' },
@@ -212,6 +245,64 @@ export const LeadSprintBoard = ({ onShowToast, initialView = 'kanban' }) => {
   const approveTask = (taskId) => {
     moveTask(taskId, 'DONE');
     if (onShowToast) onShowToast({ type: 'success', title: 'Code Review Approved', message: `Ticket approved and moved to Done.` });
+  };
+
+  const handleDeleteTask = async (taskId, e) => {
+    e && e.stopPropagation();
+    if (!window.confirm('Are you sure you want to delete this sprint task?')) return;
+    try {
+      const res = await fetch(`http://127.0.0.1:8000/api/v1/tasks/${taskId}`, {
+        method: 'DELETE',
+        headers: getAuthHeaders()
+      });
+      if (res.ok) {
+        setTasks(prev => prev.filter(t => t.id !== taskId));
+        setSelectedTaskIds(prev => prev.filter(id => id !== taskId));
+        if (onShowToast) onShowToast({ type: 'success', title: 'Task Removed', message: 'Sprint task deleted.' });
+      } else {
+        const err = await res.json().catch(() => ({}));
+        if (onShowToast) onShowToast({ type: 'error', title: 'Delete Failed', message: err.message || 'Could not delete task.' });
+      }
+    } catch (err) {
+      console.error('Delete task error:', err);
+    }
+  };
+
+  const handleSaveEditTask = async (e) => {
+    e.preventDefault();
+    if (!editingTask) return;
+    setEditSubmitting(true);
+    try {
+      const res = await fetch(`http://127.0.0.1:8000/api/v1/tasks/${editingTask.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeaders()
+        },
+        body: JSON.stringify({
+          title: editingTask.title,
+          description: editingTask.description,
+          priority: editingTask.priority,
+          status: editingTask.status,
+          estimated_hours: parseFloat(editingTask.estimated_hours) || 8,
+          due_date: editingTask.due_date,
+          assigned_to: editingTask.assigned_to_id
+        })
+      });
+      if (res.ok) {
+        setTasks(prev => prev.map(t => t.id === editingTask.id ? { ...t, ...editingTask } : t));
+        if (onShowToast) onShowToast({ type: 'success', title: 'Task Updated', message: `Task "${editingTask.title}" updated successfully.` });
+        setEditingTask(null);
+        fetchData();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        if (onShowToast) onShowToast({ type: 'error', title: 'Update Failed', message: err.message || 'Failed to update task.' });
+      }
+    } catch (err) {
+      console.error('Save task error:', err);
+    } finally {
+      setEditSubmitting(false);
+    }
   };
 
   const handleAssignDeveloper = async (taskId, devId) => {
@@ -506,18 +597,24 @@ export const LeadSprintBoard = ({ onShowToast, initialView = 'kanban' }) => {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-2.5">
             {teamDevelopers.map(dev => {
-              const inThisSprintCount = filteredTasks.filter(t => String(t.assigned_to_id) === String(dev.id) || t.assignee === dev.full_name).length;
+              const inThisSprintCount = sprintTasks.filter(t => String(t.assigned_to_id) === String(dev.id) || t.assignee === dev.full_name).length;
+              const isFilterActive = String(selectedDevFilter) === String(dev.id);
               return (
-                <div
+                <button
+                  type="button"
                   key={dev.id}
-                  className={`p-3 rounded-xl border transition-all ${
-                    dev.is_available
-                      ? 'bg-emerald-50/40 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800/60 shadow-xs'
-                      : 'bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800'
+                  onClick={() => setSelectedDevFilter(prev => String(prev) === String(dev.id) ? 'ALL' : dev.id)}
+                  title={`Click to filter deliverables by ${dev.full_name || dev.name}`}
+                  className={`w-full text-left p-3 rounded-xl border transition-all duration-150 cursor-pointer active:scale-95 group focus:outline-hidden ${
+                    isFilterActive
+                      ? 'ring-2 ring-indigo-500 bg-indigo-50/80 dark:bg-indigo-950/60 border-indigo-400 dark:border-indigo-600 shadow-md -translate-y-0.5'
+                      : dev.is_available
+                      ? 'bg-emerald-50/40 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800/60 hover:border-emerald-400 hover:shadow-xs hover:-translate-y-0.5'
+                      : 'bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 hover:shadow-xs hover:-translate-y-0.5'
                   }`}
                 >
                   <div className="flex items-center justify-between">
-                    <span className="font-extrabold text-xs text-slate-900 dark:text-white truncate" title={dev.full_name || dev.name}>
+                    <span className="font-extrabold text-xs text-slate-900 dark:text-white truncate group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors" title={dev.full_name || dev.name}>
                       {dev.full_name || dev.name}
                     </span>
                     <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${dev.is_available ? 'bg-emerald-500 ring-2 ring-emerald-300 dark:ring-emerald-800' : 'bg-rose-500'}`} />
@@ -533,7 +630,13 @@ export const LeadSprintBoard = ({ onShowToast, initialView = 'kanban' }) => {
                       ⚡ {inThisSprintCount} in sprint
                     </span>
                   </div>
-                </div>
+                  {isFilterActive && (
+                    <div className="mt-1 text-[9px] font-black text-indigo-600 dark:text-indigo-400 flex items-center justify-between">
+                      <span>● Active Filter</span>
+                      <span className="text-[10px]">✕ Clear</span>
+                    </div>
+                  )}
+                </button>
               );
             })}
           </div>
@@ -554,9 +657,44 @@ export const LeadSprintBoard = ({ onShowToast, initialView = 'kanban' }) => {
                 className="w-full pl-9 pr-4 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs font-medium"
               />
             </div>
-            <div className="flex items-center gap-2 text-xs font-bold text-slate-500">
-              <span className="px-2.5 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 font-mono">
-                {displayedTableTasks.length} Tickets in Sprint
+            
+            <div className="flex flex-wrap items-center gap-2">
+              {/* Quick Status Filter Tabs */}
+              <div className="flex items-center rounded-xl bg-slate-100 dark:bg-slate-800/80 p-1 border border-slate-200 dark:border-slate-700 text-xs">
+                {[
+                  { key: 'ALL', label: 'All' },
+                  { key: 'TODO', label: 'To Do' },
+                  { key: 'IN_PROGRESS', label: 'In Progress' },
+                  { key: 'REVIEW', label: 'Review' },
+                  { key: 'DONE', label: 'Done' }
+                ].map(tab => (
+                  <button
+                    key={tab.key}
+                    type="button"
+                    onClick={() => setStatusFilter(tab.key)}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer active:scale-95 ${
+                      statusFilter === tab.key
+                        ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs'
+                        : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+
+              {selectedDevFilter !== 'ALL' && (
+                <button
+                  type="button"
+                  onClick={() => setSelectedDevFilter('ALL')}
+                  className="px-2.5 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 text-xs font-bold flex items-center gap-1 cursor-pointer"
+                >
+                  <X className="w-3 h-3" /> Clear Dev Filter
+                </button>
+              )}
+
+              <span className="px-2.5 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 font-mono text-xs font-bold">
+                {displayedTableTasks.length} Tickets
               </span>
             </div>
           </div>
@@ -591,16 +729,18 @@ export const LeadSprintBoard = ({ onShowToast, initialView = 'kanban' }) => {
                 </select>
 
                 <button
+                  type="button"
                   onClick={handleBatchAssign}
                   disabled={!batchAssigneeId || isBatchAssigning}
-                  className="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-white text-xs font-black transition-all shadow-xs"
+                  className="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-white text-xs font-black transition-all shadow-xs cursor-pointer active:scale-95"
                 >
                   {isBatchAssigning ? 'Assigning...' : 'Assign to Selected Member'}
                 </button>
 
                 <button
+                  type="button"
                   onClick={() => setSelectedTaskIds([])}
-                  className="px-3 py-2 text-xs font-bold text-indigo-200 hover:text-white"
+                  className="px-3 py-2 text-xs font-bold text-indigo-200 hover:text-white cursor-pointer"
                 >
                   Clear Selection
                 </button>
@@ -610,8 +750,25 @@ export const LeadSprintBoard = ({ onShowToast, initialView = 'kanban' }) => {
 
           {displayedTableTasks.length === 0 ? (
             <div className="p-10 rounded-2xl bg-white dark:bg-slate-900 border border-dashed border-slate-300 dark:border-slate-800 text-center space-y-2">
-              <p className="text-xs font-bold text-slate-600 dark:text-slate-400">No tasks found for this sprint.</p>
-              <p className="text-[11px] text-slate-500">Click <strong>"Add Task to Sprint"</strong> above to break down deliverables and assign developers.</p>
+              <p className="text-xs font-bold text-slate-600 dark:text-slate-400">No tasks found matching your filter in this sprint.</p>
+              <div className="flex items-center justify-center gap-2 pt-2">
+                {(statusFilter !== 'ALL' || selectedDevFilter !== 'ALL' || searchTerm) && (
+                  <button
+                    type="button"
+                    onClick={() => { setStatusFilter('ALL'); setSelectedDevFilter('ALL'); setSearchTerm(''); }}
+                    className="px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:bg-slate-200 dark:hover:bg-slate-700 cursor-pointer"
+                  >
+                    Reset All Filters
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setIsAddModalOpen(true)}
+                  className="px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-xs font-bold hover:bg-indigo-500 cursor-pointer"
+                >
+                  + Add Task to Sprint
+                </button>
+              </div>
             </div>
           ) : (
             <div className="overflow-x-auto rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs">
@@ -666,9 +823,21 @@ export const LeadSprintBoard = ({ onShowToast, initialView = 'kanban' }) => {
                           {t.ticket_code || (t.id ? String(t.id).substring(0, 8) : 'TCK')}
                         </td>
                         <td className="p-3">
-                          <span className="font-extrabold text-slate-900 dark:text-white block">{t.title}</span>
+                          <button
+                            type="button"
+                            onClick={() => setEditingTask({
+                              ...t,
+                              assigned_to_id: currentDevId,
+                              estimated_hours: t.estimated_hours || 8,
+                              due_date: t.due_date ? String(t.due_date).split('T')[0] : ''
+                            })}
+                            className="font-extrabold text-slate-900 dark:text-white hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors text-left block cursor-pointer group"
+                            title="Click to view & edit task details"
+                          >
+                            <span className="group-hover:underline">{t.title}</span>
+                          </button>
                           {t.description && (
-                            <span className="text-[10px] text-slate-500 line-clamp-1 block">{t.description}</span>
+                            <span className="text-[10px] text-slate-500 line-clamp-1 block mt-0.5">{t.description}</span>
                           )}
                         </td>
                         <td className="p-3">
@@ -716,16 +885,74 @@ export const LeadSprintBoard = ({ onShowToast, initialView = 'kanban' }) => {
                           {t.due_date ? String(t.due_date).split('T')[0] : '—'}
                         </td>
                         <td className="p-3 text-right">
-                          {(t.status === 'REVIEW' || t.status === 'IN_REVIEW') ? (
+                          <div className="flex items-center justify-end gap-1.5 flex-wrap">
+                            {(t.status === 'REVIEW' || t.status === 'IN_REVIEW') && (
+                              <button
+                                type="button"
+                                onClick={() => approveTask(t.id)}
+                                className="px-2.5 py-1 rounded-lg text-[10px] bg-emerald-600 hover:bg-emerald-500 text-white font-bold transition-all shadow-xs cursor-pointer active:scale-95 flex items-center gap-1"
+                                title="Approve Code Review"
+                              >
+                                <CheckCircle2 className="w-3 h-3" /> Approve
+                              </button>
+                            )}
+
+                            {t.status === 'TODO' && (
+                              <button
+                                type="button"
+                                onClick={() => moveTask(t.id, 'IN_PROGRESS')}
+                                className="px-2.5 py-1 rounded-lg text-[10px] bg-blue-600 hover:bg-blue-500 text-white font-bold transition-all shadow-xs cursor-pointer active:scale-95 flex items-center gap-1"
+                                title="Start Execution"
+                              >
+                                <Play className="w-2.5 h-2.5" /> Start
+                              </button>
+                            )}
+
+                            {t.status === 'IN_PROGRESS' && (
+                              <button
+                                type="button"
+                                onClick={() => moveTask(t.id, 'REVIEW')}
+                                className="px-2.5 py-1 rounded-lg text-[10px] bg-purple-600 hover:bg-purple-500 text-white font-bold transition-all shadow-xs cursor-pointer active:scale-95 flex items-center gap-1"
+                                title="Submit for Code Review"
+                              >
+                                Review →
+                              </button>
+                            )}
+
+                            {(t.status === 'DONE' || t.status === 'COMPLETED') && (
+                              <button
+                                type="button"
+                                onClick={() => moveTask(t.id, 'TODO')}
+                                className="px-2.5 py-1 rounded-lg text-[10px] bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold transition-all cursor-pointer active:scale-95 flex items-center gap-1"
+                                title="Reopen Task to To Do"
+                              >
+                                <RotateCcw className="w-2.5 h-2.5" /> Reopen
+                              </button>
+                            )}
+
                             <button
-                              onClick={() => approveTask(t.id)}
-                              className="px-2.5 py-1 rounded-lg text-xs bg-emerald-600 hover:bg-emerald-500 text-white font-bold transition-all shadow-xs"
+                              type="button"
+                              onClick={() => setEditingTask({
+                                ...t,
+                                assigned_to_id: currentDevId,
+                                estimated_hours: t.estimated_hours || 8,
+                                due_date: t.due_date ? String(t.due_date).split('T')[0] : ''
+                              })}
+                              className="p-1 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-500 hover:text-indigo-600 hover:border-indigo-400 dark:hover:text-indigo-400 transition cursor-pointer"
+                              title="Edit Task Details"
                             >
-                              ✓ Approve
+                              <Edit3 className="w-3.5 h-3.5" />
                             </button>
-                          ) : (
-                            <span className="text-slate-400 font-mono text-[10px]">—</span>
-                          )}
+
+                            <button
+                              type="button"
+                              onClick={(e) => handleDeleteTask(t.id, e)}
+                              className="p-1 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-400 hover:text-rose-600 hover:border-rose-400 dark:hover:text-rose-400 transition cursor-pointer"
+                              title="Delete Task"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );
@@ -814,23 +1041,46 @@ export const LeadSprintBoard = ({ onShowToast, initialView = 'kanban' }) => {
                             <span className="text-[10px] text-slate-400 font-mono">
                               {t.due_date ? String(t.due_date).split('T')[0] : ''}
                             </span>
-                            <div className="flex gap-1">
+                            <div className="flex items-center gap-1">
                               {(col.key === 'REVIEW' || t.status === 'IN_REVIEW' || t.status === 'REVIEW') && (
                                 <button
+                                  type="button"
                                   onClick={() => approveTask(t.id)}
-                                  className="px-2 py-1 rounded-lg text-[9px] bg-emerald-600 hover:bg-emerald-500 text-white font-bold transition-all shadow-xs"
+                                  className="px-2 py-1 rounded-lg text-[9px] bg-emerald-600 hover:bg-emerald-500 text-white font-bold transition-all shadow-xs cursor-pointer active:scale-95"
                                 >
                                   ✓ Approve
                                 </button>
                               )}
                               {col.key !== 'DONE' && (
                                 <button
+                                  type="button"
                                   onClick={() => moveTask(t.id, col.key === 'TODO' ? 'IN_PROGRESS' : col.key === 'IN_PROGRESS' ? 'REVIEW' : 'DONE')}
-                                  className="px-2 py-1 rounded-lg text-[9px] bg-indigo-600 hover:bg-indigo-500 text-white font-bold transition-all shadow-xs"
+                                  className="px-2 py-1 rounded-lg text-[9px] bg-indigo-600 hover:bg-indigo-500 text-white font-bold transition-all shadow-xs cursor-pointer active:scale-95"
                                 >
                                   → Next
                                 </button>
                               )}
+                              <button
+                                type="button"
+                                onClick={() => setEditingTask({
+                                  ...t,
+                                  assigned_to_id: currentDevId,
+                                  estimated_hours: t.estimated_hours || 8,
+                                  due_date: t.due_date ? String(t.due_date).split('T')[0] : ''
+                                })}
+                                className="p-1 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-400 hover:text-indigo-600 cursor-pointer"
+                                title="Edit Task"
+                              >
+                                <Edit3 className="w-3 h-3" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={(e) => handleDeleteTask(t.id, e)}
+                                className="p-1 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-400 hover:text-rose-600 cursor-pointer"
+                                title="Delete Task"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </button>
                             </div>
                           </div>
                         </div>
@@ -939,19 +1189,138 @@ export const LeadSprintBoard = ({ onShowToast, initialView = 'kanban' }) => {
             <button
               type="button"
               onClick={() => setIsAddModalOpen(false)}
-              className="px-3 py-2 text-xs font-bold text-slate-500"
+              className="px-3 py-2 text-xs font-bold text-slate-500 cursor-pointer"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs"
+              className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs cursor-pointer shadow-md active:scale-95"
             >
               Add Deliverable to Sprint
             </button>
           </div>
         </form>
       </Modal>
+
+      {/* EDIT / VIEW TASK DETAILS MODAL */}
+      {editingTask && (
+        <Modal
+          isOpen={Boolean(editingTask)}
+          onClose={() => setEditingTask(null)}
+          title={`Edit Sprint Task: ${editingTask.ticket_code || editingTask.title}`}
+          maxWidth="max-w-lg"
+        >
+          <form onSubmit={handleSaveEditTask} className="space-y-4 text-xs">
+            <div>
+              <label className="block font-bold mb-1">Task Title *</label>
+              <input
+                type="text"
+                required
+                value={editingTask.title || ''}
+                onChange={(e) => setEditingTask({ ...editingTask, title: e.target.value })}
+                className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 font-bold"
+              />
+            </div>
+
+            <div>
+              <label className="block font-bold mb-1">Description / Acceptance Criteria</label>
+              <textarea
+                rows={3}
+                value={editingTask.description || ''}
+                onChange={(e) => setEditingTask({ ...editingTask, description: e.target.value })}
+                className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 font-medium"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block font-bold mb-1">Workflow Status</label>
+                <select
+                  value={editingTask.status || 'TODO'}
+                  onChange={(e) => setEditingTask({ ...editingTask, status: e.target.value })}
+                  className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 font-bold"
+                >
+                  <option value="TODO">📋 To Do</option>
+                  <option value="IN_PROGRESS">🚀 In Progress</option>
+                  <option value="REVIEW">🔍 Code Review</option>
+                  <option value="DONE">✅ Approved / Done</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block font-bold mb-1">Priority</label>
+                <select
+                  value={editingTask.priority || 'MEDIUM'}
+                  onChange={(e) => setEditingTask({ ...editingTask, priority: e.target.value })}
+                  className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 font-bold"
+                >
+                  <option value="CRITICAL">🔴 Critical</option>
+                  <option value="HIGH">🟠 High</option>
+                  <option value="MEDIUM">🟡 Medium</option>
+                  <option value="LOW">🔵 Low</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block font-bold mb-1">Assigned Developer</label>
+                <select
+                  value={editingTask.assigned_to_id || ''}
+                  onChange={(e) => setEditingTask({ ...editingTask, assigned_to_id: e.target.value })}
+                  className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 font-bold"
+                >
+                  <option value="">Unassigned</option>
+                  {teamDevelopers.map(dev => (
+                    <option key={dev.id} value={dev.id}>
+                      {formatDevOption(dev)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block font-bold mb-1">Estimated Hours</label>
+                <input
+                  type="number"
+                  step="0.5"
+                  value={editingTask.estimated_hours || 8}
+                  onChange={(e) => setEditingTask({ ...editingTask, estimated_hours: e.target.value })}
+                  className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 font-bold"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block font-bold mb-1">Due Date</label>
+              <input
+                type="date"
+                value={editingTask.due_date || ''}
+                onChange={(e) => setEditingTask({ ...editingTask, due_date: e.target.value })}
+                className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 font-bold"
+              />
+            </div>
+
+            <div className="pt-3 border-t border-slate-200 dark:border-slate-800 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setEditingTask(null)}
+                className="px-3 py-2 text-xs font-bold text-slate-500 cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={editSubmitting}
+                className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs cursor-pointer shadow-md active:scale-95"
+              >
+                {editSubmitting ? 'Saving...' : 'Save Changes'}
+              </button>
+            </div>
+          </form>
+        </Modal>
+      )}
     </div>
   );
 };
