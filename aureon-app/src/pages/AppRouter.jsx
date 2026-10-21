@@ -270,7 +270,7 @@ export const AppRouter = () => {
         case 'Tasks': return <TaskBreakdown onShowToast={showToast} onNavigate={navigateTab} />;
         case 'Repositories':
         case 'Repository': return <RepositoriesHub onNavigate={navigateTab} />;
-        case 'SonarQube': return <SonarQubeAdmin onNavigate={navigateTab} />;
+        case 'SonarQube': return <ComplianceReports onNavigate={navigateTab} />;
         case 'SystemLogs': return <SystemLogsView onNavigate={navigateTab} />;
         case 'Reports': return <ComplianceReports onNavigate={navigateTab} />;
         case 'Notifications': return <NotificationsView onNavigate={navigateTab} />;

@@ -36,7 +36,6 @@ export const Sidebar = ({ activeTab, onSelectTab }) => {
       { id: 'Sprints', label: 'Sprints', icon: Layers },
       { id: 'Tasks', label: 'Tasks', icon: CheckSquare },
       { id: 'Repositories', label: 'Repositories', icon: GitBranch },
-      { id: 'SonarQube', label: 'SonarQube', icon: Cpu },
       { id: 'AuditLogs', label: 'Audit Logs', icon: FileText },
       { id: 'SystemLogs', label: 'System Logs', icon: Server },
       { id: 'Reports', label: 'Reports', icon: Activity },
