@@ -124,108 +124,156 @@ export const AdminDashboard = ({ onNavigate }) => {
       {/* Overview KPI Widgets Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* 1. Total Users */}
-        <div 
-          onClick={() => onNavigate('Users')}
-          className="p-5 rounded-2xl bg-white dark:bg-slate-900 warm:bg-[#e8dbbe] border border-slate-200 dark:border-slate-800 warm:border-[#cbb68e] shadow-sm hover:border-indigo-500 transition-all cursor-pointer group"
+        <button 
+          type="button"
+          onClick={() => onNavigate && onNavigate('Users')}
+          className="w-full text-left p-5 rounded-2xl bg-white dark:bg-slate-900 warm:bg-[#e8dbbe] border border-slate-200 dark:border-slate-800 warm:border-[#cbb68e] shadow-sm hover:shadow-md hover:border-indigo-500 hover:-translate-y-0.5 active:scale-95 transition-all cursor-pointer group focus:outline-none focus:ring-2 focus:ring-indigo-500/50 flex flex-col justify-between"
         >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 warm:text-[#69523c]">Total Users</span>
-            <Users className="w-5 h-5 text-indigo-500 group-hover:scale-110 transition-transform" />
+          <div>
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 warm:text-[#69523c]">Total Users</span>
+              <Users className="w-5 h-5 text-indigo-500 group-hover:scale-110 transition-transform" />
+            </div>
+            <div className="text-3xl font-black text-slate-900 dark:text-white warm:text-[#342314] mt-3">{metrics.total_users}</div>
           </div>
-          <div className="text-3xl font-black text-slate-900 dark:text-white warm:text-[#342314] mt-3">{metrics.total_users}</div>
-          <p className="text-[11px] text-slate-500 dark:text-slate-400 warm:text-[#69523c] mt-1">Click to manage accounts</p>
-        </div>
+          <div className="mt-3 pt-2 border-t border-slate-100 dark:border-slate-800 text-[11px] font-bold text-indigo-600 dark:text-indigo-400 flex items-center justify-between">
+            <span>Manage accounts</span>
+            <span className="group-hover:translate-x-1 transition-transform">→</span>
+          </div>
+        </button>
 
         {/* 2. Active Users */}
-        <div 
-          onClick={() => onNavigate('Users')}
-          className="p-5 rounded-2xl bg-white dark:bg-slate-900 warm:bg-[#e8dbbe] border border-slate-200 dark:border-slate-800 warm:border-[#cbb68e] shadow-sm hover:border-emerald-500 transition-all cursor-pointer group"
+        <button 
+          type="button"
+          onClick={() => onNavigate && onNavigate('Users')}
+          className="w-full text-left p-5 rounded-2xl bg-white dark:bg-slate-900 warm:bg-[#e8dbbe] border border-slate-200 dark:border-slate-800 warm:border-[#cbb68e] shadow-sm hover:shadow-md hover:border-emerald-500 hover:-translate-y-0.5 active:scale-95 transition-all cursor-pointer group focus:outline-none focus:ring-2 focus:ring-emerald-500/50 flex flex-col justify-between"
         >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 warm:text-[#69523c]">Active Users</span>
-            <ShieldCheck className="w-5 h-5 text-emerald-500 group-hover:scale-110 transition-transform" />
+          <div>
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 warm:text-[#69523c]">Active Users</span>
+              <ShieldCheck className="w-5 h-5 text-emerald-500 group-hover:scale-110 transition-transform" />
+            </div>
+            <div className="text-3xl font-black text-emerald-600 dark:text-emerald-400 mt-3">{metrics.active_users}</div>
           </div>
-          <div className="text-3xl font-black text-emerald-600 dark:text-emerald-400 mt-3">{metrics.active_users}</div>
-          <p className="text-[11px] text-slate-500 dark:text-slate-400 warm:text-[#69523c] mt-1">Click to view active users</p>
-        </div>
+          <div className="mt-3 pt-2 border-t border-slate-100 dark:border-slate-800 text-[11px] font-bold text-emerald-600 dark:text-emerald-400 flex items-center justify-between">
+            <span>View active sessions</span>
+            <span className="group-hover:translate-x-1 transition-transform">→</span>
+          </div>
+        </button>
 
         {/* 3. Total Projects */}
-        <div 
-          onClick={() => onNavigate('Projects')}
-          className="p-5 rounded-2xl bg-white dark:bg-slate-900 warm:bg-[#e8dbbe] border border-slate-200 dark:border-slate-800 warm:border-[#cbb68e] shadow-sm hover:border-indigo-500 transition-all cursor-pointer group"
+        <button 
+          type="button"
+          onClick={() => onNavigate && onNavigate('Projects')}
+          className="w-full text-left p-5 rounded-2xl bg-white dark:bg-slate-900 warm:bg-[#e8dbbe] border border-slate-200 dark:border-slate-800 warm:border-[#cbb68e] shadow-sm hover:shadow-md hover:border-indigo-500 hover:-translate-y-0.5 active:scale-95 transition-all cursor-pointer group focus:outline-none focus:ring-2 focus:ring-indigo-500/50 flex flex-col justify-between"
         >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 warm:text-[#69523c]">Total Projects</span>
-            <Database className="w-5 h-5 text-indigo-500 group-hover:scale-110 transition-transform" />
+          <div>
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 warm:text-[#69523c]">Total Projects</span>
+              <Database className="w-5 h-5 text-indigo-500 group-hover:scale-110 transition-transform" />
+            </div>
+            <div className="text-3xl font-black text-slate-900 dark:text-white warm:text-[#342314] mt-3">{metrics.total_projects}</div>
           </div>
-          <div className="text-3xl font-black text-slate-900 dark:text-white warm:text-[#342314] mt-3">{metrics.total_projects}</div>
-          <p className="text-[11px] text-slate-500 dark:text-slate-400 warm:text-[#69523c] mt-1">Click to view projects directory</p>
-        </div>
+          <div className="mt-3 pt-2 border-t border-slate-100 dark:border-slate-800 text-[11px] font-bold text-indigo-600 dark:text-indigo-400 flex items-center justify-between">
+            <span>Projects directory</span>
+            <span className="group-hover:translate-x-1 transition-transform">→</span>
+          </div>
+        </button>
 
         {/* 4. Active Projects */}
-        <div 
-          onClick={() => onNavigate('Projects')}
-          className="p-5 rounded-2xl bg-white dark:bg-slate-900 warm:bg-[#e8dbbe] border border-slate-200 dark:border-slate-800 warm:border-[#cbb68e] shadow-sm hover:border-blue-500 transition-all cursor-pointer group"
+        <button 
+          type="button"
+          onClick={() => onNavigate && onNavigate('Projects')}
+          className="w-full text-left p-5 rounded-2xl bg-white dark:bg-slate-900 warm:bg-[#e8dbbe] border border-slate-200 dark:border-slate-800 warm:border-[#cbb68e] shadow-sm hover:shadow-md hover:border-blue-500 hover:-translate-y-0.5 active:scale-95 transition-all cursor-pointer group focus:outline-none focus:ring-2 focus:ring-blue-500/50 flex flex-col justify-between"
         >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 warm:text-[#69523c]">Active Projects</span>
-            <Layers className="w-5 h-5 text-blue-500 group-hover:scale-110 transition-transform" />
+          <div>
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 warm:text-[#69523c]">Active Projects</span>
+              <Layers className="w-5 h-5 text-blue-500 group-hover:scale-110 transition-transform" />
+            </div>
+            <div className="text-3xl font-black text-blue-600 dark:text-blue-400 mt-3">{metrics.active_projects}</div>
           </div>
-          <div className="text-3xl font-black text-blue-600 dark:text-blue-400 mt-3">{metrics.active_projects}</div>
-          <p className="text-[11px] text-slate-500 dark:text-slate-400 warm:text-[#69523c] mt-1">Status set to IN PROGRESS</p>
-        </div>
+          <div className="mt-3 pt-2 border-t border-slate-100 dark:border-slate-800 text-[11px] font-bold text-blue-600 dark:text-blue-400 flex items-center justify-between">
+            <span>Filter in progress</span>
+            <span className="group-hover:translate-x-1 transition-transform">→</span>
+          </div>
+        </button>
 
         {/* 5. Completed Projects */}
-        <div 
-          onClick={() => onNavigate('Projects')}
-          className="p-5 rounded-2xl bg-white dark:bg-slate-900 warm:bg-[#e8dbbe] border border-slate-200 dark:border-slate-800 warm:border-[#cbb68e] shadow-sm hover:border-emerald-500 transition-all cursor-pointer group"
+        <button 
+          type="button"
+          onClick={() => onNavigate && onNavigate('Projects')}
+          className="w-full text-left p-5 rounded-2xl bg-white dark:bg-slate-900 warm:bg-[#e8dbbe] border border-slate-200 dark:border-slate-800 warm:border-[#cbb68e] shadow-sm hover:shadow-md hover:border-emerald-500 hover:-translate-y-0.5 active:scale-95 transition-all cursor-pointer group focus:outline-none focus:ring-2 focus:ring-emerald-500/50 flex flex-col justify-between"
         >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 warm:text-[#69523c]">Completed Projects</span>
-            <CheckSquare className="w-5 h-5 text-emerald-500 group-hover:scale-110 transition-transform" />
+          <div>
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 warm:text-[#69523c]">Completed Projects</span>
+              <CheckSquare className="w-5 h-5 text-emerald-500 group-hover:scale-110 transition-transform" />
+            </div>
+            <div className="text-3xl font-black text-emerald-600 dark:text-emerald-400 mt-3">{metrics.completed_projects}</div>
           </div>
-          <div className="text-3xl font-black text-emerald-600 dark:text-emerald-400 mt-3">{metrics.completed_projects}</div>
-          <p className="text-[11px] text-slate-500 dark:text-slate-400 warm:text-[#69523c] mt-1">Projects successfully finished</p>
-        </div>
+          <div className="mt-3 pt-2 border-t border-slate-100 dark:border-slate-800 text-[11px] font-bold text-emerald-600 dark:text-emerald-400 flex items-center justify-between">
+            <span>View completed</span>
+            <span className="group-hover:translate-x-1 transition-transform">→</span>
+          </div>
+        </button>
 
         {/* 6. Total Teams */}
-        <div 
-          onClick={() => onNavigate('Teams')}
-          className="p-5 rounded-2xl bg-white dark:bg-slate-900 warm:bg-[#e8dbbe] border border-slate-200 dark:border-slate-800 warm:border-[#cbb68e] shadow-sm hover:border-cyan-500 transition-all cursor-pointer group"
+        <button 
+          type="button"
+          onClick={() => onNavigate && onNavigate('Teams')}
+          className="w-full text-left p-5 rounded-2xl bg-white dark:bg-slate-900 warm:bg-[#e8dbbe] border border-slate-200 dark:border-slate-800 warm:border-[#cbb68e] shadow-sm hover:shadow-md hover:border-cyan-500 hover:-translate-y-0.5 active:scale-95 transition-all cursor-pointer group focus:outline-none focus:ring-2 focus:ring-cyan-500/50 flex flex-col justify-between"
         >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 warm:text-[#69523c]">Total Teams</span>
-            <Globe className="w-5 h-5 text-cyan-500 group-hover:scale-110 transition-transform" />
+          <div>
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 warm:text-[#69523c]">Total Teams</span>
+              <Globe className="w-5 h-5 text-cyan-500 group-hover:scale-110 transition-transform" />
+            </div>
+            <div className="text-3xl font-black text-slate-900 dark:text-white warm:text-[#342314] mt-3">{metrics.total_teams}</div>
           </div>
-          <div className="text-3xl font-black text-slate-900 dark:text-white warm:text-[#342314] mt-3">{metrics.total_teams}</div>
-          <p className="text-[11px] text-slate-500 dark:text-slate-400 warm:text-[#69523c] mt-1">Active departmental guilds</p>
-        </div>
+          <div className="mt-3 pt-2 border-t border-slate-100 dark:border-slate-800 text-[11px] font-bold text-cyan-600 dark:text-cyan-400 flex items-center justify-between">
+            <span>Departmental guilds</span>
+            <span className="group-hover:translate-x-1 transition-transform">→</span>
+          </div>
+        </button>
 
         {/* 7. Pending Approvals */}
-        <div 
-          onClick={() => onNavigate('Tasks')}
-          className="p-5 rounded-2xl bg-white dark:bg-slate-900 warm:bg-[#e8dbbe] border border-slate-200 dark:border-slate-800 warm:border-[#cbb68e] shadow-sm hover:border-amber-500 transition-all cursor-pointer group"
+        <button 
+          type="button"
+          onClick={() => onNavigate && onNavigate('Tasks')}
+          className="w-full text-left p-5 rounded-2xl bg-white dark:bg-slate-900 warm:bg-[#e8dbbe] border border-slate-200 dark:border-slate-800 warm:border-[#cbb68e] shadow-sm hover:shadow-md hover:border-amber-500 hover:-translate-y-0.5 active:scale-95 transition-all cursor-pointer group focus:outline-none focus:ring-2 focus:ring-amber-500/50 flex flex-col justify-between"
         >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 warm:text-[#69523c]">Pending Tasks</span>
-            <Cpu className="w-5 h-5 text-amber-500 group-hover:scale-110 transition-transform" />
+          <div>
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 warm:text-[#69523c]">Pending Tasks</span>
+              <Cpu className="w-5 h-5 text-amber-500 group-hover:scale-110 transition-transform" />
+            </div>
+            <div className="text-3xl font-black text-amber-600 dark:text-amber-400 mt-3">{metrics.pending_approvals}</div>
           </div>
-          <div className="text-3xl font-black text-amber-600 dark:text-amber-400 mt-3">{metrics.pending_approvals}</div>
-          <p className="text-[11px] text-slate-500 dark:text-slate-400 warm:text-[#69523c] mt-1">Click to view all tasks</p>
-        </div>
+          <div className="mt-3 pt-2 border-t border-slate-100 dark:border-slate-800 text-[11px] font-bold text-amber-600 dark:text-amber-400 flex items-center justify-between">
+            <span>Inspect all tasks</span>
+            <span className="group-hover:translate-x-1 transition-transform">→</span>
+          </div>
+        </button>
 
         {/* 8. System Alerts */}
-        <div 
-          onClick={() => onNavigate('Reports')}
-          className="p-5 rounded-2xl bg-white dark:bg-slate-900 warm:bg-[#e8dbbe] border border-slate-200 dark:border-slate-800 warm:border-[#cbb68e] shadow-sm hover:border-rose-500 transition-all cursor-pointer group"
+        <button 
+          type="button"
+          onClick={() => onNavigate && onNavigate('Reports')}
+          className="w-full text-left p-5 rounded-2xl bg-white dark:bg-slate-900 warm:bg-[#e8dbbe] border border-slate-200 dark:border-slate-800 warm:border-[#cbb68e] shadow-sm hover:shadow-md hover:border-rose-500 hover:-translate-y-0.5 active:scale-95 transition-all cursor-pointer group focus:outline-none focus:ring-2 focus:ring-rose-500/50 flex flex-col justify-between"
         >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 warm:text-[#69523c]">System Alerts</span>
-            <AlertTriangle className="w-5 h-5 text-rose-500 group-hover:scale-110 transition-transform" />
+          <div>
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 warm:text-[#69523c]">System Alerts</span>
+              <AlertTriangle className="w-5 h-5 text-rose-500 group-hover:scale-110 transition-transform" />
+            </div>
+            <div className="text-3xl font-black text-emerald-600 dark:text-emerald-400 mt-3">{metrics.system_alerts}</div>
           </div>
-          <div className="text-3xl font-black text-emerald-600 dark:text-emerald-400 mt-3">{metrics.system_alerts}</div>
-          <p className="text-[11px] text-slate-500 dark:text-slate-400 warm:text-[#69523c] mt-1">Open security risk triggers</p>
-        </div>
+          <div className="mt-3 pt-2 border-t border-slate-100 dark:border-slate-800 text-[11px] font-bold text-rose-600 dark:text-rose-400 flex items-center justify-between">
+            <span>Security reports</span>
+            <span className="group-hover:translate-x-1 transition-transform">→</span>
+          </div>
+        </button>
       </div>
 
       {/* Recent System Activities Section */}

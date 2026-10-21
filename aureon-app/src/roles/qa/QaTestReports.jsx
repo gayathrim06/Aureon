@@ -4,7 +4,7 @@ import { apiClient } from '../../services/apiClient';
 import { FileText, CheckCircle2, XCircle, Clock, Bug, RefreshCw } from 'lucide-react';
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from 'recharts';
 
-export const QaTestReports = () => {
+export const QaTestReports = ({ onNavigate }) => {
   const [bugs, setBugs] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -54,16 +54,26 @@ export const QaTestReports = () => {
         </button>
       </div>
 
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {[
-          { label: 'Total Bugs Tracked', value: bugs.length, color: 'border-l-blue-500' },
-          { label: 'Active Open Bugs', value: openBugs, color: 'border-l-rose-500' },
-          { label: 'Resolved / Verified', value: resolvedBugs, color: 'border-l-emerald-500' }
+          { label: 'Total Bugs Tracked', value: bugs.length, color: 'border-l-blue-500', tab: 'BugTracker', hint: 'View bug tracker →' },
+          { label: 'Active Open Bugs', value: openBugs, color: 'border-l-rose-500', tab: 'BugTracker', hint: 'Inspect open issues →' },
+          { label: 'Resolved / Verified', value: resolvedBugs, color: 'border-l-emerald-500', tab: 'BugTracker', hint: 'Inspect resolutions →' }
         ].map((w, i) => (
-          <div key={i} className={`p-4 rounded-xl bg-white dark:bg-gray-800 border-l-4 ${w.color} border-y border-r border-gray-200 dark:border-gray-700 shadow-sm`}>
-            <div className="text-[11px] font-semibold text-gray-500">{w.label}</div>
-            <div className="text-2xl font-bold text-gray-900 dark:text-gray-100 mt-1">{w.value}</div>
-          </div>
+          <button 
+            key={i} 
+            type="button"
+            onClick={() => onNavigate && onNavigate(w.tab)}
+            className={`p-4 rounded-xl bg-white dark:bg-gray-800 border-l-4 ${w.color} border-y border-r border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md hover:-translate-y-0.5 active:translate-y-0 transition-all text-left cursor-pointer group flex flex-col justify-between`}
+          >
+            <div>
+              <div className="text-[11px] font-semibold text-gray-500 uppercase">{w.label}</div>
+              <div className="text-2xl font-bold text-gray-900 dark:text-gray-100 mt-1">{w.value}</div>
+            </div>
+            <div className="mt-2 pt-2 border-t border-gray-100 dark:border-gray-700 text-[10px] font-bold text-indigo-600 dark:text-indigo-400">
+              {w.hint}
+            </div>
+          </button>
         ))}
       </div>
 

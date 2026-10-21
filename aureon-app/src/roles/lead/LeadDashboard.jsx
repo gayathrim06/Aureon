@@ -245,14 +245,12 @@ export const LeadDashboard = ({ onNavigate }) => {
         {widgets.map((w, i) => {
           const Icon = w.icon;
           return (
-            <div
+            <button
               key={i}
-              role="button"
-              tabIndex={0}
+              type="button"
               onClick={() => handleNav(w.tab)}
-              onKeyDown={(e) => e.key === 'Enter' && handleNav(w.tab)}
               title={`Click to open ${w.tab}`}
-              className={`p-4 rounded-xl bg-white dark:bg-slate-900 warm:bg-[#e8dbbe] border-l-4 ${w.color} border-y border-r border-slate-200 dark:border-slate-800 warm:border-[#cbb68e] shadow-sm transition-all duration-200 hover:shadow-lg hover:-translate-y-1 hover:border-slate-300 dark:hover:border-slate-700 cursor-pointer group active:scale-[0.98] flex flex-col justify-between`}
+              className={`w-full text-left p-4 rounded-xl bg-white dark:bg-slate-900 warm:bg-[#e8dbbe] border-l-4 ${w.color} border-y border-r border-slate-200 dark:border-slate-800 warm:border-[#cbb68e] shadow-sm transition-all duration-200 hover:shadow-lg hover:-translate-y-1 active:scale-95 cursor-pointer group flex flex-col justify-between focus:outline-none focus:ring-2 focus:ring-indigo-500/50`}
             >
               <div>
                 <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 warm:text-[#69523c]">
@@ -272,7 +270,7 @@ export const LeadDashboard = ({ onNavigate }) => {
                 <span className="opacity-75 group-hover:opacity-100 transition-opacity">{w.hint}</span>
                 <ArrowRight className="w-3.5 h-3.5 transform group-hover:translate-x-1 transition-transform" />
               </div>
-            </div>
+            </button>
           );
         })}
       </div>

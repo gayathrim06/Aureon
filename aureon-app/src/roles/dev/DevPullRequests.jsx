@@ -7,6 +7,7 @@ import { GitPullRequest, GitMerge, CheckCircle2, Clock, Plus, Minus, MessageSqua
 export const DevPullRequests = () => {
   const [prs, setPrs] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [statusFilter, setStatusFilter] = useState('ALL');
 
   const fetchPRs = async () => {
     try {
@@ -90,15 +91,37 @@ export const DevPullRequests = () => {
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        {['OPEN','REVIEW','MERGED','CLOSED'].map(s => (
-          <div key={s} className={`p-4 rounded-xl bg-white dark:bg-gray-800 border-l-4 ${s==='OPEN'?'border-l-emerald-500':s==='REVIEW'?'border-l-amber-500':s==='MERGED'?'border-l-purple-500':'border-l-gray-500'} border-y border-r border-gray-200 dark:border-gray-700 shadow-sm`}>
-            <div className="text-[11px] font-semibold text-gray-500">{s}</div>
-            <div className="text-2xl font-bold text-gray-900 dark:text-gray-100 mt-1">{prs.filter(p=>p.status===s).length}</div>
-          </div>
-        ))}
+        {['OPEN','REVIEW','MERGED','CLOSED'].map(s => {
+          const isActive = statusFilter === s;
+          const count = prs.filter(p => p.status === s).length;
+          return (
+            <button 
+              key={s} 
+              type="button"
+              onClick={() => setStatusFilter(prev => prev === s ? 'ALL' : s)}
+              className={`p-4 rounded-xl border-l-4 ${
+                s==='OPEN' ? 'border-l-emerald-500' : s==='REVIEW' ? 'border-l-amber-500' : s==='MERGED' ? 'border-l-purple-500' : 'border-l-gray-500'
+              } border-y border-r border-gray-200 dark:border-gray-700 shadow-sm transition-all hover:shadow-md hover:-translate-y-0.5 text-left cursor-pointer group flex flex-col justify-between ${
+                isActive ? 'ring-2 ring-indigo-500 bg-indigo-50/40 dark:bg-indigo-950/20' : 'bg-white dark:bg-gray-800'
+              }`}
+            >
+              <div>
+                <div className="text-[11px] font-semibold text-gray-500 uppercase">{s} PRs</div>
+                <div className="text-2xl font-bold text-gray-900 dark:text-gray-100 mt-1">{count}</div>
+              </div>
+              <div className="mt-2 pt-2 border-t border-gray-100 dark:border-gray-700 text-[10px] font-bold text-indigo-600 dark:text-indigo-400">
+                {isActive ? 'Showing filtered (click to reset)' : `Filter ${s} →`}
+              </div>
+            </button>
+          );
+        })}
       </div>
 
-      <DataTable columns={columns} data={prs} searchPlaceholder="Search PRs by title, branch, repo..." />
+      <DataTable 
+        columns={columns} 
+        data={statusFilter === 'ALL' ? prs : prs.filter(p => p.status === statusFilter)} 
+        searchPlaceholder="Search PRs by title, branch, repo..." 
+      />
     </div>
   );
 };

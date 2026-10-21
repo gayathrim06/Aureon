@@ -3,7 +3,7 @@ import { Breadcrumb } from '../../components/common/Breadcrumb';
 import { FileText, TrendingUp, CheckSquare, Activity } from 'lucide-react';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid, BarChart, Bar } from 'recharts';
 
-export const DeliveryReports = () => {
+export const DeliveryReports = ({ onNavigate }) => {
   const velocityData = [
     { sprint: 'S20', velocity: 18, planned: 20 },
     { sprint: 'S21', velocity: 22, planned: 22 },
@@ -23,17 +23,34 @@ export const DeliveryReports = () => {
     <div className="space-y-6">
       <Breadcrumb activeTab="Delivery Reports" />
       <div><h1 className="text-xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2"><FileText className="w-5 h-5 text-blue-500" />Delivery Reports & Velocity Analytics</h1><p className="text-xs text-gray-500">Sprint velocity trends, task throughput rates, and completion analytics.</p></div>
-      <div className="grid grid-cols-4 gap-4">
-        {[{ label: 'Avg Velocity', value: '18.6', icon: TrendingUp, color: 'border-l-blue-500' },
-          { label: 'Total Completed', value: '94 Tasks', icon: CheckSquare, color: 'border-l-emerald-500' },
-          { label: 'Completion Rate', value: '87%', icon: Activity, color: 'border-l-indigo-500' },
-          { label: 'On-Time Delivery', value: '92%', icon: FileText, color: 'border-l-purple-500' }
-        ].map((w, i) => { const Icon = w.icon; return (
-          <div key={i} className={`p-4 rounded-xl bg-white dark:bg-gray-800 border-l-4 ${w.color} border-y border-r border-gray-200 dark:border-gray-700 shadow-sm`}>
-            <div className="flex items-center justify-between text-gray-500"><span className="text-[11px] font-semibold">{w.label}</span><Icon className="w-4 h-4 text-gray-400" /></div>
-            <div className="text-xl font-bold text-gray-900 dark:text-gray-100 mt-2">{w.value}</div>
-          </div>
-        ); })}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        {[
+          { label: 'Avg Velocity', value: '18.6', icon: TrendingUp, color: 'border-l-blue-500', tab: 'Sprints', hint: 'View sprint planning →' },
+          { label: 'Total Completed', value: '94 Tasks', icon: CheckSquare, color: 'border-l-emerald-500', tab: 'Sprints', hint: 'Inspect completed tasks →' },
+          { label: 'Completion Rate', value: '87%', icon: Activity, color: 'border-l-indigo-500', tab: 'Projects', hint: 'Inspect project health →' },
+          { label: 'On-Time Delivery', value: '92%', icon: FileText, color: 'border-l-purple-500', tab: 'Projects', hint: 'Review milestones →' }
+        ].map((w, i) => { 
+          const Icon = w.icon; 
+          return (
+            <button 
+              key={i} 
+              type="button"
+              onClick={() => onNavigate && onNavigate(w.tab)}
+              className={`p-4 rounded-xl bg-white dark:bg-gray-800 border-l-4 ${w.color} border-y border-r border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md hover:-translate-y-0.5 active:translate-y-0 transition-all text-left cursor-pointer group flex flex-col justify-between`}
+            >
+              <div>
+                <div className="flex items-center justify-between text-gray-500">
+                  <span className="text-[11px] font-semibold uppercase">{w.label}</span>
+                  <Icon className="w-4 h-4 text-gray-400 group-hover:text-blue-500 transition-colors" />
+                </div>
+                <div className="text-xl font-bold text-gray-900 dark:text-gray-100 mt-2">{w.value}</div>
+              </div>
+              <div className="mt-2 pt-2 border-t border-gray-100 dark:border-gray-700 text-[10px] font-bold text-indigo-600 dark:text-indigo-400">
+                {w.hint}
+              </div>
+            </button>
+          ); 
+        })}
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="p-5 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm">

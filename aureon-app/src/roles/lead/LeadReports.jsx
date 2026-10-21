@@ -4,7 +4,7 @@ import { getAuthHeaders } from '../../services/apiClient';
 import { FileText, TrendingUp, CheckSquare, GitCommit, Users, RefreshCw } from 'lucide-react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 
-export const LeadReports = () => {
+export const LeadReports = ({ onNavigate }) => {
   const [developers, setDevelopers] = useState([]);
   const [tasks, setTasks] = useState([]);
   const [commits, setCommits] = useState([]);
@@ -102,19 +102,29 @@ export const LeadReports = () => {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {[
           { label: 'Team Avg Velocity', value: `${avgVelocity}%`, icon: TrendingUp, color: 'border-l-blue-500' },
-          { label: 'Total Tasks Done', value: totalTasksDone, icon: CheckSquare, color: 'border-l-emerald-500' },
-          { label: 'Active Work In Progress', value: activeTasksCount, icon: GitCommit, color: 'border-l-purple-500' },
-          { label: 'Team Members in Squad', value: safeDevs.length, icon: Users, color: 'border-l-indigo-500' }
+          { label: 'Total Tasks Done', value: totalTasksDone, icon: CheckSquare, color: 'border-l-emerald-500', hint: 'View sprint completion →', tab: 'SprintBoard' },
+          { label: 'Active Work In Progress', value: activeTasksCount, icon: GitCommit, color: 'border-l-purple-500', hint: 'Inspect active workload →', tab: 'SprintBoard' },
+          { label: 'Team Members in Squad', value: safeDevs.length, icon: Users, color: 'border-l-indigo-500', hint: 'View team members →', tab: 'Developers' }
         ].map((w, i) => { 
           const Icon = w.icon; 
           return (
-            <div key={i} className={`p-4 rounded-2xl bg-white dark:bg-gray-800 border-l-4 ${w.color} border-y border-r border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-all`}>
-              <div className="flex items-center justify-between text-gray-500">
-                <span className="text-[11px] font-semibold">{w.label}</span>
-                <Icon className="w-4 h-4 text-gray-400" />
+            <button 
+              key={i} 
+              type="button"
+              onClick={() => onNavigate && onNavigate(w.tab)}
+              className={`p-4 rounded-2xl bg-white dark:bg-gray-800 border-l-4 ${w.color} border-y border-r border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md hover:-translate-y-0.5 active:translate-y-0 transition-all text-left cursor-pointer group flex flex-col justify-between`}
+            >
+              <div>
+                <div className="flex items-center justify-between text-gray-500">
+                  <span className="text-[11px] font-semibold uppercase">{w.label}</span>
+                  <Icon className="w-4 h-4 text-gray-400 group-hover:text-indigo-500 transition-colors" />
+                </div>
+                <div className="text-xl font-bold text-gray-900 dark:text-gray-100 mt-2">{w.value}</div>
               </div>
-              <div className="text-xl font-bold text-gray-900 dark:text-gray-100 mt-2">{w.value}</div>
-            </div>
+              <div className="mt-2 pt-2 border-t border-gray-100 dark:border-gray-700 text-[10px] font-bold text-indigo-600 dark:text-indigo-400">
+                {w.hint}
+              </div>
+            </button>
           ); 
         })}
       </div>

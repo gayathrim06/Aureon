@@ -283,100 +283,120 @@ export const PmDashboard = ({ onNavigate }) => {
       {/* PM Executive Metrics Cards - Fully Interactive & Clickable */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         {/* Card 1: Active Projects */}
-        <div 
+        <button 
+          type="button"
           onClick={() => onNavigate && onNavigate('Projects')}
-          className="p-4 rounded-xl bg-white dark:bg-slate-900 warm:bg-[#e8dbbe] border-l-4 border-l-blue-500 border-y border-r border-slate-200 dark:border-slate-800 warm:border-[#cbb68e] shadow-sm hover:shadow-md hover:border-blue-400 dark:hover:border-blue-500 hover:-translate-y-0.5 transition-all cursor-pointer group"
+          className="w-full text-left p-4 rounded-xl bg-white dark:bg-slate-900 warm:bg-[#e8dbbe] border-l-4 border-l-blue-500 border-y border-r border-slate-200 dark:border-slate-800 warm:border-[#cbb68e] shadow-sm hover:shadow-md hover:border-blue-400 dark:hover:border-blue-500 hover:-translate-y-0.5 active:scale-95 transition-all cursor-pointer group focus:outline-none focus:ring-2 focus:ring-blue-500/50 flex flex-col justify-between"
         >
-          <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 warm:text-[#69523c]">
-            <span className="text-[11px] font-bold uppercase tracking-wider">Total Projects</span>
-            <FolderKanban className="w-4 h-4 text-blue-500 group-hover:scale-110 transition-transform" />
+          <div>
+            <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 warm:text-[#69523c]">
+              <span className="text-[11px] font-bold uppercase tracking-wider">Total Projects</span>
+              <FolderKanban className="w-4 h-4 text-blue-500 group-hover:scale-110 transition-transform" />
+            </div>
+            <div className="text-2xl font-black text-slate-900 dark:text-white warm:text-[#342314] mt-2">{totalProjects} Projects</div>
+            <div className="text-[10px] text-slate-500 dark:text-slate-400 warm:text-[#69523c] mt-1 font-semibold">
+              {planningProjects} Planning • {activeProjects} Active • {completedProjects} Done
+            </div>
           </div>
-          <div className="text-2xl font-black text-slate-900 dark:text-white warm:text-[#342314] mt-2">{totalProjects} Projects</div>
-          <div className="text-[10px] text-slate-500 dark:text-slate-400 warm:text-[#69523c] mt-1 font-semibold">
-            {planningProjects} Planning • {activeProjects} Active • {completedProjects} Done
+          <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-800 text-[10px] text-blue-600 dark:text-blue-400 font-bold flex items-center justify-between">
+            <span>View all projects</span>
+            <span className="group-hover:translate-x-1 transition-transform">→</span>
           </div>
-          <div className="text-[10px] text-blue-600 dark:text-blue-400 font-bold mt-2 flex items-center gap-1 group-hover:translate-x-1 transition-transform">
-            View all projects →
-          </div>
-        </div>
+        </button>
 
         {/* Card 2: Team Leads Assigned */}
-        <div 
+        <button 
+          type="button"
           onClick={() => onNavigate && onNavigate('TeamMembers')}
-          className="p-4 rounded-xl bg-white dark:bg-slate-900 warm:bg-[#e8dbbe] border-l-4 border-l-indigo-500 border-y border-r border-slate-200 dark:border-slate-800 warm:border-[#cbb68e] shadow-sm hover:shadow-md hover:border-indigo-400 dark:hover:border-indigo-500 hover:-translate-y-0.5 transition-all cursor-pointer group"
+          className="w-full text-left p-4 rounded-xl bg-white dark:bg-slate-900 warm:bg-[#e8dbbe] border-l-4 border-l-indigo-500 border-y border-r border-slate-200 dark:border-slate-800 warm:border-[#cbb68e] shadow-sm hover:shadow-md hover:border-indigo-400 dark:hover:border-indigo-500 hover:-translate-y-0.5 active:scale-95 transition-all cursor-pointer group focus:outline-none focus:ring-2 focus:ring-indigo-500/50 flex flex-col justify-between"
         >
-          <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 warm:text-[#69523c]">
-            <span className="text-[11px] font-bold uppercase tracking-wider">Team Leads Assigned</span>
-            <UserCheck className="w-4 h-4 text-indigo-500 group-hover:scale-110 transition-transform" />
+          <div>
+            <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 warm:text-[#69523c]">
+              <span className="text-[11px] font-bold uppercase tracking-wider">Team Leads Assigned</span>
+              <UserCheck className="w-4 h-4 text-indigo-500 group-hover:scale-110 transition-transform" />
+            </div>
+            <div className="text-2xl font-black text-slate-900 dark:text-white warm:text-[#342314] mt-2">
+              {projectsList.filter(p => p.lead_name && p.lead_name !== 'Unassigned Lead').length} Leads
+            </div>
+            <div className="text-[10px] text-slate-500 dark:text-slate-400 warm:text-[#69523c] mt-1 font-semibold">
+              Linked to projects
+            </div>
           </div>
-          <div className="text-2xl font-black text-slate-900 dark:text-white warm:text-[#342314] mt-2">
-            {projectsList.filter(p => p.lead_name && p.lead_name !== 'Unassigned Lead').length} Leads
+          <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-800 text-[10px] text-indigo-600 dark:text-indigo-400 font-bold flex items-center justify-between">
+            <span>View assigned leads</span>
+            <span className="group-hover:translate-x-1 transition-transform">→</span>
           </div>
-          <div className="text-[10px] text-slate-500 dark:text-slate-400 warm:text-[#69523c] mt-1 font-semibold">
-            Linked to projects
-          </div>
-          <div className="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold mt-2 flex items-center gap-1 group-hover:translate-x-1 transition-transform">
-            View assigned leads →
-          </div>
-        </div>
+        </button>
 
         {/* Card 3: Total Developers & QA */}
-        <div 
+        <button 
+          type="button"
           onClick={() => onNavigate && onNavigate('TeamMembers')}
-          className="p-4 rounded-xl bg-white dark:bg-slate-900 warm:bg-[#e8dbbe] border-l-4 border-l-purple-500 border-y border-r border-slate-200 dark:border-slate-800 warm:border-[#cbb68e] shadow-sm hover:shadow-md hover:border-purple-400 dark:hover:border-purple-500 hover:-translate-y-0.5 transition-all cursor-pointer group"
+          className="w-full text-left p-4 rounded-xl bg-white dark:bg-slate-900 warm:bg-[#e8dbbe] border-l-4 border-l-purple-500 border-y border-r border-slate-200 dark:border-slate-800 warm:border-[#cbb68e] shadow-sm hover:shadow-md hover:border-purple-400 dark:hover:border-purple-500 hover:-translate-y-0.5 active:scale-95 transition-all cursor-pointer group focus:outline-none focus:ring-2 focus:ring-purple-500/50 flex flex-col justify-between"
         >
-          <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 warm:text-[#69523c]">
-            <span className="text-[11px] font-bold uppercase tracking-wider">Team Member Roster</span>
-            <Users className="w-4 h-4 text-purple-500 group-hover:scale-110 transition-transform" />
+          <div>
+            <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 warm:text-[#69523c]">
+              <span className="text-[11px] font-bold uppercase tracking-wider">Team Member Roster</span>
+              <Users className="w-4 h-4 text-purple-500 group-hover:scale-110 transition-transform" />
+            </div>
+            <div className="text-2xl font-black text-slate-900 dark:text-white warm:text-[#342314] mt-2">
+              {availableMembers.length} Members
+            </div>
+            <div className="text-[10px] text-slate-500 dark:text-slate-400 warm:text-[#69523c] mt-1 font-semibold">
+              {availableMembers.filter(m => m.type === 'DEV').length} Developers • {availableMembers.filter(m => m.type === 'QA').length} QA Specialists
+            </div>
           </div>
-          <div className="text-2xl font-black text-slate-900 dark:text-white warm:text-[#342314] mt-2">
-            {availableMembers.length} Members
+          <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-800 text-[10px] text-purple-600 dark:text-purple-400 font-bold flex items-center justify-between">
+            <span>View member capacity</span>
+            <span className="group-hover:translate-x-1 transition-transform">→</span>
           </div>
-          <div className="text-[10px] text-slate-500 dark:text-slate-400 warm:text-[#69523c] mt-1 font-semibold">
-            {availableMembers.filter(m => m.type === 'DEV').length} Developers • {availableMembers.filter(m => m.type === 'QA').length} QA Specialists
-          </div>
-          <div className="text-[10px] text-purple-600 dark:text-purple-400 font-bold mt-2 flex items-center gap-1 group-hover:translate-x-1 transition-transform">
-            View member capacity →
-          </div>
-        </div>
+        </button>
 
         {/* Card 4: Deadline Tracking */}
-        <div 
+        <button 
+          type="button"
           onClick={() => onNavigate && onNavigate('Milestones')}
-          className="p-4 rounded-xl bg-white dark:bg-slate-900 warm:bg-[#e8dbbe] border-l-4 border-l-amber-500 border-y border-r border-slate-200 dark:border-slate-800 warm:border-[#cbb68e] shadow-sm hover:shadow-md hover:border-amber-400 dark:hover:border-amber-500 hover:-translate-y-0.5 transition-all cursor-pointer group"
+          className="w-full text-left p-4 rounded-xl bg-white dark:bg-slate-900 warm:bg-[#e8dbbe] border-l-4 border-l-amber-500 border-y border-r border-slate-200 dark:border-slate-800 warm:border-[#cbb68e] shadow-sm hover:shadow-md hover:border-amber-400 dark:hover:border-amber-500 hover:-translate-y-0.5 active:scale-95 transition-all cursor-pointer group focus:outline-none focus:ring-2 focus:ring-amber-500/50 flex flex-col justify-between"
         >
-          <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 warm:text-[#69523c]">
-            <span className="text-[11px] font-bold uppercase tracking-wider">Deadline Alert</span>
-            <Clock className="w-4 h-4 text-amber-500 group-hover:scale-110 transition-transform" />
+          <div>
+            <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 warm:text-[#69523c]">
+              <span className="text-[11px] font-bold uppercase tracking-wider">Deadline Alert</span>
+              <Clock className="w-4 h-4 text-amber-500 group-hover:scale-110 transition-transform" />
+            </div>
+            <div className="text-2xl font-black text-slate-900 dark:text-white warm:text-[#342314] mt-2">
+              {totalProjects > 0 ? 'On Track' : 'No Deadlines'}
+            </div>
+            <div className="text-[10px] text-slate-500 dark:text-slate-400 warm:text-[#69523c] mt-1 font-semibold">
+              Schedule risk monitored
+            </div>
           </div>
-          <div className="text-2xl font-black text-slate-900 dark:text-white warm:text-[#342314] mt-2">
-            {totalProjects > 0 ? 'On Track' : 'No Deadlines'}
+          <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-800 text-[10px] text-amber-600 dark:text-amber-400 font-bold flex items-center justify-between">
+            <span>Open milestones calendar</span>
+            <span className="group-hover:translate-x-1 transition-transform">→</span>
           </div>
-          <div className="text-[10px] text-slate-500 dark:text-slate-400 warm:text-[#69523c] mt-1 font-semibold">
-            Schedule risk monitored
-          </div>
-          <div className="text-[10px] text-amber-600 dark:text-amber-400 font-bold mt-2 flex items-center gap-1 group-hover:translate-x-1 transition-transform">
-            Open milestones calendar →
-          </div>
-        </div>
+        </button>
 
         {/* Card 5: Project Health */}
-        <div 
+        <button 
+          type="button"
           onClick={() => onNavigate && onNavigate('ProjectHealth')}
-          className="p-4 rounded-xl bg-white dark:bg-slate-900 warm:bg-[#e8dbbe] border-l-4 border-l-emerald-500 border-y border-r border-slate-200 dark:border-slate-800 warm:border-[#cbb68e] shadow-sm hover:shadow-md hover:border-emerald-400 dark:hover:border-emerald-500 hover:-translate-y-0.5 transition-all cursor-pointer group"
+          className="w-full text-left p-4 rounded-xl bg-white dark:bg-slate-900 warm:bg-[#e8dbbe] border-l-4 border-l-emerald-500 border-y border-r border-slate-200 dark:border-slate-800 warm:border-[#cbb68e] shadow-sm hover:shadow-md hover:border-emerald-400 dark:hover:border-emerald-500 hover:-translate-y-0.5 active:scale-95 transition-all cursor-pointer group focus:outline-none focus:ring-2 focus:ring-emerald-500/50 flex flex-col justify-between"
         >
-          <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 warm:text-[#69523c]">
-            <span className="text-[11px] font-bold uppercase tracking-wider">Overall Health</span>
-            <Activity className="w-4 h-4 text-emerald-500 group-hover:scale-110 transition-transform" />
+          <div>
+            <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 warm:text-[#69523c]">
+              <span className="text-[11px] font-bold uppercase tracking-wider">Overall Health</span>
+              <Activity className="w-4 h-4 text-emerald-500 group-hover:scale-110 transition-transform" />
+            </div>
+            <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400 warm:text-[#b45309] mt-2">100%</div>
+            <div className="text-[10px] text-slate-500 dark:text-slate-400 warm:text-[#69523c] mt-1 font-semibold">
+              BCNF Governance Normal
+            </div>
           </div>
-          <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400 warm:text-[#b45309] mt-2">100%</div>
-          <div className="text-[10px] text-slate-500 dark:text-slate-400 warm:text-[#69523c] mt-1 font-semibold">
-            BCNF Governance Normal
+          <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-800 text-[10px] text-emerald-600 dark:text-emerald-400 font-bold flex items-center justify-between">
+            <span>AI health insights</span>
+            <span className="group-hover:translate-x-1 transition-transform">→</span>
           </div>
-          <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold mt-2 flex items-center gap-1 group-hover:translate-x-1 transition-transform">
-            AI health insights →
-          </div>
-        </div>
+        </button>
       </div>
 
       {/* Projects Governance Hub Section */}

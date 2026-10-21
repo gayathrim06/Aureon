@@ -9,6 +9,7 @@ export const DevSprintView = () => {
   const { user } = useAuth();
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [statusFilter, setStatusFilter] = useState('ALL');
 
   const fetchMyTasks = async () => {
     try {
@@ -70,11 +71,24 @@ export const DevSprintView = () => {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {statuses.map(s => {
           const count = tasks.filter(t => t.status === s || (s === 'COMPLETED' && t.status === 'DONE') || (s === 'IN_REVIEW' && t.status === 'REVIEW')).length;
+          const isActive = statusFilter === s;
           return (
-            <div key={s} className={`p-4 rounded-xl bg-white dark:bg-gray-800 border-l-4 ${statusColors[s]} border-y border-r border-gray-200 dark:border-gray-700 shadow-sm`}>
-              <div className="text-[11px] font-semibold text-gray-500">{statusLabels[s]}</div>
-              <div className="text-2xl font-bold text-gray-900 dark:text-gray-100 mt-1">{count}</div>
-            </div>
+            <button
+              key={s} 
+              type="button"
+              onClick={() => setStatusFilter(prev => prev === s ? 'ALL' : s)}
+              className={`p-4 rounded-xl border-l-4 ${statusColors[s]} border-y border-r border-gray-200 dark:border-gray-700 shadow-sm transition-all hover:shadow-md hover:-translate-y-0.5 text-left cursor-pointer group flex flex-col justify-between ${
+                isActive ? 'ring-2 ring-indigo-500 bg-indigo-50/40 dark:bg-indigo-950/20' : 'bg-white dark:bg-gray-800'
+              }`}
+            >
+              <div>
+                <div className="text-[11px] font-semibold text-gray-500 uppercase">{statusLabels[s]}</div>
+                <div className="text-2xl font-bold text-gray-900 dark:text-gray-100 mt-1">{count}</div>
+              </div>
+              <div className="mt-2 pt-2 border-t border-gray-100 dark:border-gray-700 text-[10px] font-bold text-indigo-600 dark:text-indigo-400">
+                {isActive ? 'Showing filtered (click to reset)' : `Filter ${statusLabels[s]} →`}
+              </div>
+            </button>
           );
         })}
       </div>
@@ -104,7 +118,7 @@ export const DevSprintView = () => {
         </div>
       ) : (
         <div className="space-y-3">
-          {tasks.map(t => (
+          {(statusFilter === 'ALL' ? tasks : tasks.filter(t => t.status === statusFilter || (statusFilter === 'COMPLETED' && t.status === 'DONE') || (statusFilter === 'IN_REVIEW' && t.status === 'REVIEW'))).map(t => (
             <div key={t.id} className="p-4 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <span className="font-mono text-[10px] font-bold text-blue-600 dark:text-blue-400">

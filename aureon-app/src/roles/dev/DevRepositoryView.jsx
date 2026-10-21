@@ -9,6 +9,7 @@ export const DevRepositoryView = () => {
   const { user } = useAuth();
   const [commits, setCommits] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [filterCriteria, setFilterCriteria] = useState('ALL');
 
   const fetchCommits = async () => {
     try {
@@ -80,21 +81,64 @@ export const DevRepositoryView = () => {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="p-4 rounded-xl bg-white dark:bg-gray-800 border-l-4 border-l-purple-500 border-y border-r border-gray-200 dark:border-gray-700 shadow-sm">
-          <div className="text-[11px] font-semibold text-gray-500">Total Commits</div>
-          <div className="text-2xl font-bold text-purple-600 mt-1">{totalCommits}</div>
-        </div>
-        <div className="p-4 rounded-xl bg-white dark:bg-gray-800 border-l-4 border-l-emerald-500 border-y border-r border-gray-200 dark:border-gray-700 shadow-sm">
-          <div className="text-[11px] font-semibold text-gray-500">Lines Added</div>
-          <div className="text-2xl font-bold text-emerald-600 mt-1">{totalAdditions}</div>
-        </div>
-        <div className="p-4 rounded-xl bg-white dark:bg-gray-800 border-l-4 border-l-rose-500 border-y border-r border-gray-200 dark:border-gray-700 shadow-sm">
-          <div className="text-[11px] font-semibold text-gray-500">Lines Removed</div>
-          <div className="text-2xl font-bold text-rose-600 mt-1">{totalDeletions}</div>
-        </div>
+        <button 
+          type="button"
+          onClick={() => setFilterCriteria('ALL')}
+          className={`p-4 rounded-xl border-l-4 border-l-purple-500 border-y border-r border-gray-200 dark:border-gray-700 shadow-sm transition-all hover:shadow-md hover:-translate-y-0.5 text-left cursor-pointer group flex flex-col justify-between ${
+            filterCriteria === 'ALL' ? 'ring-2 ring-purple-500 bg-purple-50/40 dark:bg-purple-950/20' : 'bg-white dark:bg-gray-800'
+          }`}
+        >
+          <div>
+            <div className="text-[11px] font-semibold text-gray-500 uppercase">Total Commits</div>
+            <div className="text-2xl font-bold text-purple-600 mt-1">{totalCommits}</div>
+          </div>
+          <div className="mt-2 pt-2 border-t border-gray-100 dark:border-gray-700 text-[10px] font-bold text-purple-600">
+            Show all commits →
+          </div>
+        </button>
+        <button 
+          type="button"
+          onClick={() => setFilterCriteria('ADDITIONS')}
+          className={`p-4 rounded-xl border-l-4 border-l-emerald-500 border-y border-r border-gray-200 dark:border-gray-700 shadow-sm transition-all hover:shadow-md hover:-translate-y-0.5 text-left cursor-pointer group flex flex-col justify-between ${
+            filterCriteria === 'ADDITIONS' ? 'ring-2 ring-emerald-500 bg-emerald-50/40 dark:bg-emerald-950/20' : 'bg-white dark:bg-gray-800'
+          }`}
+        >
+          <div>
+            <div className="text-[11px] font-semibold text-gray-500 uppercase">Lines Added</div>
+            <div className="text-2xl font-bold text-emerald-600 mt-1">+{totalAdditions}</div>
+          </div>
+          <div className="mt-2 pt-2 border-t border-gray-100 dark:border-gray-700 text-[10px] font-bold text-emerald-600">
+            Sort by highest additions →
+          </div>
+        </button>
+        <button 
+          type="button"
+          onClick={() => setFilterCriteria('DELETIONS')}
+          className={`p-4 rounded-xl border-l-4 border-l-rose-500 border-y border-r border-gray-200 dark:border-gray-700 shadow-sm transition-all hover:shadow-md hover:-translate-y-0.5 text-left cursor-pointer group flex flex-col justify-between ${
+            filterCriteria === 'DELETIONS' ? 'ring-2 ring-rose-500 bg-rose-50/40 dark:bg-rose-950/20' : 'bg-white dark:bg-gray-800'
+          }`}
+        >
+          <div>
+            <div className="text-[11px] font-semibold text-gray-500 uppercase">Lines Removed</div>
+            <div className="text-2xl font-bold text-rose-600 mt-1">-{totalDeletions}</div>
+          </div>
+          <div className="mt-2 pt-2 border-t border-gray-100 dark:border-gray-700 text-[10px] font-bold text-rose-600">
+            Sort by highest refactors →
+          </div>
+        </button>
       </div>
 
-      <DataTable columns={columns} data={commits} searchPlaceholder="Search commits by message, hash, repo..." />
+      <DataTable 
+        columns={columns} 
+        data={
+          filterCriteria === 'ADDITIONS' 
+            ? [...commits].sort((a,b) => (b.additions || 0) - (a.additions || 0))
+            : filterCriteria === 'DELETIONS'
+            ? [...commits].sort((a,b) => (b.deletions || 0) - (a.deletions || 0))
+            : commits
+        } 
+        searchPlaceholder="Search commits by message, hash, repo..." 
+      />
     </div>
   );
 };
