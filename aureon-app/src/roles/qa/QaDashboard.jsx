@@ -122,7 +122,7 @@ export const QaDashboard = ({ onNavigate }) => {
   const quickActions = [
     { label: 'Bug Defect Tracker', tab: 'BugTracker', icon: Bug, desc: 'Log issues with screenshot logs' },
     { label: 'Test Case Library', tab: 'TestCases', icon: CheckSquare, desc: 'Execute automated regression tests' },
-    { label: 'Project Health', tab: 'Projects', icon: FolderKanban, desc: 'SonarQube & code smells review' },
+    { label: 'Project Health', tab: 'Projects', icon: FolderKanban, desc: 'Project deliverables & quality health' },
     { label: 'Repository Status', tab: 'Repository', icon: GitBranch, desc: 'Git commit & PR branch status' },
     { label: 'Compliance Reports', tab: 'Reports', icon: FileText, desc: 'Export QA execution test summaries' },
   ];

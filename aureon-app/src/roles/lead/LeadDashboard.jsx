@@ -201,7 +201,6 @@ export const LeadDashboard = ({ onNavigate }) => {
     { label: 'Assigned Projects', tab: 'AssignedProjects', icon: FolderKanban, desc: 'Active project health & task progress' },
     { label: 'Developers Roster', tab: 'Developers', icon: Users, desc: 'Virtual team capacity & task allocation' },
     { label: 'Repository Activity', tab: 'Repository', icon: GitBranch, desc: 'Live commits, branches & code changes' },
-    { label: 'Code Quality Hub', tab: 'CodeQuality', icon: Cpu, desc: 'SonarQube metrics, debt & code smells' },
     { label: 'Project Health', tab: 'ProjectHealth', icon: Activity, desc: 'Technical health trends & test coverage' },
     { label: 'Team Reports', tab: 'Reports', icon: FileText, desc: 'Developer velocity & completion rates' },
   ];

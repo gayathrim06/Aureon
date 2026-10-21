@@ -310,7 +310,7 @@ export const AppRouter = () => {
         case 'Tasks': return <LeadSprintBoard onShowToast={showToast} onNavigate={navigateTab} initialView={tab === 'Tasks' ? 'table' : 'kanban'} />;
         case 'Developers': return <DeveloperRoster onShowToast={showToast} onNavigate={navigateTab} />;
         case 'Repository': return <LeadRepositoryView onNavigate={navigateTab} />;
-        case 'CodeQuality': return <CodeQualityHub onNavigate={navigateTab} />;
+        case 'CodeQuality': return <LeadProjectHealth onNavigate={navigateTab} />;
         case 'ProjectHealth': return <LeadProjectHealth onNavigate={navigateTab} />;
         case 'Reports': return <LeadReports onNavigate={navigateTab} />;
         case 'Profile': return <UserProfile onNavigate={navigateTab} />;
@@ -327,7 +327,7 @@ export const AppRouter = () => {
         case 'Sprint': return <DevSprintTasks onShowToast={showToast} onNavigate={navigateTab} />;
         case 'Repository': return <DevRepositoryView onNavigate={navigateTab} />;
         case 'PullRequests': return <DevPullRequests onNavigate={navigateTab} />;
-        case 'CodeIssues': return <DevCodeIssues onNavigate={navigateTab} />;
+        case 'CodeIssues': return <DevSprintTasks onShowToast={showToast} onNavigate={navigateTab} />;
         case 'Profile': return <UserProfile onNavigate={navigateTab} />;
         case 'Notifications': return <DevNotifications onNavigate={navigateTab} />;
         default: return <DevDashboard onNavigate={navigateTab} />;
