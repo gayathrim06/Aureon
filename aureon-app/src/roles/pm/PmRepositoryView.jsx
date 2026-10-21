@@ -84,9 +84,36 @@ export const PmRepositoryView = () => {
     }
   };
 
-  const handleOpenRepoDetails = (repo) => {
+  const handleOpenRepoDetails = async (repo) => {
     setSelectedRepo(repo);
     fetchRepoCommits(repo.id);
+
+    try {
+      const res = await fetch(`http://127.0.0.1:8000/api/v1/repositories/${repo.id}`, {
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() }
+      });
+      if (res.ok) {
+        const d = await res.json();
+        if (d.success && d.repository) {
+          const r = d.repository;
+          setSelectedRepo(prev => ({
+            ...prev,
+            teamMembers: r.team_members || [],
+            branchesList: r.branches || [r.default_branch || 'main'],
+            squadName: r.squad_name,
+            projectName: r.project_name
+          }));
+          if (r.team_members && r.team_members.length > 0) {
+            setNewCommitAuthor(r.team_members[0].name);
+          }
+          if (r.default_branch) {
+            setNewCommitBranch(r.default_branch);
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to load repo detail info:', e);
+    }
   };
 
   const handleSyncRepository = async (repoId, e) => {
@@ -418,10 +445,10 @@ export const PmRepositoryView = () => {
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div className="sm:col-span-2">
+                  <div className="sm:col-span-1">
                     <input
                       type="text"
-                      placeholder="Commit message (e.g., feat(marketplace): add student chat & offer negotiation)..."
+                      placeholder="Commit message (e.g., feat(auth): add JWT auth token)..."
                       value={newCommitMessage}
                       onChange={(e) => setNewCommitMessage(e.target.value)}
                       required
@@ -429,13 +456,37 @@ export const PmRepositoryView = () => {
                     />
                   </div>
                   <div>
-                    <input
-                      type="text"
-                      placeholder="Developer Name (e.g. Ram Kumar)"
+                    <select
                       value={newCommitAuthor}
                       onChange={(e) => setNewCommitAuthor(e.target.value)}
                       className="w-full px-3 py-1.5 text-xs rounded-lg border border-cyan-300 dark:border-cyan-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                    />
+                    >
+                      {selectedRepo?.teamMembers && selectedRepo.teamMembers.length > 0 ? (
+                        selectedRepo.teamMembers.map(m => (
+                          <option key={m.id} value={m.name}>{m.name} ({m.role || 'Member'})</option>
+                        ))
+                      ) : (
+                        <option value={newCommitAuthor}>{newCommitAuthor}</option>
+                      )}
+                    </select>
+                  </div>
+                  <div>
+                    <select
+                      value={newCommitBranch}
+                      onChange={(e) => setNewCommitBranch(e.target.value)}
+                      className="w-full px-3 py-1.5 text-xs rounded-lg border border-cyan-300 dark:border-cyan-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500 font-mono"
+                    >
+                      {selectedRepo?.branchesList && selectedRepo.branchesList.length > 0 ? (
+                        selectedRepo.branchesList.map(b => (
+                          <option key={b} value={b}>{b}</option>
+                        ))
+                      ) : (
+                        <>
+                          <option value="main">main</option>
+                          <option value="develop">develop</option>
+                        </>
+                      )}
+                    </select>
                   </div>
                 </div>
 

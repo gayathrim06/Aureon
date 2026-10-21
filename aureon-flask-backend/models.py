@@ -1054,7 +1054,23 @@ class GitHubRepository(db.Model):
     def full_name(self):
         return f"{self.owner}/{self.repository_name}" if self.owner else self.repository_name
 
+    @property
+    def branches_list(self):
+        branch_names = set([self.default_branch or 'main', 'develop'])
+        if self.pull_requests:
+            for pr in self.pull_requests:
+                if pr.source_branch:
+                    branch_names.add(pr.source_branch)
+                if pr.target_branch:
+                    branch_names.add(pr.target_branch)
+        if self.commits:
+            for c in self.commits:
+                if getattr(c, 'branch', None):
+                    branch_names.add(c.branch)
+        return sorted(list(branch_names))
+
     def to_dict(self):
+        b_list = self.branches_list
         return {
             'id': str(self.id),
             'project_id': str(self.project_id) if self.project_id else None,
@@ -1077,7 +1093,8 @@ class GitHubRepository(db.Model):
             'commits_count': len(self.commits) if self.commits else 0,
             'pull_requests_count': len(self.pull_requests) if self.pull_requests else 0,
             'contributors_count': len(self.contributors) if self.contributors else 0,
-            'branches_count': 1 if (self.default_branch and len(self.commits) > 0) else 0,
+            'branches_count': len(b_list),
+            'branches': b_list,
             'size': 0,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None
@@ -1091,6 +1108,7 @@ class GitHubCommit(db.Model):
     commit_sha = db.Column(db.String(100), nullable=False, index=True)
     author_name = db.Column(db.String(150), nullable=True)
     author_email = db.Column(db.String(255), nullable=True)
+    branch = db.Column(db.String(100), default='main')
     commit_message = db.Column(db.Text, nullable=True)
     commit_date = db.Column(db.DateTime, nullable=True)
     commit_url = db.Column(db.String(255), nullable=True)
@@ -1105,6 +1123,7 @@ class GitHubCommit(db.Model):
             'short_sha': self.commit_sha[:7] if self.commit_sha else '',
             'author_name': self.author_name or 'Unknown Author',
             'author_email': self.author_email or '',
+            'branch': self.branch or 'main',
             'commit_message': self.commit_message or '',
             'commit_date': self.commit_date.isoformat() if self.commit_date else '',
             'commit_url': self.commit_url or (f"https://github.com/{self.repository.full_name}/commit/{self.commit_sha}" if self.repository else f"https://github.com/{self.commit_sha}"),
