@@ -262,10 +262,11 @@ export const QaDashboard = ({ onNavigate }) => {
         {bugs.length > 0 ? (
           <div className="space-y-2.5">
             {bugs.slice(0, 4).map((b) => (
-              <div 
+              <button 
                 key={b.id}
+                type="button"
                 onClick={() => handleNav('BugTracker')}
-                className="p-3 rounded-xl bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2 hover:border-indigo-400 transition-all cursor-pointer"
+                className="w-full text-left p-3 rounded-xl bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2 hover:border-indigo-400 hover:shadow-xs transition-all cursor-pointer focus:outline-hidden"
               >
                 <div>
                   <div className="flex items-center gap-2">
@@ -287,7 +288,7 @@ export const QaDashboard = ({ onNavigate }) => {
                 }`}>
                   {b.status || 'OPEN'}
                 </span>
-              </div>
+              </button>
             ))}
           </div>
         ) : (

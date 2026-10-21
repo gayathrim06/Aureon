@@ -68,6 +68,7 @@ export const Sidebar = ({ activeTab, onSelectTab }) => {
       { id: 'Repository', label: 'Repository', icon: GitBranch },
       { id: 'ProjectHealth', label: 'Project Health', icon: Activity },
       { id: 'Reports', label: 'Reports', icon: FileText },
+      { id: 'Notifications', label: 'Notifications', icon: Bell },
       { id: 'Profile', label: 'My Profile', icon: User },
     ],
 
@@ -88,6 +89,7 @@ export const Sidebar = ({ activeTab, onSelectTab }) => {
       { id: 'Projects', label: 'Projects', icon: FolderKanban },
       { id: 'Repository', label: 'Repository', icon: GitBranch },
       { id: 'Reports', label: 'Reports', icon: FileText },
+      { id: 'Notifications', label: 'Notifications', icon: Bell },
       { id: 'Profile', label: 'Profile', icon: User },
     ]
   };

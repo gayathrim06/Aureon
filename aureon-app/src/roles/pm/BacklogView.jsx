@@ -32,6 +32,7 @@ export const BacklogView = ({ onShowToast, onNavigate }) => {
   const [selectedProjectId, setSelectedProjectId] = useState('ALL');
   const [selectedPriority, setSelectedPriority] = useState('ALL');
   const [searchQuery, setSearchQuery] = useState('');
+  const [sortByEffort, setSortByEffort] = useState(false);
 
   // Selection for Sprint Planning
   const [selectedTaskIds, setSelectedTaskIds] = useState(new Set());
@@ -253,22 +254,27 @@ export const BacklogView = ({ onShowToast, onNavigate }) => {
       if (!matchTitle && !matchDesc && !matchKey) return false;
     }
     return true;
+  }).sort((a, b) => {
+    if (sortByEffort) {
+      return (parseFloat(b.estimated_hours) || 0) - (parseFloat(a.estimated_hours) || 0);
+    }
+    return 0;
   });
 
   const highPriorityCount = tasks.filter(t => t.priority === 'CRITICAL' || t.priority === 'HIGH').length;
   const totalEffortHours = tasks.reduce((sum, t) => sum + (parseFloat(t.estimated_hours) || 0), 0);
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-12">
+    <div className="space-y-6 max-w-7xl mx-auto pb-12 font-sans text-slate-900 dark:text-slate-100 warm:text-[#342314]">
       {/* Header & Controls */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-4">
         <div>
           <Breadcrumb activeTab="Backlog" />
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2 mt-1">
-            <ListTodo className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white warm:text-[#342314] flex items-center gap-2 mt-1">
+            <ListTodo className="w-6 h-6 text-indigo-600 dark:text-indigo-400 warm:text-[#b45309]" />
             Product Backlog
           </h1>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+          <p className="text-xs text-slate-500 dark:text-slate-400 warm:text-[#69523c] mt-0.5">
             Project work items not yet scheduled into an active sprint. Select tasks to plan into upcoming sprint cycles.
           </p>
         </div>
@@ -276,8 +282,14 @@ export const BacklogView = ({ onShowToast, onNavigate }) => {
         <div className="flex flex-wrap items-center gap-2.5 self-end sm:self-center">
           {selectedTaskIds.size > 0 && (
             <button
-              onClick={() => setIsPlanModalOpen(true)}
-              className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 rounded-xl shadow-md transition"
+              type="button"
+              onClick={() => {
+                if (sprints.length > 0 && !targetSprintId) {
+                  setTargetSprintId(sprints[0].id);
+                }
+                setIsPlanModalOpen(true);
+              }}
+              className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 rounded-xl shadow-md transition cursor-pointer active:scale-95"
             >
               <Layers className="w-3.5 h-3.5" />
               Plan into Sprint ({selectedTaskIds.size})
@@ -285,48 +297,120 @@ export const BacklogView = ({ onShowToast, onNavigate }) => {
           )}
 
           <button
+            type="button"
             onClick={() => setIsCreateModalOpen(true)}
-            className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 rounded-xl shadow-sm transition"
+            className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 rounded-xl shadow-sm transition cursor-pointer active:scale-95"
           >
             <Plus className="w-3.5 h-3.5" />
             Create Backlog Task
           </button>
 
           <button
+            type="button"
             onClick={fetchBacklogData}
             disabled={loading}
-            className="p-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 transition"
+            className="p-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 transition cursor-pointer"
+            title="Refresh Backlog"
           >
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
           </button>
         </div>
       </div>
 
-      {/* METRIC CARDS */}
+      {/* METRIC CARDS - Fully Interactive Buttons */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <div className="p-4 rounded-xl bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 shadow-xs">
-          <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">Total Backlog Items</span>
-          <div className="text-2xl font-black text-slate-900 dark:text-white mt-1">{tasks.length}</div>
-          <span className="text-[10px] text-slate-400">Uncommitted work items</span>
-        </div>
+        <button
+          type="button"
+          onClick={() => { setSelectedPriority('ALL'); setSearchQuery(''); setSortByEffort(false); }}
+          className={`w-full text-left p-4 rounded-xl bg-white dark:bg-slate-800/80 warm:bg-[#e8dbbe] border border-slate-200 dark:border-slate-700/80 warm:border-[#cbb68e] shadow-xs hover:shadow-md transition-all duration-150 hover:-translate-y-0.5 active:scale-95 cursor-pointer group flex flex-col justify-between ${
+            selectedPriority === 'ALL' && !sortByEffort ? 'ring-2 ring-indigo-500 shadow-sm' : ''
+          }`}
+        >
+          <div>
+            <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 warm:text-[#69523c]">
+              <span className="text-[11px] font-semibold uppercase tracking-wider">Total Backlog Items</span>
+              <ListTodo className="w-4 h-4 text-indigo-500 group-hover:scale-110 transition-transform" />
+            </div>
+            <div className="text-2xl font-black text-slate-900 dark:text-white warm:text-[#342314] mt-1">{tasks.length}</div>
+            <span className="text-[10px] text-slate-400 warm:text-[#69523c]">Uncommitted work items</span>
+          </div>
+          <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-700/60 text-[10px] font-bold text-indigo-600 dark:text-indigo-400 flex items-center justify-between">
+            <span>{selectedPriority === 'ALL' && !sortByEffort ? '● All Items' : 'Show all items'}</span>
+            <span className="group-hover:translate-x-1 transition-transform">→</span>
+          </div>
+        </button>
 
-        <div className="p-4 rounded-xl bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 shadow-xs">
-          <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">High / Critical Items</span>
-          <div className="text-2xl font-black text-orange-600 dark:text-orange-400 mt-1">{highPriorityCount}</div>
-          <span className="text-[10px] text-slate-400">Need prioritization</span>
-        </div>
+        <button
+          type="button"
+          onClick={() => setSelectedPriority(prev => prev === 'HIGH' ? 'ALL' : 'HIGH')}
+          className={`w-full text-left p-4 rounded-xl bg-white dark:bg-slate-800/80 warm:bg-[#e8dbbe] border border-slate-200 dark:border-slate-700/80 warm:border-[#cbb68e] shadow-xs hover:shadow-md transition-all duration-150 hover:-translate-y-0.5 active:scale-95 cursor-pointer group flex flex-col justify-between ${
+            selectedPriority === 'HIGH' ? 'ring-2 ring-orange-500 shadow-sm' : ''
+          }`}
+        >
+          <div>
+            <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 warm:text-[#69523c]">
+              <span className="text-[11px] font-semibold uppercase tracking-wider">High / Critical Items</span>
+              <AlertTriangle className="w-4 h-4 text-orange-500 group-hover:scale-110 transition-transform" />
+            </div>
+            <div className="text-2xl font-black text-orange-600 dark:text-orange-400 mt-1">{highPriorityCount}</div>
+            <span className="text-[10px] text-slate-400 warm:text-[#69523c]">Need prioritization</span>
+          </div>
+          <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-700/60 text-[10px] font-bold text-orange-600 dark:text-orange-400 flex items-center justify-between">
+            <span>{selectedPriority === 'HIGH' ? '● Filter Active (Reset)' : 'Filter high priority'}</span>
+            <span className="group-hover:translate-x-1 transition-transform">→</span>
+          </div>
+        </button>
 
-        <div className="p-4 rounded-xl bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 shadow-xs">
-          <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">Estimated Total Effort</span>
-          <div className="text-2xl font-black text-indigo-600 dark:text-indigo-400 mt-1">{totalEffortHours.toFixed(1)}h</div>
-          <span className="text-[10px] text-slate-400">Total estimated backlog hours</span>
-        </div>
+        <button
+          type="button"
+          onClick={() => setSortByEffort(prev => !prev)}
+          className={`w-full text-left p-4 rounded-xl bg-white dark:bg-slate-800/80 warm:bg-[#e8dbbe] border border-slate-200 dark:border-slate-700/80 warm:border-[#cbb68e] shadow-xs hover:shadow-md transition-all duration-150 hover:-translate-y-0.5 active:scale-95 cursor-pointer group flex flex-col justify-between ${
+            sortByEffort ? 'ring-2 ring-indigo-500 shadow-sm' : ''
+          }`}
+        >
+          <div>
+            <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 warm:text-[#69523c]">
+              <span className="text-[11px] font-semibold uppercase tracking-wider">Estimated Total Effort</span>
+              <Clock className="w-4 h-4 text-indigo-500 group-hover:scale-110 transition-transform" />
+            </div>
+            <div className="text-2xl font-black text-indigo-600 dark:text-indigo-400 mt-1">{totalEffortHours.toFixed(1)}h</div>
+            <span className="text-[10px] text-slate-400 warm:text-[#69523c]">Total estimated backlog hours</span>
+          </div>
+          <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-700/60 text-[10px] font-bold text-indigo-600 dark:text-indigo-400 flex items-center justify-between">
+            <span>{sortByEffort ? '● Sorted by Effort' : 'Click to sort by effort'}</span>
+            <span className="group-hover:translate-x-1 transition-transform">↕</span>
+          </div>
+        </button>
 
-        <div className="p-4 rounded-xl bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 shadow-xs">
-          <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">Selected for Planning</span>
-          <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1">{selectedTaskIds.size}</div>
-          <span className="text-[10px] text-slate-400">Ready to move to sprint</span>
-        </div>
+        <button
+          type="button"
+          onClick={() => {
+            if (selectedTaskIds.size > 0) {
+              if (sprints.length > 0 && !targetSprintId) {
+                setTargetSprintId(sprints[0].id);
+              }
+              setIsPlanModalOpen(true);
+            } else {
+              handleSelectAll(filteredTasks);
+            }
+          }}
+          className={`w-full text-left p-4 rounded-xl bg-white dark:bg-slate-800/80 warm:bg-[#e8dbbe] border border-slate-200 dark:border-slate-700/80 warm:border-[#cbb68e] shadow-xs hover:shadow-md transition-all duration-150 hover:-translate-y-0.5 active:scale-95 cursor-pointer group flex flex-col justify-between ${
+            selectedTaskIds.size > 0 ? 'ring-2 ring-emerald-500 shadow-sm' : ''
+          }`}
+        >
+          <div>
+            <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 warm:text-[#69523c]">
+              <span className="text-[11px] font-semibold uppercase tracking-wider">Selected for Planning</span>
+              <CheckSquare className="w-4 h-4 text-emerald-500 group-hover:scale-110 transition-transform" />
+            </div>
+            <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1">{selectedTaskIds.size}</div>
+            <span className="text-[10px] text-slate-400 warm:text-[#69523c]">Ready to move to sprint</span>
+          </div>
+          <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-700/60 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 flex items-center justify-between">
+            <span>{selectedTaskIds.size > 0 ? 'Plan into sprint now →' : 'Select all to plan →'}</span>
+            <span className="group-hover:translate-x-1 transition-transform">→</span>
+          </div>
+        </button>
       </div>
 
       {/* FILTER & SEARCH BAR */}
@@ -473,18 +557,23 @@ export const BacklogView = ({ onShowToast, onNavigate }) => {
                       <td className="px-4 py-3 text-right" onClick={e => e.stopPropagation()}>
                         <div className="flex items-center justify-end gap-1.5">
                           <button
+                            type="button"
                             onClick={() => {
                               setSelectedTaskIds(new Set([task.id]));
+                              if (sprints.length > 0 && !targetSprintId) {
+                                setTargetSprintId(sprints[0].id);
+                              }
                               setIsPlanModalOpen(true);
                             }}
-                            className="px-2.5 py-1 text-[11px] font-semibold rounded bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 hover:bg-indigo-100 transition"
+                            className="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 hover:bg-indigo-600 hover:text-white transition cursor-pointer shadow-xs active:scale-95"
                           >
                             Plan into Sprint
                           </button>
                           <button
+                            type="button"
                             onClick={(e) => handleDeleteTask(task.id, e)}
-                            className="p-1 rounded text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition"
-                            title="Delete task"
+                            className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition cursor-pointer"
+                            title="Delete Backlog Task"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>

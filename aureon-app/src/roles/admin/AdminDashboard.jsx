@@ -287,13 +287,18 @@ export const AdminDashboard = ({ onNavigate }) => {
 
         <div className="space-y-3">
           {recentActivities.map((act) => (
-            <div key={act.id} className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 warm:bg-[#f3e8d2] border border-slate-200 dark:border-slate-700 warm:border-[#b8a074] flex items-center justify-between">
+            <button 
+              key={act.id} 
+              type="button"
+              onClick={() => onNavigate && onNavigate('AuditLogs')}
+              className="w-full text-left p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 warm:bg-[#f3e8d2] border border-slate-200 dark:border-slate-700 warm:border-[#b8a074] hover:border-indigo-400 hover:shadow-xs transition-all cursor-pointer flex items-center justify-between group focus:outline-hidden"
+            >
               <div>
-                <span className="text-xs font-mono font-bold text-indigo-600 dark:text-indigo-400 warm:text-[#b45309]">{act.action}</span>
+                <span className="text-xs font-mono font-bold text-indigo-600 dark:text-indigo-400 warm:text-[#b45309] group-hover:underline">{act.action}</span>
                 <p className="text-xs text-slate-700 dark:text-slate-300 warm:text-[#342314] mt-0.5">{act.details}</p>
               </div>
               <span className="text-[10px] font-mono text-slate-400">{act.timestamp}</span>
-            </div>
+            </button>
           ))}
         </div>
       </div>

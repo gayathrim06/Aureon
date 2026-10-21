@@ -853,10 +853,11 @@ export const SprintPlanner = ({ onShowToast }) => {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredSprints.map(sp => (
-            <div
+            <button
+              type="button"
               key={sp.id}
               onClick={() => setSelectedSprint(sp)}
-              className={`p-5 rounded-3xl bg-white dark:bg-slate-900 border shadow-xs cursor-pointer transition-all hover:shadow-lg space-y-3 ${
+              className={`w-full text-left p-5 rounded-3xl bg-white dark:bg-slate-900 border shadow-xs cursor-pointer transition-all hover:shadow-lg hover:-translate-y-0.5 active:scale-95 space-y-3 ${
                 selectedSprint?.id === sp.id ? 'border-indigo-600 ring-2 ring-indigo-500/20' : 'border-slate-200 dark:border-slate-800'
               }`}
             >
@@ -891,7 +892,7 @@ export const SprintPlanner = ({ onShowToast }) => {
                   />
                 </div>
               </div>
-            </div>
+            </button>
           ))}
         </div>
       )}

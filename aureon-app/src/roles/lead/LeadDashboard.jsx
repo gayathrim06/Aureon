@@ -423,10 +423,11 @@ export const LeadDashboard = ({ onNavigate }) => {
             <div className="bg-white dark:bg-slate-900 warm:bg-[#e8dbbe] rounded-2xl border border-slate-200 dark:border-slate-800 warm:border-[#cbb68e] overflow-hidden shadow-xs">
               <div className="divide-y divide-slate-100 dark:divide-slate-800">
                 {rawTasks.slice(0, 5).map((t) => (
-                  <div
+                  <button
                     key={t.id}
+                    type="button"
                     onClick={() => handleNav('SprintBoard')}
-                    className="p-3.5 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors cursor-pointer group"
+                    className="w-full text-left p-3.5 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors cursor-pointer group focus:outline-hidden"
                   >
                     <div className="min-w-0 flex-1 pr-3">
                       <div className="flex items-center gap-2">
@@ -457,7 +458,7 @@ export const LeadDashboard = ({ onNavigate }) => {
                       </span>
                       <ArrowRight className="w-3.5 h-3.5 text-slate-300 group-hover:text-indigo-600 group-hover:translate-x-0.5 transition-all" />
                     </div>
-                  </div>
+                  </button>
                 ))}
               </div>
             </div>
@@ -477,6 +478,7 @@ export const LeadDashboard = ({ onNavigate }) => {
                 <p className="text-[11px] text-slate-500">Live availability from database.</p>
               </div>
               <button
+                type="button"
                 onClick={() => handleNav('Developers')}
                 className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 flex items-center gap-1 cursor-pointer hover:underline"
               >
@@ -489,10 +491,11 @@ export const LeadDashboard = ({ onNavigate }) => {
                 <div className="p-4 text-center text-xs text-slate-400">Loading squad developers...</div>
               ) : (
                 rawDevs.slice(0, 5).map((d) => (
-                  <div
+                  <button
                     key={d.id}
+                    type="button"
                     onClick={() => handleNav('Developers')}
-                    className="p-3 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors cursor-pointer group"
+                    className="w-full text-left p-3 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors cursor-pointer group focus:outline-hidden"
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
                       <div className="w-7 h-7 rounded-full bg-indigo-600 text-white font-bold text-[10px] flex items-center justify-center shrink-0">
@@ -516,13 +519,14 @@ export const LeadDashboard = ({ onNavigate }) => {
                         </span>
                       )}
                     </div>
-                  </div>
+                  </button>
                 ))
               )}
               <div className="p-2.5 bg-slate-50 dark:bg-slate-950 text-center">
                 <button
+                  type="button"
                   onClick={() => handleNav('Developers')}
-                  className="w-full py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-xs transition-all cursor-pointer flex items-center justify-center gap-1"
+                  className="w-full py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-xs transition-all cursor-pointer flex items-center justify-center gap-1 active:scale-95"
                 >
                   <Plus className="w-3.5 h-3.5" /> Allocate Task to Developer
                 </button>
@@ -541,6 +545,7 @@ export const LeadDashboard = ({ onNavigate }) => {
                 <p className="text-[11px] text-slate-500">Live sprint progress.</p>
               </div>
               <button
+                type="button"
                 onClick={() => handleNav('SprintBoard')}
                 className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 flex items-center gap-1 cursor-pointer hover:underline"
               >
@@ -553,10 +558,11 @@ export const LeadDashboard = ({ onNavigate }) => {
                 <div className="p-4 text-center text-xs text-slate-400">Loading sprints...</div>
               ) : (
                 rawSprints.slice(0, 4).map((s) => (
-                  <div
+                  <button
                     key={s.id}
+                    type="button"
                     onClick={() => handleNav('SprintBoard')}
-                    className="p-3 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors cursor-pointer group space-y-1.5"
+                    className="w-full text-left p-3 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors cursor-pointer group space-y-1.5 focus:outline-hidden"
                   >
                     <div className="flex items-center justify-between">
                       <h4 className="text-xs font-bold text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors truncate max-w-[180px]">
@@ -570,7 +576,7 @@ export const LeadDashboard = ({ onNavigate }) => {
                       <span>{s.project_name || s.project || 'Project'}</span>
                       <span>{s.end_date ? `Ends ${s.end_date}` : 'Active'}</span>
                     </div>
-                  </div>
+                  </button>
                 ))
               )}
             </div>

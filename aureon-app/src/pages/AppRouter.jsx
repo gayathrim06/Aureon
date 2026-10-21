@@ -313,6 +313,7 @@ export const AppRouter = () => {
         case 'CodeQuality': return <LeadProjectHealth onNavigate={navigateTab} />;
         case 'ProjectHealth': return <LeadProjectHealth onNavigate={navigateTab} />;
         case 'Reports': return <LeadReports onNavigate={navigateTab} />;
+        case 'Notifications': return <NotificationsView onNavigate={navigateTab} />;
         case 'Profile': return <UserProfile onNavigate={navigateTab} />;
         default: return <LeadDashboard onNavigate={navigateTab} />;
       }
@@ -343,6 +344,7 @@ export const AppRouter = () => {
         case 'Projects': return <QaProjectQuality onNavigate={navigateTab} />;
         case 'Repository': return <QaRepositoryStatus onNavigate={navigateTab} />;
         case 'Reports': return <QaTestReports onNavigate={navigateTab} />;
+        case 'Notifications': return <NotificationsView onNavigate={navigateTab} />;
         case 'Profile': return <UserProfile onNavigate={navigateTab} />;
         default: return <QaDashboard onNavigate={navigateTab} />;
       }
