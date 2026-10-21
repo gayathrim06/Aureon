@@ -258,24 +258,24 @@ export const AppRouter = () => {
     if (role === 'ROLE_ADMIN') {
       switch (tab) {
         case 'Dashboard': return <AdminDashboard onNavigate={navigateTab} />;
-        case 'Users': return <UserManagement onShowToast={showToast} />;
-        case 'AuditLogs': return <AuditLogsView />;
-        case 'RolesPermissions': return <UserManagement onShowToast={showToast} />;
+        case 'Users': return <UserManagement onShowToast={showToast} onNavigate={navigateTab} />;
+        case 'AuditLogs': return <AuditLogsView onNavigate={navigateTab} />;
+        case 'RolesPermissions': return <UserManagement onShowToast={showToast} onNavigate={navigateTab} />;
         case 'Organizations':
-        case 'Organization': return <OrganizationView />;
-        case 'Teams': return <TeamsView />;
-        case 'Projects': return <AdminProjectsView />;
+        case 'Organization': return <OrganizationView onNavigate={navigateTab} />;
+        case 'Teams': return <TeamsView onNavigate={navigateTab} onShowToast={showToast} />;
+        case 'Projects': return <AdminProjectsView onNavigate={navigateTab} />;
         case 'Backlog': return <BacklogView onShowToast={showToast} onNavigate={navigateTab} />;
-        case 'Sprints': return <SprintPlanner onShowToast={showToast} />;
-        case 'Tasks': return <TaskBreakdown onShowToast={showToast} />;
+        case 'Sprints': return <SprintPlanner onShowToast={showToast} onNavigate={navigateTab} />;
+        case 'Tasks': return <TaskBreakdown onShowToast={showToast} onNavigate={navigateTab} />;
         case 'Repositories':
-        case 'Repository': return <RepositoriesHub />;
-        case 'SonarQube': return <SonarQubeAdmin />;
-        case 'SystemLogs': return <SystemLogsView />;
-        case 'Reports': return <ComplianceReports />;
-        case 'Notifications': return <NotificationsView />;
-        case 'Profile': return <UserProfile />;
-        case 'Settings': return <PlatformSettings onShowToast={showToast} />;
+        case 'Repository': return <RepositoriesHub onNavigate={navigateTab} />;
+        case 'SonarQube': return <SonarQubeAdmin onNavigate={navigateTab} />;
+        case 'SystemLogs': return <SystemLogsView onNavigate={navigateTab} />;
+        case 'Reports': return <ComplianceReports onNavigate={navigateTab} />;
+        case 'Notifications': return <NotificationsView onNavigate={navigateTab} />;
+        case 'Profile': return <UserProfile onNavigate={navigateTab} />;
+        case 'Settings': return <PlatformSettings onShowToast={showToast} onNavigate={navigateTab} />;
         default: return <AdminDashboard onNavigate={navigateTab} />;
       }
     }
@@ -283,19 +283,19 @@ export const AppRouter = () => {
     if (role === 'ROLE_PM') {
       switch (tab) {
         case 'Dashboard': return <PmDashboard onNavigate={navigateTab} />;
-        case 'Projects': return <Projects />;
+        case 'Projects': return <Projects onNavigate={navigateTab} />;
         case 'Backlog': return <BacklogView onShowToast={showToast} onNavigate={navigateTab} />;
         case 'Sprints':
         case 'SprintTasks':
-        case 'Tasks': return <SprintPlanner onShowToast={showToast} />;
-        case 'Milestones': return <MilestoneTracker />;
-        case 'TeamMembers': return <TeamWorkload />;
-        case 'Repository': return <PmRepositoryView />;
-        case 'ProjectHealth': return <AiHealthInsights />;
-        case 'Reports': return <DeliveryReports />;
-        case 'Calendar': return <ReleaseCalendar />;
-        case 'Notifications': return <PmNotifications />;
-        case 'Profile': return <UserProfile />;
+        case 'Tasks': return <SprintPlanner onShowToast={showToast} onNavigate={navigateTab} />;
+        case 'Milestones': return <MilestoneTracker onNavigate={navigateTab} />;
+        case 'TeamMembers': return <TeamWorkload onNavigate={navigateTab} />;
+        case 'Repository': return <PmRepositoryView onNavigate={navigateTab} />;
+        case 'ProjectHealth': return <AiHealthInsights onNavigate={navigateTab} />;
+        case 'Reports': return <DeliveryReports onNavigate={navigateTab} />;
+        case 'Calendar': return <ReleaseCalendar onNavigate={navigateTab} />;
+        case 'Notifications': return <PmNotifications onNavigate={navigateTab} />;
+        case 'Profile': return <UserProfile onNavigate={navigateTab} />;
         default: return <PmDashboard onNavigate={navigateTab} />;
       }
     }
@@ -307,13 +307,13 @@ export const AppRouter = () => {
         case 'Backlog': return <BacklogView onShowToast={showToast} onNavigate={navigateTab} />;
         case 'SprintBoard':
         case 'SprintTasks':
-        case 'Tasks': return <LeadSprintBoard onShowToast={showToast} initialView={tab === 'Tasks' ? 'table' : 'kanban'} />;
-        case 'Developers': return <DeveloperRoster onShowToast={showToast} />;
+        case 'Tasks': return <LeadSprintBoard onShowToast={showToast} onNavigate={navigateTab} initialView={tab === 'Tasks' ? 'table' : 'kanban'} />;
+        case 'Developers': return <DeveloperRoster onShowToast={showToast} onNavigate={navigateTab} />;
         case 'Repository': return <LeadRepositoryView onNavigate={navigateTab} />;
         case 'CodeQuality': return <CodeQualityHub onNavigate={navigateTab} />;
         case 'ProjectHealth': return <LeadProjectHealth onNavigate={navigateTab} />;
         case 'Reports': return <LeadReports onNavigate={navigateTab} />;
-        case 'Profile': return <UserProfile />;
+        case 'Profile': return <UserProfile onNavigate={navigateTab} />;
         default: return <LeadDashboard onNavigate={navigateTab} />;
       }
     }
@@ -324,12 +324,12 @@ export const AppRouter = () => {
         case 'SprintTasks':
         case 'MyTasks':
         case 'SprintBoard':
-        case 'Sprint': return <DevSprintTasks onShowToast={showToast} />;
-        case 'Repository': return <DevRepositoryView />;
-        case 'PullRequests': return <DevPullRequests />;
-        case 'CodeIssues': return <DevCodeIssues />;
-        case 'Profile': return <UserProfile />;
-        case 'Notifications': return <DevNotifications />;
+        case 'Sprint': return <DevSprintTasks onShowToast={showToast} onNavigate={navigateTab} />;
+        case 'Repository': return <DevRepositoryView onNavigate={navigateTab} />;
+        case 'PullRequests': return <DevPullRequests onNavigate={navigateTab} />;
+        case 'CodeIssues': return <DevCodeIssues onNavigate={navigateTab} />;
+        case 'Profile': return <UserProfile onNavigate={navigateTab} />;
+        case 'Notifications': return <DevNotifications onNavigate={navigateTab} />;
         default: return <DevDashboard onNavigate={navigateTab} />;
       }
     }
@@ -337,13 +337,13 @@ export const AppRouter = () => {
     if (role === 'ROLE_QA') {
       switch (tab) {
         case 'Dashboard': return <QaDashboard onNavigate={navigateTab} />;
-        case 'BugTracker': return <BugTracker onShowToast={showToast} />;
-        case 'TestSuites': return <QaTestSuites />;
-        case 'TestCases': return <TestCaseLibrary onShowToast={showToast} />;
-        case 'Projects': return <QaProjectQuality />;
-        case 'Repository': return <QaRepositoryStatus />;
-        case 'Reports': return <QaTestReports />;
-        case 'Profile': return <UserProfile />;
+        case 'BugTracker': return <BugTracker onShowToast={showToast} onNavigate={navigateTab} />;
+        case 'TestSuites': return <QaTestSuites onNavigate={navigateTab} />;
+        case 'TestCases': return <TestCaseLibrary onShowToast={showToast} onNavigate={navigateTab} />;
+        case 'Projects': return <QaProjectQuality onNavigate={navigateTab} />;
+        case 'Repository': return <QaRepositoryStatus onNavigate={navigateTab} />;
+        case 'Reports': return <QaTestReports onNavigate={navigateTab} />;
+        case 'Profile': return <UserProfile onNavigate={navigateTab} />;
         default: return <QaDashboard onNavigate={navigateTab} />;
       }
     }

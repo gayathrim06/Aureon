@@ -302,6 +302,12 @@ class Team(db.Model):
 
         leader_name = self.leader.full_name if self.leader else None
         proj_name = self.project.name if self.project else None
+        total_team_members = len(member_details)
+        busy_count = sum(1 for m in member_details if not m.get('is_available', True))
+        active_task_load = sum(m.get('active_tasks_count', 0) for m in member_details)
+        max_capacity_load = max(total_team_members * 2, 1)
+        utilization_pct = min(100, round((active_task_load / max_capacity_load) * 100))
+        available_capacity_pct = max(10, 100 - utilization_pct) if total_team_members > 0 else 100
 
         return {
             'id': str(self.id),
@@ -318,7 +324,11 @@ class Team(db.Model):
             'lead': leader_name,
             'leader_name': leader_name,
             'department': self.description or 'Engineering',
-            'capacity': '100%',
+            'capacity': f"{available_capacity_pct}%",
+            'utilization': f"{utilization_pct}%",
+            'active_tasks_count': active_task_load,
+            'busy_members_count': busy_count,
+            'total_members_count': total_team_members,
             'members': member_names,
             'member_details': member_details
         }

@@ -333,7 +333,7 @@ export const PmDashboard = ({ onNavigate }) => {
             {availableMembers.length} Members
           </div>
           <div className="text-[10px] text-slate-500 dark:text-slate-400 warm:text-[#69523c] mt-1 font-semibold">
-            5 Developers • 3 QA Testers
+            {availableMembers.filter(m => m.type === 'DEV').length} Developers • {availableMembers.filter(m => m.type === 'QA').length} QA Specialists
           </div>
           <div className="text-[10px] text-purple-600 dark:text-purple-400 font-bold mt-2 flex items-center gap-1 group-hover:translate-x-1 transition-transform">
             View member capacity →

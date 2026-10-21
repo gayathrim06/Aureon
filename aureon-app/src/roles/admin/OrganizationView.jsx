@@ -4,7 +4,7 @@ import { DataTable } from '../../components/common/DataTable';
 import { apiClient } from '../../services/apiClient';
 import { Building, Globe, Users, CreditCard, CheckCircle2, RefreshCw } from 'lucide-react';
 
-export const OrganizationView = () => {
+export const OrganizationView = ({ onNavigate }) => {
   const [organizations, setOrganizations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({ totalUsers: 0, totalProjects: 0, totalTeams: 0 });
@@ -53,6 +53,12 @@ export const OrganizationView = () => {
     fetchLiveOrgData();
   }, []);
 
+  const handleNav = (tab) => {
+    if (typeof onNavigate === 'function') {
+      onNavigate(tab);
+    }
+  };
+
   const columns = [
     { key: 'name', label: 'Organization Name', render: (val, row) => (
       <div className="flex items-center gap-3">
@@ -82,10 +88,10 @@ export const OrganizationView = () => {
   ];
 
   const widgets = [
-    { label: 'Active Organizations', value: organizations.length, icon: Building, color: 'border-l-indigo-500' },
-    { label: 'Licensed Database Seats', value: `${stats.totalUsers} Active`, icon: Users, color: 'border-l-blue-500' },
-    { label: 'Live Projects Hosted', value: stats.totalProjects, icon: Globe, color: 'border-l-emerald-500' },
-    { label: 'Active Teams', value: stats.totalTeams, icon: CreditCard, color: 'border-l-purple-500' }
+    { label: 'Active Organizations', value: organizations.length, sub: 'Root SaaS Tenant', icon: Building, color: 'border-l-indigo-500', tab: 'Organization', hint: 'View tenant settings →' },
+    { label: 'Licensed Database Seats', value: `${stats.totalUsers} Active`, sub: 'Provisioned Accounts', icon: Users, color: 'border-l-blue-500', tab: 'Users', hint: 'Manage user seats →' },
+    { label: 'Live Projects Hosted', value: stats.totalProjects, sub: 'Enterprise Projects', icon: Globe, color: 'border-l-emerald-500', tab: 'Projects', hint: 'Open projects hub →' },
+    { label: 'Active Teams', value: stats.totalTeams, sub: 'Departmental Squads', icon: CreditCard, color: 'border-l-purple-500', tab: 'Teams', hint: 'Manage teams →' }
   ];
 
   return (
@@ -101,19 +107,36 @@ export const OrganizationView = () => {
         </div>
         <button
           onClick={fetchLiveOrgData}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 text-xs font-semibold hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 text-xs font-semibold hover:bg-gray-100 dark:hover:bg-gray-700 transition cursor-pointer"
         >
           <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
           Refresh
         </button>
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        {widgets.map((w, i) => { const Icon = w.icon; return (
-          <div key={i} className={`p-4 rounded-xl bg-white dark:bg-gray-800 border-l-4 ${w.color} border-y border-r border-gray-200 dark:border-gray-700 shadow-sm`}>
-            <div className="flex items-center justify-between text-gray-500 dark:text-gray-400"><span className="text-[11px] font-semibold">{w.label}</span><Icon className="w-4 h-4 text-gray-400" /></div>
-            <div className="text-xl font-bold text-gray-900 dark:text-gray-100 mt-2">{w.value}</div>
-          </div>
-        ); })}
+        {widgets.map((w, i) => { 
+          const Icon = w.icon; 
+          return (
+            <button 
+              key={i} 
+              type="button"
+              onClick={() => handleNav(w.tab)}
+              className={`p-4 rounded-xl bg-white dark:bg-gray-800 border-l-4 ${w.color} border-y border-r border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-all duration-150 hover:-translate-y-0.5 active:translate-y-0 text-left cursor-pointer group flex flex-col justify-between`}
+            >
+              <div>
+                <div className="flex items-center justify-between text-gray-500 dark:text-gray-400">
+                  <span className="text-[11px] font-semibold uppercase">{w.label}</span>
+                  <Icon className="w-4 h-4 text-gray-400 group-hover:text-indigo-500 transition-colors" />
+                </div>
+                <div className="text-xl font-bold text-gray-900 dark:text-gray-100 mt-2">{w.value}</div>
+                <div className="text-[10px] text-gray-500 mt-0.5">{w.sub}</div>
+              </div>
+              <div className="mt-2 pt-2 border-t border-gray-100 dark:border-gray-700/60 text-[10px] font-bold text-indigo-600 dark:text-indigo-400">
+                {w.hint}
+              </div>
+            </button>
+          ); 
+        })}
       </div>
       <DataTable columns={columns} data={organizations} searchPlaceholder="Search organizations by name, domain, plan..." />
     </div>

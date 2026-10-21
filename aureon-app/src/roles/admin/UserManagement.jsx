@@ -270,18 +270,46 @@ export const UserManagement = ({ onShowToast }) => {
         <div className="flex items-center gap-2">
           <button
             onClick={fetchUsersList}
-            className="p-2 rounded-xl bg-white dark:bg-slate-900 warm:bg-[#e8dbbe] border border-slate-200 dark:border-slate-800 warm:border-[#cbb68e] text-slate-700 dark:text-slate-300 warm:text-[#342314] hover:opacity-90"
+            className="p-2 rounded-xl bg-white dark:bg-slate-900 warm:bg-[#e8dbbe] border border-slate-200 dark:border-slate-800 warm:border-[#cbb68e] text-slate-700 dark:text-slate-300 warm:text-[#342314] hover:opacity-90 cursor-pointer"
             title="Refresh Directory"
           >
             <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
           </button>
           <button
             onClick={handleOpenCreate}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 dark:bg-indigo-600 warm:bg-[#b45309] warm:hover:bg-[#92400e] text-white text-xs font-bold shadow-md transition-all"
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 dark:bg-indigo-600 warm:bg-[#b45309] warm:hover:bg-[#92400e] text-white text-xs font-bold shadow-md transition-all cursor-pointer"
           >
             <UserPlus className="w-4 h-4" /> Add Team Member
           </button>
         </div>
+      </div>
+
+      {/* Interactive KPI Summary Cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        {[
+          { label: 'Total Users', count: roleCounts.ALL, sub: 'All Workspace Accounts', role: 'ALL', color: 'border-l-indigo-500', hint: 'View all users →' },
+          { label: 'Team Leads', count: roleCounts.LEAD, sub: 'Architecture & Delivery', role: 'LEAD', color: 'border-l-blue-500', hint: 'Filter team leads →' },
+          { label: 'Project Managers', count: roleCounts.PM, sub: 'Governance & Planning', role: 'PM', color: 'border-l-purple-500', hint: 'Filter project managers →' },
+          { label: 'Developers & QA', count: roleCounts.DEV + roleCounts.QA, sub: `${roleCounts.DEV} Devs • ${roleCounts.QA} QA`, role: 'DEV', color: 'border-l-emerald-500', hint: 'Filter engineers →' }
+        ].map((c, i) => (
+          <button
+            key={i}
+            type="button"
+            onClick={() => setSelectedRole(c.role)}
+            className={`p-4 rounded-xl bg-white dark:bg-slate-900 warm:bg-[#e8dbbe] border-l-4 ${c.color} border-y border-r border-slate-200 dark:border-slate-800 warm:border-[#cbb68e] shadow-sm hover:shadow-md transition-all duration-150 hover:-translate-y-0.5 active:translate-y-0 text-left cursor-pointer group flex flex-col justify-between ${
+              selectedRole === c.role ? 'ring-2 ring-indigo-500' : ''
+            }`}
+          >
+            <div>
+              <span className="text-[11px] font-semibold uppercase text-slate-500 dark:text-slate-400">{c.label}</span>
+              <div className="text-2xl font-black text-slate-900 dark:text-white mt-1.5">{c.count}</div>
+              <div className="text-[10px] text-slate-500 mt-0.5">{c.sub}</div>
+            </div>
+            <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-800 text-[10px] font-bold text-indigo-600 dark:text-indigo-400">
+              {c.hint}
+            </div>
+          </button>
+        ))}
       </div>
 
       {/* Quick Role Filter Badges */}

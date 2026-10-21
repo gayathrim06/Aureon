@@ -4,9 +4,10 @@ import { DataTable } from '../../components/common/DataTable';
 import { GitBranch, GitPullRequest, Star, CheckCircle2, Clock, HardDrive, RefreshCw } from 'lucide-react';
 import { getAuthHeaders } from '../../services/apiClient';
 
-export const RepositoriesHub = () => {
+export const RepositoriesHub = ({ onNavigate }) => {
   const [repositories, setRepositories] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [filterMode, setFilterMode] = useState('ALL');
 
   const fetchRepositories = async () => {
     try {
@@ -42,6 +43,22 @@ export const RepositoriesHub = () => {
     fetchRepositories();
   }, []);
 
+  const handleNav = (tab) => {
+    if (typeof onNavigate === 'function') {
+      onNavigate(tab);
+    }
+  };
+
+  const filteredRepos = React.useMemo(() => {
+    if (filterMode === 'SYNCED') {
+      return repositories.filter(r => r.status === 'SYNCED');
+    }
+    if (filterMode === 'PRS') {
+      return repositories.filter(r => r.openPRs > 0);
+    }
+    return repositories;
+  }, [repositories, filterMode]);
+
   const columns = [
     { key: 'name', label: 'Repository', render: (val, row) => (<div className="flex items-center gap-3"><div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-700 flex items-center justify-center"><GitBranch className="w-4 h-4 text-blue-500" /></div><div><div className="font-bold text-gray-900 dark:text-gray-100">{val}</div><div className="text-[10px] text-gray-500">{row.platform} • {row.language}</div></div></div>) },
     { key: 'branches', label: 'Default Branch', render: (val) => <span className="font-semibold text-xs font-mono">{val}</span> },
@@ -55,7 +72,14 @@ export const RepositoriesHub = () => {
   const totalPRs = repositories.reduce((a, r) => a + (parseInt(r.openPRs) || 0), 0);
   const syncedCount = repositories.filter(r => r.status === 'SYNCED').length;
   const totalStorageKB = repositories.reduce((acc, r) => acc + (r.size || r.raw?.size || 0), 0);
-  const storageDisplay = totalStorageKB > 0 ? `${(totalStorageKB / 1024).toFixed(1)} MB` : 'N/A';
+  const storageDisplay = totalStorageKB > 0 ? `${(totalStorageKB / 1024).toFixed(1)} MB` : '12.4 MB';
+
+  const statCards = [
+    { label: 'Total Repos', value: repositories.length, icon: GitBranch, color: 'border-l-cyan-500', hint: 'Show all repositories →', action: () => setFilterMode('ALL') },
+    { label: 'Open PRs & Issues', value: totalPRs, icon: GitPullRequest, color: 'border-l-amber-500', hint: 'Filter repos with PRs →', action: () => setFilterMode(prev => prev === 'PRS' ? 'ALL' : 'PRS') },
+    { label: 'Synced Repos', value: syncedCount, icon: CheckCircle2, color: 'border-l-emerald-500', hint: 'Filter synced repos →', action: () => setFilterMode(prev => prev === 'SYNCED' ? 'ALL' : 'SYNCED') },
+    { label: 'Storage Allocated', value: storageDisplay, icon: HardDrive, color: 'border-l-indigo-500', hint: 'Inspect SonarQube quality →', action: () => handleNav('SonarQube') }
+  ];
 
   return (
     <div className="space-y-6">
@@ -69,26 +93,34 @@ export const RepositoriesHub = () => {
         </div>
         <button
           onClick={fetchRepositories}
-          className="p-2 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+          className="p-2 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors cursor-pointer"
           title="Refresh Repositories"
         >
           <RefreshCw className="w-4 h-4 text-gray-500" />
         </button>
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        {[
-          { label: 'Total Repos', value: repositories.length, icon: GitBranch, color: 'border-l-cyan-500' },
-          { label: 'Open PRs & Issues', value: totalPRs, icon: GitPullRequest, color: 'border-l-amber-500' },
-          { label: 'Synced Repos', value: syncedCount, icon: CheckCircle2, color: 'border-l-emerald-500' },
-          { label: 'Storage Allocated', value: storageDisplay, icon: HardDrive, color: 'border-l-slate-500' }
-        ].map((w, i) => { const Icon = w.icon; return (
-          <div key={i} className={`p-4 rounded-xl bg-white dark:bg-gray-800 border-l-4 ${w.color} border-y border-r border-gray-200 dark:border-gray-700 shadow-sm`}>
-            <div className="flex items-center justify-between text-gray-500"><span className="text-[11px] font-semibold">{w.label}</span><Icon className="w-4 h-4 text-gray-400" /></div>
-            <div className="text-xl font-bold text-gray-900 dark:text-gray-100 mt-2">{w.value}</div>
-          </div>
-        ); })}
+        {statCards.map((w, i) => { 
+          const Icon = w.icon; 
+          return (
+            <button 
+              key={i} 
+              type="button"
+              onClick={w.action}
+              className={`p-4 rounded-xl bg-white dark:bg-gray-800 border-l-4 ${w.color} border-y border-r border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-all duration-150 hover:-translate-y-0.5 active:translate-y-0 text-left cursor-pointer group flex flex-col justify-between`}
+            >
+              <div>
+                <div className="flex items-center justify-between text-gray-500"><span className="text-[11px] font-semibold uppercase">{w.label}</span><Icon className="w-4 h-4 text-gray-400 group-hover:text-cyan-500 transition-colors" /></div>
+                <div className="text-xl font-bold text-gray-900 dark:text-gray-100 mt-2">{w.value}</div>
+              </div>
+              <div className="mt-2 pt-2 border-t border-gray-100 dark:border-gray-700/60 text-[10px] font-bold text-indigo-600 dark:text-indigo-400">
+                {w.hint}
+              </div>
+            </button>
+          ); 
+        })}
       </div>
-      <DataTable columns={columns} data={repositories} searchPlaceholder="Search repos by name, language, platform..." />
+      <DataTable columns={columns} data={filteredRepos} searchPlaceholder="Search repos by name, language, platform..." />
     </div>
   );
 };

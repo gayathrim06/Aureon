@@ -5,7 +5,7 @@ import { getAuthHeaders } from '../../services/apiClient';
 import { Cpu, Bug, ShieldAlert, Code2, CheckCircle2, RefreshCw } from 'lucide-react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 
-export const SonarQubeAdmin = () => {
+export const SonarQubeAdmin = ({ onNavigate }) => {
   const [projects, setProjects] = useState([]);
   const [summary, setSummary] = useState({
     overallQualityGate: 'PASSED',
@@ -39,6 +39,12 @@ export const SonarQubeAdmin = () => {
   useEffect(() => {
     fetchQualityData();
   }, []);
+
+  const handleNav = (tab) => {
+    if (typeof onNavigate === 'function') {
+      onNavigate(tab);
+    }
+  };
 
   const safeProjects = Array.isArray(projects) ? projects : [];
   const chartData = safeProjects.slice(0, 10).map(p => ({
@@ -76,6 +82,14 @@ export const SonarQubeAdmin = () => {
     { key: 'lastScan', label: 'Last Scan' }
   ];
 
+  const statCards = [
+    { label: 'Overall Gate', value: summary.overallQualityGate === 'NOT_CONNECTED' ? 'Not Connected' : summary.overallQualityGate, icon: CheckCircle2, color: summary.overallQualityGate === 'NOT_CONNECTED' ? 'border-l-slate-400' : 'border-l-emerald-500', hint: 'View scan summary →', action: () => {} },
+    { label: 'Total Bugs', value: summary.bugs, icon: Bug, color: 'border-l-rose-500', hint: 'Open Backlog →', action: () => handleNav('Backlog') },
+    { label: 'Vulnerabilities', value: summary.vulnerabilities, icon: ShieldAlert, color: 'border-l-amber-500', hint: 'View Audit Reports →', action: () => handleNav('Reports') },
+    { label: 'Code Smells', value: summary.codeSmells, icon: Code2, color: 'border-l-purple-500', hint: 'Inspect Repositories →', action: () => handleNav('Repositories') },
+    { label: 'Avg Coverage', value: summary.coverage, icon: Cpu, color: 'border-l-cyan-500', hint: 'Inspect Projects →', action: () => handleNav('Projects') }
+  ];
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -83,7 +97,7 @@ export const SonarQubeAdmin = () => {
         <button
           onClick={fetchQualityData}
           disabled={loading}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 shadow-sm transition"
+          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 shadow-sm transition cursor-pointer"
         >
           <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
           Refresh Data
@@ -98,18 +112,25 @@ export const SonarQubeAdmin = () => {
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
-        {[
-          { label: 'Overall Gate', value: summary.overallQualityGate === 'NOT_CONNECTED' ? 'Not Connected' : summary.overallQualityGate, icon: CheckCircle2, color: summary.overallQualityGate === 'NOT_CONNECTED' ? 'border-l-slate-400' : 'border-l-emerald-500' },
-          { label: 'Total Bugs', value: summary.bugs, icon: Bug, color: 'border-l-rose-500' },
-          { label: 'Vulnerabilities', value: summary.vulnerabilities, icon: ShieldAlert, color: 'border-l-amber-500' },
-          { label: 'Code Smells', value: summary.codeSmells, icon: Code2, color: 'border-l-purple-500' },
-          { label: 'Avg Coverage', value: summary.coverage, icon: Cpu, color: 'border-l-cyan-500' }
-        ].map((w, i) => { const Icon = w.icon; return (
-          <div key={i} className={`p-4 rounded-xl bg-white dark:bg-gray-800 border-l-4 ${w.color} border-y border-r border-gray-200 dark:border-gray-700 shadow-sm`}>
-            <div className="flex items-center justify-between text-gray-500"><span className="text-[11px] font-semibold">{w.label}</span><Icon className="w-4 h-4 text-gray-400" /></div>
-            <div className="text-xl font-bold text-gray-900 dark:text-gray-100 mt-2">{w.value}</div>
-          </div>
-        ); })}
+        {statCards.map((w, i) => { 
+          const Icon = w.icon; 
+          return (
+            <button 
+              key={i} 
+              type="button"
+              onClick={w.action}
+              className={`p-4 rounded-xl bg-white dark:bg-gray-800 border-l-4 ${w.color} border-y border-r border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-all duration-150 hover:-translate-y-0.5 active:translate-y-0 text-left cursor-pointer group flex flex-col justify-between`}
+            >
+              <div>
+                <div className="flex items-center justify-between text-gray-500"><span className="text-[11px] font-semibold uppercase">{w.label}</span><Icon className="w-4 h-4 text-gray-400 group-hover:text-blue-500 transition-colors" /></div>
+                <div className="text-xl font-bold text-gray-900 dark:text-gray-100 mt-2">{w.value}</div>
+              </div>
+              <div className="mt-2 pt-2 border-t border-gray-100 dark:border-gray-700/60 text-[10px] font-bold text-indigo-600 dark:text-indigo-400">
+                {w.hint}
+              </div>
+            </button>
+          ); 
+        })}
       </div>
 
       {safeProjects.length > 0 && (
