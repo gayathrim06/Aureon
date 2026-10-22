@@ -1,60 +1,25 @@
 from flask import Blueprint, request, jsonify
-from flask_jwt_extended import jwt_required, get_jwt_identity
+from flask_jwt_extended import jwt_required
 from extensions import db
-from models import Notification, User, Role
+from models import Notification, User
+from services.rbac_service import get_auth_user, get_user_scope
 
 notification_bp = Blueprint('notifications', __name__, url_prefix='/api/v1/notifications')
-
-def _get_auth_user():
-    user = None
-    try:
-        user_id = get_jwt_identity()
-        if user_id:
-            user = User.query.get(user_id)
-    except Exception:
-        pass
-
-    if not user:
-        x_uid = request.headers.get('X-User-Id')
-        x_email = request.headers.get('X-User-Email')
-        if x_uid:
-            try:
-                user = User.query.get(x_uid)
-            except Exception:
-                pass
-        if not user and x_email:
-            user = User.query.filter_by(email=x_email.strip().lower()).first()
-
-    if not user:
-        q_email = request.args.get('email')
-        if q_email:
-            user = User.query.filter_by(email=q_email.strip().lower()).first()
-
-    if not user:
-        # Default to admin account for system overview
-        user = User.query.filter_by(email='admin@aureon.com').first() or User.query.first()
-    return user
 
 @notification_bp.route('/', methods=['GET'])
 @notification_bp.route('', methods=['GET'])
 @jwt_required(optional=True)
 def list_notifications():
-    user = _get_auth_user()
+    user = get_auth_user()
     if not user:
-        return jsonify({'success': True, 'count': 0, 'notifications': []}), 200
+        return jsonify({'success': False, 'message': '401 Unauthorized: Authentication required.'}), 401
 
-    x_role = request.headers.get('X-User-Role', '')
-    user_role = (user.role.code if user.role else '') if hasattr(user, 'role') else ''
-    is_admin = (
-        'ADMIN' in x_role.upper() or 
-        'ADMIN' in user_role.upper() or 
-        user.email == 'admin@aureon.com' or 
-        request.args.get('scope') == 'all'
-    )
+    scope = get_user_scope(user)
+    is_admin = scope.is_admin
 
     query = Notification.query
-    if is_admin:
-        # Admins see global broadcasts, direct admin alerts, and security/system events
+    if is_admin and request.args.get('scope') == 'all':
+        # Admins see global broadcasts and system events when explicitly requesting all
         notifs = query.order_by(Notification.created_at.desc()).limit(100).all()
     else:
         notifs = query.filter(
@@ -71,9 +36,17 @@ def list_notifications():
 @notification_bp.route('/<string:notif_id>/read/', methods=['PATCH', 'PUT'])
 @jwt_required(optional=True)
 def mark_notification_read(notif_id):
+    user = get_auth_user()
+    if not user:
+        return jsonify({'success': False, 'message': '401 Unauthorized: Authentication required.'}), 401
+
     notif = Notification.query.get(notif_id)
     if not notif:
         return jsonify({'success': False, 'message': 'Notification not found.'}), 404
+
+    scope = get_user_scope(user)
+    if not scope.is_admin and notif.recipient_id is not None and str(notif.recipient_id) != str(user.id):
+        return jsonify({'success': False, 'message': '403 Forbidden: You cannot mark another user\'s notification.'}), 403
 
     notif.read = True
     db.session.commit()
@@ -83,12 +56,12 @@ def mark_notification_read(notif_id):
 @notification_bp.route('/read-all/', methods=['PATCH', 'PUT'])
 @jwt_required(optional=True)
 def mark_all_notifications_read():
-    user = _get_auth_user()
+    user = get_auth_user()
     if not user:
-        return jsonify({'success': True, 'message': 'No notifications to update.'}), 200
+        return jsonify({'success': False, 'message': '401 Unauthorized: Authentication required.'}), 401
 
-    x_role = request.headers.get('X-User-Role', '')
-    if 'ADMIN' in x_role.upper() or user.email == 'admin@aureon.com':
+    scope = get_user_scope(user)
+    if scope.is_admin and request.args.get('scope') == 'all':
         notifs = Notification.query.filter(Notification.read == False).all()
     else:
         notifs = Notification.query.filter(
@@ -106,9 +79,17 @@ def mark_all_notifications_read():
 @notification_bp.route('/<string:notif_id>/', methods=['DELETE'])
 @jwt_required(optional=True)
 def delete_notification(notif_id):
+    user = get_auth_user()
+    if not user:
+        return jsonify({'success': False, 'message': '401 Unauthorized: Authentication required.'}), 401
+
     notif = Notification.query.get(notif_id)
     if not notif:
         return jsonify({'success': False, 'message': 'Notification not found.'}), 404
+
+    scope = get_user_scope(user)
+    if not scope.is_admin and notif.recipient_id is not None and str(notif.recipient_id) != str(user.id):
+        return jsonify({'success': False, 'message': '403 Forbidden: You cannot delete another user\'s notification.'}), 403
 
     db.session.delete(notif)
     db.session.commit()
@@ -118,13 +99,12 @@ def delete_notification(notif_id):
 @notification_bp.route('/clear-all/', methods=['DELETE'])
 @jwt_required(optional=True)
 def clear_all_notifications():
-    user = _get_auth_user()
+    user = get_auth_user()
     if not user:
-        return jsonify({'success': True, 'message': 'No notifications to clear.'}), 200
+        return jsonify({'success': False, 'message': '401 Unauthorized: Authentication required.'}), 401
 
-    x_role = request.headers.get('X-User-Role', '')
-    if 'ADMIN' in x_role.upper() or user.email == 'admin@aureon.com':
-        # Mark all read or clear read notifications
+    scope = get_user_scope(user)
+    if scope.is_admin and request.args.get('scope') == 'all':
         Notification.query.filter(Notification.read == True).delete(synchronize_session=False)
     else:
         Notification.query.filter(
@@ -134,4 +114,3 @@ def clear_all_notifications():
 
     db.session.commit()
     return jsonify({'success': True, 'message': 'Read notifications cleared.'}), 200
-

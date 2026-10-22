@@ -4,7 +4,7 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from datetime import datetime, date
 from extensions import db
 from models import Sprint, Team, Project, User, AuditLog, Role, Task, TaskStatusHistory, Notification
-from services.rbac_service import get_user_scope
+from services.rbac_service import get_user_scope, get_auth_user
 
 sprint_bp = Blueprint('sprints', __name__, url_prefix='/api/v1/sprints')
 
@@ -19,36 +19,7 @@ def _parse_uuid(val):
         return None
 
 def _get_auth_user():
-    try:
-        user_id = get_jwt_identity()
-        if user_id:
-            u_uuid = _parse_uuid(user_id)
-            user = User.query.get(u_uuid or user_id)
-            if user:
-                return user
-    except Exception:
-        pass
-
-    # Check X-User-Id and X-User-Email headers
-    u_param = request.headers.get('X-User-Id') or request.args.get('user_id')
-    if u_param:
-        u_uuid = _parse_uuid(u_param)
-        user = User.query.get(u_uuid or u_param)
-        if user:
-            return user
-
-    email_param = request.headers.get('X-User-Email') or request.args.get('email')
-    if email_param:
-        user = User.query.filter(User.email.ilike(email_param.strip())).first()
-        if user:
-            return user
-
-    admin_user = User.query.filter_by(email='admin@aureon.com').first()
-    if not admin_user:
-        admin_role = Role.query.filter_by(code='ROLE_ADMIN').first()
-        if admin_role:
-            admin_user = User.query.filter_by(role_id=admin_role.id).first()
-    return admin_user or User.query.first()
+    return get_auth_user()
 
 def _find_sprint(sprint_id):
     if not sprint_id:
@@ -164,14 +135,6 @@ def manage_sprints():
         if not team:
             return jsonify({'success': False, 'message': 'Validation Error: Team not found.'}), 404
 
-        # Validate Team belongs to selected Project
-        if team.project_id and str(team.project_id) != str(project_id):
-            return jsonify({'success': False, 'message': 'Validation Error: Team does not belong to the selected project.'}), 400
-        elif not team.project_id:
-            # Associate team with project if previously available
-            team.project_id = project_id
-            team.availability_status = 'ASSIGNED'
-
         s_date = None
         e_date = None
         try:
@@ -187,6 +150,14 @@ def manage_sprints():
 
         if e_date < s_date:
             return jsonify({'success': False, 'message': 'Validation Error: End date cannot be before start date.'}), 400
+
+        # Validate Team belongs to selected Project
+        if team.project_id and str(team.project_id) != str(project_id):
+            return jsonify({'success': False, 'message': 'Validation Error: Team does not belong to the selected project.'}), 400
+        elif not team.project_id:
+            # Associate team with project if previously available
+            team.project_id = project_id
+            team.availability_status = 'ASSIGNED'
 
         # Validate active status vs start date
         if status == 'ACTIVE' and s_date > date.today():

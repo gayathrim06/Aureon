@@ -106,9 +106,30 @@ export const SonarQubeAdmin = ({ onNavigate }) => {
 
       <div>
         <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
-          <Cpu className="w-5 h-5 text-blue-500" />SonarQube Integration Administration
+          <Cpu className="w-5 h-5 text-blue-500" />SonarQube & Static Analysis Administration
         </h1>
-        <p className="text-xs text-gray-500">Manage SonarQube webhooks, quality gate configurations, and per-project scan results directly from the live database.</p>
+        <p className="text-xs text-gray-500">Manage quality gate configurations and inspect static analysis metrics stored in PostgreSQL.</p>
+      </div>
+
+      {/* Honest Status Banner */}
+      <div className="p-4 rounded-xl bg-slate-900 text-slate-100 border border-slate-800 space-y-2">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <span className="flex h-2.5 w-2.5 relative">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+            </span>
+            <span className="text-xs font-bold text-white uppercase tracking-wider">Static Analysis Engine: Radon & Pylint Active</span>
+          </div>
+          <div className="flex items-center gap-2 text-xs">
+            <span className="px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 font-mono text-[10px] font-bold">
+              SonarQube Server: Offline / Unconfigured
+            </span>
+          </div>
+        </div>
+        <p className="text-xs text-slate-400 leading-relaxed">
+          The standalone SonarQube daemon is currently offline and not running on localhost:9000. Static analysis metrics are generated locally using the verified Radon & Pylint engine and persisted directly to PostgreSQL.
+        </p>
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">

@@ -106,12 +106,18 @@ def test_developer_delay_remark_and_tl_actions(client, app):
         db.session.add(task)
         db.session.commit()
 
+        from flask_jwt_extended import create_access_token
+        dev_token = create_access_token(identity=str(dev.id))
+        dev_headers = {'Authorization': f'Bearer {dev_token}'}
+        lead_token = create_access_token(identity=str(lead.id))
+        lead_headers = {'Authorization': f'Bearer {lead_token}'}
+
         # 1. Developer submits delay remark
         remark_payload = {
             'reason': 'Technical issue',
             'remark': 'Awaiting third-party payment gateway mock server availability.'
         }
-        res_rem = client.post(f'/api/v1/tasks/{task.id}/delay-remark', json=remark_payload)
+        res_rem = client.post(f'/api/v1/tasks/{task.id}/delay-remark', json=remark_payload, headers=dev_headers)
         assert res_rem.status_code == 200
         db.session.refresh(task)
         assert task.delay_reason == 'Technical issue'
@@ -121,7 +127,7 @@ def test_developer_delay_remark_and_tl_actions(client, app):
         review_payload = {
             'review': 'Mock server scheduled for deploy tomorrow morning. Extension approved.'
         }
-        res_rev = client.post(f'/api/v1/tasks/{task.id}/tl-review', json=review_payload)
+        res_rev = client.post(f'/api/v1/tasks/{task.id}/tl-review', json=review_payload, headers=lead_headers)
         assert res_rev.status_code == 200
         db.session.refresh(task)
         assert 'Extension approved' in task.team_leader_review
@@ -132,7 +138,7 @@ def test_developer_delay_remark_and_tl_actions(client, app):
             'new_due_date': new_due.isoformat(),
             'reason': 'Approved 3-day extension due to external mock dependency.'
         }
-        res_due = client.post(f'/api/v1/tasks/{task.id}/change-due-date', json=due_payload)
+        res_due = client.post(f'/api/v1/tasks/{task.id}/change-due-date', json=due_payload, headers=lead_headers)
         assert res_due.status_code == 200
         db.session.refresh(task)
         assert task.due_date == new_due
@@ -140,7 +146,7 @@ def test_developer_delay_remark_and_tl_actions(client, app):
         assert 'Approved 3-day extension' in task.due_date_change_reason
 
         # 4. Check audit history exists
-        hist_res = client.get(f'/api/v1/tasks/{task.id}/history')
+        hist_res = client.get(f'/api/v1/tasks/{task.id}/history', headers=lead_headers)
         assert hist_res.status_code == 200
         history_items = hist_res.get_json()['history']
         action_types = [h['action_type'] for h in history_items]
@@ -154,7 +160,7 @@ def test_backlog_creation_and_sprint_lifecycle(client, app):
     with app.app_context():
         proj = Project.query.filter_by(is_active=True).first()
         pm_role = Role.query.filter_by(code='ROLE_PM').first()
-        pm_user = User.query.filter_by(role_id=pm_role.id).first() if pm_role else None
+        pm_user = (User.query.get(proj.manager_id) if (proj and proj.manager_id) else User.query.filter_by(role_id=pm_role.id).first()) if pm_role else None
         dev_role = Role.query.filter_by(code='ROLE_DEV').first()
         dev_user = User.query.filter_by(role_id=dev_role.id).first() if dev_role else None
         sprint = Sprint.query.filter_by(project_id=proj.id).first() if proj else None

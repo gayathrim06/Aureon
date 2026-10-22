@@ -3,8 +3,9 @@ import { Breadcrumb } from '../../components/common/Breadcrumb';
 import { DataTable } from '../../components/common/DataTable';
 import { useAuth } from '../../context/AuthContext';
 import { logAuditEvent } from '../../services/auditLogger';
-import { ClipboardList, Plus, UserCheck, CheckCircle2, Clock } from 'lucide-react';
+import { ClipboardList, Plus, UserCheck, CheckCircle2, Clock, Sparkles } from 'lucide-react';
 import { getAuthHeaders } from '../../services/apiClient';
+import { TaskSkillRecommendationModal } from '../../components/common/TaskSkillRecommendationModal';
 
 export const LeadTaskAllocation = ({ onShowToast }) => {
   const { user } = useAuth();
@@ -12,6 +13,7 @@ export const LeadTaskAllocation = ({ onShowToast }) => {
   const [developers, setDevelopers] = useState([]);
   const [teamsList, setTeamsList] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [recommendingTask, setRecommendingTask] = useState(null);
 
   const fetchLeadTasks = async () => {
     setLoading(true);
@@ -259,17 +261,25 @@ export const LeadTaskAllocation = ({ onShowToast }) => {
       key: 'actions',
       label: 'Actions',
       render: (_, row) => {
-        if (row?.status === 'IN_REVIEW') {
-          return (
+        return (
+          <div className="flex items-center gap-1.5">
             <button
-              onClick={() => handleApproveTask(row.id)}
-              className="flex items-center gap-1 px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-xs transition-all hover:scale-105"
+              onClick={() => setRecommendingTask(row)}
+              className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:hover:bg-indigo-900 text-indigo-700 dark:text-indigo-300 font-bold text-xs border border-indigo-200 dark:border-indigo-800 transition cursor-pointer shadow-xs active:scale-95"
+              title="Auto-Recommend developer based on skills and capacity"
             >
-              <CheckCircle2 className="w-3.5 h-3.5" /> Approve
+              <Sparkles className="w-3 h-3 text-indigo-500" /> Recommend
             </button>
-          );
-        }
-        return <span className="text-slate-400 text-xs font-medium">—</span>;
+            {row?.status === 'IN_REVIEW' && (
+              <button
+                onClick={() => handleApproveTask(row.id)}
+                className="flex items-center gap-1 px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-xs transition-all hover:scale-105"
+              >
+                <CheckCircle2 className="w-3.5 h-3.5" /> Approve
+              </button>
+            )}
+          </div>
+        );
       }
     }
   ];
@@ -293,6 +303,25 @@ export const LeadTaskAllocation = ({ onShowToast }) => {
         data={tasks}
         searchPlaceholder="Search assigned tasks by title, sprint, engineer, project..."
       />
+
+      {/* Skill-Based Task Recommendation Modal */}
+      {recommendingTask && (
+        <TaskSkillRecommendationModal
+          task={recommendingTask}
+          isOpen={Boolean(recommendingTask)}
+          onClose={() => setRecommendingTask(null)}
+          onConfirmed={(assigned) => {
+            fetchLeadTasks();
+            if (typeof onShowToast === 'function') {
+              onShowToast({
+                type: 'success',
+                title: 'Developer Assigned via Recommendation',
+                message: `Task assigned to ${assigned.user_name || 'selected candidate'}.`
+              });
+            }
+          }}
+        />
+      )}
     </div>
   );
 };

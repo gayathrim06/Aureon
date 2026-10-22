@@ -4,12 +4,19 @@ from datetime import datetime
 from extensions import db
 from models import AuditLog, User, Role
 
+from services.rbac_service import get_auth_user, get_user_scope
+
 audit_bp = Blueprint('audit', __name__, url_prefix='/api/v1/audit-logs')
 
 @audit_bp.route('/', methods=['GET'])
 @audit_bp.route('', methods=['GET'])
 @jwt_required(optional=True)
 def list_audit_logs():
+    user = get_auth_user()
+    if not user:
+        return jsonify({'success': False, 'message': '401 Unauthorized: Authentication required.'}), 401
+    scope = get_user_scope(user)
+
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 20, type=int)
     action = request.args.get('action')
@@ -19,6 +26,8 @@ def list_audit_logs():
     end_date_str = request.args.get('end_date')
 
     query = AuditLog.query
+    if not scope.is_admin:
+        query = query.filter(AuditLog.user_email == user.email)
 
     if action:
         query = query.filter(AuditLog.action.ilike(f"%{action}%"))

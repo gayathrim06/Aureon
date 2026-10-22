@@ -4,7 +4,7 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from datetime import datetime
 from extensions import db
 from models import User, AuditLog, Task, Commit, Role
-from services.rbac_service import get_user_scope
+from services.rbac_service import get_auth_user, get_user_scope
 
 user_bp = Blueprint('users', __name__, url_prefix='/api/v1/users')
 
@@ -19,27 +19,15 @@ def _parse_uuid(val):
         return None
 
 def _get_auth_user():
-    try:
-        user_id = get_jwt_identity()
-        if user_id:
-            u_uuid = _parse_uuid(user_id)
-            user = User.query.get(u_uuid or user_id)
-            if user:
-                return user
-    except Exception:
-        pass
-    admin_user = User.query.filter_by(email='admin@aureon.com').first()
-    if not admin_user:
-        admin_role = Role.query.filter_by(code='ROLE_ADMIN').first()
-        if admin_role:
-            admin_user = User.query.filter_by(role_id=admin_role.id).first()
-    return admin_user or User.query.first()
+    return get_auth_user()
 
 @user_bp.route('/', methods=['GET'])
 @user_bp.route('', methods=['GET'])
 @jwt_required(optional=True)
 def list_users():
-    user = _get_auth_user()
+    user = get_auth_user()
+    if not user:
+        return jsonify({'success': False, 'message': '401 Unauthorized: Authentication required.'}), 401
     scope = get_user_scope(user)
     role_param = request.args.get('role')
 
@@ -101,23 +89,11 @@ def list_system_roles():
 @user_bp.route('/me/', methods=['GET', 'PUT', 'PATCH'])
 @jwt_required(optional=True)
 def user_me():
+    user = get_auth_user()
+    if not user:
+        return jsonify({'success': False, 'message': '401 Unauthorized: Authentication required.'}), 401
+
     data = request.get_json() or {} if request.method in ['PUT', 'PATCH'] else {}
-    email_param = request.args.get('email') or data.get('email')
-
-    user = None
-    user_id = get_jwt_identity()
-    if user_id:
-        u_uuid = _parse_uuid(user_id)
-        user = User.query.get(u_uuid or user_id)
-
-    if not user and email_param:
-        user = User.query.filter_by(email=email_param.strip().lower()).first()
-
-    if not user:
-        user = _get_auth_user()
-
-    if not user:
-        return jsonify({'success': False, 'message': 'User account not found.'}), 404
 
     if request.method in ['PUT', 'PATCH']:
         if 'name' in data or 'full_name' in data:
@@ -178,16 +154,9 @@ def user_me():
 @user_bp.route('/me/stats/', methods=['GET'])
 @jwt_required(optional=True)
 def user_me_stats():
-    user_id = get_jwt_identity()
-    user = None
-    if user_id:
-        u_uuid = _parse_uuid(user_id)
-        user = User.query.get(u_uuid or user_id)
+    user = get_auth_user()
     if not user:
-        user = User.query.first()
-
-    if not user:
-        return jsonify({'success': False, 'message': 'User not found'}), 404
+        return jsonify({'success': False, 'message': '401 Unauthorized: Authentication required.'}), 401
 
     commits_count = Commit.query.filter(
         (Commit.author_email == user.email) | (Commit.author_name == user.full_name)
@@ -207,3 +176,142 @@ def user_me_stats():
           'audit_logs': audit_logs_count
         }
     }), 200
+
+# ─── AUTHORIZED DEVELOPER SKILLS & CAPACITY MANAGEMENT ────────────────────────
+
+@user_bp.route('/<string:user_id>', methods=['GET'])
+@user_bp.route('/<string:user_id>/', methods=['GET'])
+@jwt_required(optional=True)
+def get_user_profile(user_id):
+    """Retrieves user details including qualifications, skills, and current capacity."""
+    caller = get_auth_user()
+    if not caller:
+        return jsonify({'success': False, 'message': '401 Unauthorized: Authentication required.'}), 401
+    scope = get_user_scope(caller)
+    u_uuid = _parse_uuid(user_id)
+    target_user = User.query.get(u_uuid or user_id)
+    if not target_user:
+        return jsonify({'success': False, 'message': 'User not found.'}), 404
+
+    # Scoping check
+    if not scope.is_admin and not scope.can_access_user(target_user) and str(target_user.id) != str(caller.id if caller else ''):
+        return jsonify({'success': False, 'message': '403 Forbidden: Access denied.'}), 403
+
+    return jsonify({'success': True, 'user': target_user.to_dict()}), 200
+
+@user_bp.route('/<string:user_id>/skills', methods=['GET', 'PUT', 'PATCH'])
+@user_bp.route('/<string:user_id>/skills/', methods=['GET', 'PUT', 'PATCH'])
+@jwt_required(optional=True)
+def manage_user_skills(user_id):
+    """
+    Authorized endpoint to view and update developer skills and task capacity limits.
+    Permitted: Admin, PM or Lead managing the user's project/team, or the user themselves.
+    """
+    caller = get_auth_user()
+    if not caller:
+        return jsonify({'success': False, 'message': '401 Unauthorized: Authentication required.'}), 401
+    scope = get_user_scope(caller)
+    u_uuid = _parse_uuid(user_id)
+    target_user = User.query.get(u_uuid or user_id)
+    if not target_user:
+        return jsonify({'success': False, 'message': 'User not found.'}), 404
+
+    # Permission check for viewing
+    is_self = caller and (str(caller.id) == str(target_user.id))
+    if not (scope.is_admin or is_self or scope.can_access_user(target_user)):
+        return jsonify({'success': False, 'message': '403 Forbidden: Access denied to this user profile.'}), 403
+
+    if request.method == 'GET':
+        return jsonify({
+            'success': True,
+            'user_id': str(target_user.id),
+            'name': target_user.display_name,
+            'skills': target_user.skills or '',
+            'skills_list': target_user.skills_list,
+            'max_concurrent_tasks': target_user.max_concurrent_tasks or 3,
+            'capacity_hours': target_user.capacity_hours or 40.0
+        }), 200
+
+    # Permission check for updating skills:
+    # Only Admin, Team Lead, PM, or the user themselves can update skills.
+    # Other developers cannot update another developer’s skills.
+    if scope.is_dev and not is_self:
+        return jsonify({'success': False, 'message': '403 Forbidden: Developers cannot update another developer’s skills.'}), 403
+
+    data = request.get_json() or {}
+    new_skills = data.get('skills')
+    if new_skills is not None:
+        if isinstance(new_skills, list):
+            target_user.skills = ', '.join([str(s).strip() for s in new_skills if str(s).strip()])
+        else:
+            target_user.skills = str(new_skills).strip()
+
+    if 'max_concurrent_tasks' in data and (scope.is_admin or scope.is_lead or scope.is_pm):
+        try:
+            target_user.max_concurrent_tasks = max(1, int(data['max_concurrent_tasks']))
+        except (ValueError, TypeError):
+            pass
+
+    if 'capacity_hours' in data and (scope.is_admin or scope.is_lead or scope.is_pm):
+        try:
+            target_user.capacity_hours = max(5.0, float(data['capacity_hours']))
+        except (ValueError, TypeError):
+            pass
+
+    target_user.updated_at = datetime.utcnow()
+    db.session.commit()
+
+    return jsonify({
+        'success': True,
+        'message': f"Qualifications and skills updated for {target_user.display_name}.",
+        'user': target_user.to_dict()
+    }), 200
+
+@user_bp.route('/<string:user_id>', methods=['PATCH', 'PUT'])
+@user_bp.route('/<string:user_id>/', methods=['PATCH', 'PUT'])
+@jwt_required(optional=True)
+def update_user_profile(user_id):
+    """Updates user information including skills, designation, and status."""
+    caller = get_auth_user()
+    if not caller:
+        return jsonify({'success': False, 'message': '401 Unauthorized: Authentication required.'}), 401
+    scope = get_user_scope(caller)
+    u_uuid = _parse_uuid(user_id)
+    target_user = User.query.get(u_uuid or user_id)
+    if not target_user:
+        return jsonify({'success': False, 'message': 'User not found.'}), 404
+
+    is_self = caller and (str(caller.id) == str(target_user.id))
+    if not (scope.is_admin or is_self or scope.can_access_user(target_user)):
+        return jsonify({'success': False, 'message': '403 Forbidden: Access denied.'}), 403
+
+    data = request.get_json() or {}
+    if 'skills' in data:
+        new_skills = data['skills']
+        if isinstance(new_skills, list):
+            target_user.skills = ', '.join([str(s).strip() for s in new_skills if str(s).strip()])
+        else:
+            target_user.skills = str(new_skills).strip()
+
+    if 'max_concurrent_tasks' in data and (scope.is_admin or scope.is_lead or scope.is_pm):
+        try:
+            target_user.max_concurrent_tasks = max(1, int(data['max_concurrent_tasks']))
+        except (ValueError, TypeError):
+            pass
+
+    if 'capacity_hours' in data and (scope.is_admin or scope.is_lead or scope.is_pm):
+        try:
+            target_user.capacity_hours = max(5.0, float(data['capacity_hours']))
+        except (ValueError, TypeError):
+            pass
+
+    if 'department' in data and (scope.is_admin or scope.is_pm):
+        target_user.department = data['department']
+
+    if 'designation' in data and (scope.is_admin or scope.is_pm):
+        target_user.designation = data['designation']
+
+    target_user.updated_at = datetime.utcnow()
+    db.session.commit()
+
+    return jsonify({'success': True, 'message': 'User profile updated.', 'user': target_user.to_dict()}), 200

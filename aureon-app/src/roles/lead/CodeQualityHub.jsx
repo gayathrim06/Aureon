@@ -2,13 +2,16 @@ import React, { useState, useEffect } from 'react';
 import { Breadcrumb } from '../../components/common/Breadcrumb';
 import { DataTable } from '../../components/common/DataTable';
 import { getAuthHeaders } from '../../services/apiClient';
-import { Code2, Bug, ShieldAlert, RefreshCw } from 'lucide-react';
+import { Code2, Bug, ShieldAlert, RefreshCw, Play, CheckCircle2, AlertTriangle, FileCode } from 'lucide-react';
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 
 export const CodeQualityHub = () => {
   const [projects, setProjects] = useState([]);
   const [issues, setIssues] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [scanning, setScanning] = useState(false);
+  const [scanTargetFile, setScanTargetFile] = useState('config.py');
+  const [scanMessage, setScanMessage] = useState(null);
 
   const fetchQualityData = async () => {
     try {
@@ -38,6 +41,29 @@ export const CodeQualityHub = () => {
       console.error('Failed to load code quality data:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleRunScan = async () => {
+    try {
+      setScanning(true);
+      setScanMessage(null);
+      const res = await fetch('http://127.0.0.1:8000/api/v1/analysis/scan-source', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        body: JSON.stringify({ file_path: scanTargetFile })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setScanMessage({ type: 'success', text: `Scan completed on ${scanTargetFile}! Radon Complexity score: ${data.result.score}/10. Found ${data.result.issues_count} findings.` });
+        fetchQualityData();
+      } else {
+        setScanMessage({ type: 'error', text: data.error || 'Scan failed.' });
+      }
+    } catch (err) {
+      setScanMessage({ type: 'error', text: err.message || 'Execution error during static scan.' });
+    } finally {
+      setScanning(false);
     }
   };
 
@@ -93,6 +119,59 @@ export const CodeQualityHub = () => {
           <Code2 className="w-5 h-5 text-purple-500" />Code Quality & Technical Debt Hub
         </h1>
         <p className="text-xs text-gray-500">Live PostgreSQL quality gate analysis: code smells, technical debt, bugs, and scan status.</p>
+      </div>
+
+      {/* Honest Engine Status Banner */}
+      <div className="p-4 rounded-xl bg-slate-900 text-slate-100 border border-slate-800 space-y-2">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <span className="flex h-2.5 w-2.5 relative">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+            </span>
+            <span className="text-xs font-bold text-white uppercase tracking-wider">Static Analysis Engine: Radon & Pylint Active</span>
+          </div>
+          <div className="flex items-center gap-2 text-xs">
+            <span className="px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 font-mono text-[10px] font-bold">
+              SonarQube Server: Offline / Unconfigured
+            </span>
+          </div>
+        </div>
+        <p className="text-xs text-slate-400 leading-relaxed">
+          Static code analysis is executed via host Radon (Cyclomatic Complexity & Maintainability Index) and Pylint engines against actual repository source files. All findings, severity classifications, and debt metrics are stored directly in PostgreSQL.
+        </p>
+
+        {/* Live Scan Trigger */}
+        <div className="pt-2 border-t border-slate-800 flex flex-wrap items-center gap-2">
+          <FileCode className="w-4 h-4 text-purple-400" />
+          <span className="text-xs font-bold text-slate-300">Run Real Code Scan on Source File:</span>
+          <select
+            value={scanTargetFile}
+            onChange={(e) => setScanTargetFile(e.target.value)}
+            className="p-1 px-2 text-xs rounded bg-slate-800 border border-slate-700 text-white font-mono cursor-pointer"
+          >
+            <option value="config.py">config.py (Application Config)</option>
+            <option value="app.py">app.py (Flask Entrypoint)</option>
+            <option value="models.py">models.py (Database Models)</option>
+            <option value="services/static_analysis_service.py">services/static_analysis_service.py</option>
+          </select>
+          <button
+            type="button"
+            onClick={handleRunScan}
+            disabled={scanning}
+            className="flex items-center gap-1 px-3 py-1 bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-white text-xs font-bold rounded-lg shadow-sm transition active:scale-95 cursor-pointer"
+          >
+            <Play className={`w-3 h-3 ${scanning ? 'animate-spin' : ''}`} />
+            {scanning ? 'Analyzing Source...' : 'Execute Static Scan'}
+          </button>
+        </div>
+
+        {scanMessage && (
+          <div className={`p-2.5 rounded-lg text-xs font-medium flex items-center gap-2 ${scanMessage.type === 'success' ? 'bg-emerald-950/60 text-emerald-300 border border-emerald-800' : 'bg-rose-950/60 text-rose-300 border border-rose-800'}`}>
+            {scanMessage.type === 'success' ? <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" /> : <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />}
+            {scanMessage.text}
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

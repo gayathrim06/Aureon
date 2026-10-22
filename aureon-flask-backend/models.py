@@ -51,9 +51,26 @@ class User(db.Model):
     date_of_birth = db.Column(db.Date, nullable=True)
     pet_name = db.Column(db.String(150), nullable=True)
     school_friend_name = db.Column(db.String(150), nullable=True)
+    skills = db.Column(db.Text, nullable=True)
+    max_concurrent_tasks = db.Column(db.Integer, default=3, nullable=True)
+    capacity_hours = db.Column(db.Float, default=40.0, nullable=True)
     role_id = db.Column(UUID(as_uuid=True), db.ForeignKey('tbl_role.id'), nullable=True)
     
     role = db.relationship('Role', backref='users')
+
+    @property
+    def skills_list(self):
+        if not self.skills:
+            return []
+        import json
+        raw = self.skills.strip()
+        if raw.startswith('['):
+            try:
+                items = json.loads(raw)
+                return [str(s).strip() for s in items if str(s).strip()]
+            except Exception:
+                pass
+        return [s.strip() for s in raw.split(',') if s.strip()]
 
     @property
     def display_name(self):
@@ -127,7 +144,11 @@ class User(db.Model):
             'availability_status': avail_status,
             'availability': avail_status,
             'status_text': status_text,
-            'ready_for_next_task': is_avail
+            'ready_for_next_task': is_avail,
+            'skills': self.skills or '',
+            'skills_list': self.skills_list,
+            'max_concurrent_tasks': self.max_concurrent_tasks or 3,
+            'capacity_hours': self.capacity_hours or 40.0
         }
 
 class Project(db.Model):
@@ -491,12 +512,27 @@ class Task(db.Model):
     escalated_at = db.Column(db.DateTime, nullable=True)
     overdue_notified_lead = db.Column(db.Boolean, default=False)
     overdue_notified_pm = db.Column(db.Boolean, default=False)
+    required_skills = db.Column(db.Text, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     assigned_user = db.relationship('User', foreign_keys=[assigned_to_id])
     due_date_changer = db.relationship('User', foreign_keys=[due_date_changed_by_id])
     tl_reviewer = db.relationship('User', foreign_keys=[team_leader_reviewed_by_id])
+
+    @property
+    def required_skills_list(self):
+        if not self.required_skills:
+            return []
+        import json
+        raw = self.required_skills.strip()
+        if raw.startswith('['):
+            try:
+                items = json.loads(raw)
+                return [str(s).strip() for s in items if str(s).strip()]
+            except Exception:
+                pass
+        return [s.strip() for s in raw.split(',') if s.strip()]
 
     @property
     def display_title(self):
@@ -592,7 +628,9 @@ class Task(db.Model):
             'updated_at': self.updated_at.isoformat() if self.updated_at else None,
             'attachments': attachments_data,
             'comments': comments_data,
-            'commits': commits_data
+            'commits': commits_data,
+            'required_skills': self.required_skills or '',
+            'required_skills_list': self.required_skills_list
         }
 
 class TaskAttachment(db.Model):

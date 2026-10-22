@@ -4,7 +4,7 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from datetime import datetime
 from extensions import db
 from models import Team, TeamMember, User, Project, Sprint, Task, AuditLog, Notification, Role
-from services.rbac_service import get_user_scope
+from services.rbac_service import get_user_scope, get_auth_user
 
 team_bp = Blueprint('teams', __name__, url_prefix='/api/v1/teams')
 team_lead_bp = Blueprint('team_lead', __name__, url_prefix='/api/v1/team-lead')
@@ -20,36 +20,7 @@ def _parse_uuid(val):
         return None
 
 def _get_auth_user():
-    try:
-        user_id = get_jwt_identity()
-        if user_id:
-            u_uuid = _parse_uuid(user_id)
-            user = User.query.get(u_uuid or user_id)
-            if user:
-                return user
-    except Exception:
-        pass
-
-    # Check X-User-Id and X-User-Email headers
-    u_param = request.headers.get('X-User-Id') or request.args.get('user_id')
-    if u_param:
-        u_uuid = _parse_uuid(u_param)
-        user = User.query.get(u_uuid or u_param)
-        if user:
-            return user
-
-    email_param = request.headers.get('X-User-Email') or request.args.get('email')
-    if email_param:
-        user = User.query.filter(User.email.ilike(email_param.strip())).first()
-        if user:
-            return user
-
-    admin_user = User.query.filter_by(email='admin@aureon.com').first()
-    if not admin_user:
-        admin_role = Role.query.filter_by(code='ROLE_ADMIN').first()
-        if admin_role:
-            admin_user = User.query.filter_by(role_id=admin_role.id).first()
-    return admin_user or User.query.first()
+    return get_auth_user()
 
 def _calculate_team_developer_availability(team):
     memberships = TeamMember.query.filter_by(team_id=team.id).all()
@@ -110,6 +81,8 @@ def manage_teams():
     scope = get_user_scope(user)
 
     if request.method == 'GET':
+        if not user:
+            return jsonify({'success': False, 'message': '401 Unauthorized: Authentication required to view teams.'}), 401
         query = Team.query.filter_by(is_deleted=False)
         if not scope.is_admin:
             if scope.is_pm:
@@ -122,6 +95,8 @@ def manage_teams():
         return jsonify({'success': True, 'count': len(teams), 'teams': [t.to_dict() for t in teams]}), 200
 
     if request.method == 'POST':
+        if not user:
+            return jsonify({'success': False, 'message': '401 Unauthorized: Authentication required to create teams.'}), 401
         if not (scope.is_admin or scope.is_pm):
             return jsonify({'success': False, 'message': '403 Forbidden: Only Admin or PM can create teams.'}), 403
 

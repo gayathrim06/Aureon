@@ -7,7 +7,7 @@ from models import (
     Task, TaskAttachment, TaskStatusHistory, TaskComment, Team, TeamMember, 
     Sprint, User, AuditLog, Notification, Role, Project, Risk, Commit
 )
-from services.rbac_service import get_user_scope
+from services.rbac_service import get_user_scope, get_auth_user
 
 task_bp = Blueprint('tasks', __name__, url_prefix='/api/v1/tasks')
 developer_bp = Blueprint('developer', __name__, url_prefix='/api/v1/developer')
@@ -23,36 +23,7 @@ def _parse_uuid(val):
         return None
 
 def _get_auth_user():
-    try:
-        user_id = get_jwt_identity()
-        if user_id:
-            u_uuid = _parse_uuid(user_id)
-            user = User.query.get(u_uuid or user_id)
-            if user:
-                return user
-    except Exception:
-        pass
-
-    # Check X-User-Id and X-User-Email headers
-    u_param = request.headers.get('X-User-Id') or request.args.get('user_id')
-    if u_param:
-        u_uuid = _parse_uuid(u_param)
-        user = User.query.get(u_uuid or u_param)
-        if user:
-            return user
-
-    email_param = request.headers.get('X-User-Email') or request.args.get('email')
-    if email_param:
-        user = User.query.filter(User.email.ilike(email_param.strip())).first()
-        if user:
-            return user
-
-    admin_user = User.query.filter_by(email='admin@aureon.com').first()
-    if not admin_user:
-        admin_role = Role.query.filter_by(code='ROLE_ADMIN').first()
-        if admin_role:
-            admin_user = User.query.filter_by(role_id=admin_role.id).first()
-    return admin_user or User.query.first()
+    return get_auth_user()
 
 def _resolve_assigned_user(val):
     if not val:
@@ -408,6 +379,10 @@ def manage_tasks():
             except ValueError:
                 pass
 
+        required_skills_input = data.get('required_skills') or data.get('skills')
+        from services.task_recommendation_service import TaskRecommendationService
+        normalized_skills = ', '.join(TaskRecommendationService.normalize_skills(required_skills_input)) if required_skills_input else None
+
         task = Task(
             title=title,
             description=description,
@@ -418,6 +393,7 @@ def manage_tasks():
             due_date=due_date,
             original_due_date=due_date,
             estimated_hours=estimated_hours,
+            required_skills=normalized_skills,
             sprint_id=sprint_id,
             project_id=project_id,
             team_id=team_id,
@@ -625,6 +601,10 @@ def task_detail(task_id):
                 task.actual_hours = float(data['actual_hours'])
             except (ValueError, TypeError):
                 pass
+        if 'required_skills' in data:
+            from services.task_recommendation_service import TaskRecommendationService
+            norm = TaskRecommendationService.normalize_skills(data['required_skills'])
+            task.required_skills = ', '.join(norm) if norm else None
         db.session.commit()
         return jsonify({'success': True, 'message': 'Task updated.', 'task': task.to_dict()}), 200
 
@@ -821,6 +801,106 @@ def assign_task(task_id):
 
     db.session.commit()
     return jsonify({'success': True, 'message': 'Task assigned successfully.', 'task': task.to_dict()}), 200
+
+# ─── SKILL-BASED TASK RECOMMENDATION & ASSIGNMENT CONFIRMATION ────────────────
+
+@task_bp.route('/<string:task_id>/recommendations', methods=['GET'])
+@task_bp.route('/<string:task_id>/recommendations/', methods=['GET'])
+@jwt_required(optional=True)
+def get_task_recommendations(task_id):
+    """
+    Returns ranked, explainable skill-based developer recommendations for an existing task.
+    Deterministic algorithm: enforces project/team boundaries, required skills match,
+    and active workload capacity limits.
+    """
+    user = _get_auth_user()
+    scope = get_user_scope(user)
+    task = _find_task(task_id)
+    if not task:
+        return jsonify({'success': False, 'message': 'Task not found.'}), 404
+
+    if not scope.can_access_task(task):
+        return jsonify({'success': False, 'message': '403 Forbidden: Access denied to this task.'}), 403
+
+    from services.task_recommendation_service import TaskRecommendationService
+    result, status_code = TaskRecommendationService.recommend_for_task(task.id, caller_user=user)
+    return jsonify(result), status_code
+
+@task_bp.route('/recommendations', methods=['POST'])
+@task_bp.route('/recommendations/', methods=['POST'])
+@jwt_required(optional=True)
+def get_criteria_recommendations():
+    """
+    Returns developer recommendations for a task before or during creation.
+    Payload: { project_id, team_id, sprint_id, required_skills, estimated_hours }
+    """
+    user = _get_auth_user()
+    scope = get_user_scope(user)
+    data = request.get_json() or {}
+
+    project_id = _parse_uuid(data.get('project_id'))
+    team_id = _parse_uuid(data.get('team_id'))
+    sprint_id = _parse_uuid(data.get('sprint_id'))
+    required_skills = data.get('required_skills') or data.get('skills')
+    estimated_hours = float(data.get('estimated_hours') or 4.0)
+
+    # Scoping check
+    if not scope.is_admin:
+        if project_id and project_id not in scope.project_ids:
+            return jsonify({'success': False, 'message': '403 Forbidden: Cannot request recommendations for an unassigned project.'}), 403
+        if team_id and team_id not in scope.team_ids and scope.is_lead:
+            return jsonify({'success': False, 'message': '403 Forbidden: Cannot request recommendations for a team outside your lead scope.'}), 403
+
+    from services.task_recommendation_service import TaskRecommendationService
+    result = TaskRecommendationService.recommend_candidates(
+        project_id=project_id,
+        team_id=team_id,
+        sprint_id=sprint_id,
+        required_skills=required_skills,
+        estimated_hours=estimated_hours,
+        caller_user=user
+    )
+    return jsonify(result), 200
+
+@task_bp.route('/<string:task_id>/confirm-assignment', methods=['POST'])
+@task_bp.route('/<string:task_id>/confirm-assignment/', methods=['POST'])
+@jwt_required(optional=True)
+def confirm_task_assignment(task_id):
+    """
+    Explicit confirmation of developer assignment by authorized PM or Team Lead.
+    Re-validates eligibility inside an atomic transaction.
+    """
+    auth_header = request.headers.get('Authorization')
+    jwt_id = None
+    try:
+        jwt_id = get_jwt_identity()
+    except Exception:
+        pass
+
+    if not jwt_id and not auth_header and not request.headers.get('X-User-Id'):
+        return jsonify({'success': False, 'message': '401 Unauthorized: Authentication required to confirm assignment.'}), 401
+
+    user = _get_auth_user()
+    task = _find_task(task_id)
+    if not task:
+        return jsonify({'success': False, 'message': 'Task not found.'}), 404
+
+    data = request.get_json() or {}
+    dev_param = data.get('developer_id') or data.get('assigned_to') or data.get('assigned_to_id')
+    notes = data.get('notes') or data.get('reason')
+
+    dev_user = _resolve_assigned_user(dev_param)
+    if not dev_user:
+        return jsonify({'success': False, 'message': 'Selected developer not found.'}), 400
+
+    from services.task_recommendation_service import TaskRecommendationService
+    result, status_code = TaskRecommendationService.confirm_assignment(
+        task_id=task.id,
+        developer_id=dev_user.id,
+        caller_user=user,
+        notes=notes
+    )
+    return jsonify(result), status_code
 
 # ─── DELAY REMARKS & TEAM LEADER REVIEWS ──────────────────────────────────────
 

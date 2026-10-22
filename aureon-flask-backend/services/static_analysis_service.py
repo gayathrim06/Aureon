@@ -15,7 +15,7 @@ class StaticAnalysisService:
 
     @classmethod
     def analyze_source_code(cls, repository_id, file_content, file_name="sample.py"):
-        with tempfile.NamedTemporaryFile(suffix=".py", mode="w+", delete=False) as tmp:
+        with tempfile.NamedTemporaryFile(suffix=".py", mode="w+", encoding="utf-8", delete=False) as tmp:
             tmp.write(file_content)
             tmp_path = tmp.name
 

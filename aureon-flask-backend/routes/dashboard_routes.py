@@ -1,9 +1,10 @@
 import uuid
 from flask import Blueprint, jsonify, request
-from flask_jwt_extended import jwt_required, get_jwt_identity
+from flask_jwt_extended import jwt_required
 from datetime import datetime
 from extensions import db
 from models import User, Project, Team, Task, Risk, Repository, Commit, CodeAnalysis, AuditLog, TeamMember, Sprint, Role
+from services.rbac_service import get_auth_user, get_user_scope
 
 dashboard_bp = Blueprint('dashboards', __name__, url_prefix='/api/v1/dashboards')
 
@@ -17,18 +18,17 @@ def _parse_uuid(val):
     except Exception:
         return None
 
-def _get_jwt_user():
-    user_id = get_jwt_identity()
-    user = None
-    if user_id:
-        u_uuid = _parse_uuid(user_id)
-        user = User.query.get(u_uuid or user_id)
-    return user
-
 @dashboard_bp.route('/admin', methods=['GET'])
 @dashboard_bp.route('/admin/', methods=['GET'])
 @jwt_required(optional=True)
 def get_admin_dashboard():
+    user = get_auth_user()
+    if not user:
+        return jsonify({'success': False, 'message': '401 Unauthorized: Authentication required.'}), 401
+    scope = get_user_scope(user)
+    if not scope.is_admin:
+        return jsonify({'success': False, 'message': '403 Forbidden: Admin privileges required.'}), 403
+
     today_str = datetime.utcnow().strftime('%Y-%m-%d')
 
     total_users = User.query.count()
@@ -84,22 +84,22 @@ def get_admin_dashboard():
 @dashboard_bp.route('/pm/', methods=['GET'])
 @jwt_required(optional=True)
 def get_pm_dashboard():
-    today_str = datetime.utcnow().strftime('%Y-%m-%d')
-    user = _get_jwt_user()
+    user = get_auth_user()
     if not user:
-        pm_role = Role.query.filter_by(code='ROLE_PM').first()
-        if pm_role:
-            user = User.query.filter_by(role_id=pm_role.id).first()
-        if not user:
-            user = User.query.first()
+        return jsonify({'success': False, 'message': '401 Unauthorized: Authentication required.'}), 401
+    scope = get_user_scope(user)
+    if not (scope.is_admin or scope.is_pm):
+        return jsonify({'success': False, 'message': '403 Forbidden: Project Manager privileges required.'}), 403
 
-    my_projects = Project.query.filter(
-        (Project.manager_id == user.id) | (Project.lead_id == user.id),
-        Project.is_active == True
-    ).all() if user else []
+    today_str = datetime.utcnow().strftime('%Y-%m-%d')
 
-    if not my_projects:
+    if scope.is_admin:
         my_projects = Project.query.filter_by(is_active=True).all()
+    else:
+        my_projects = Project.query.filter(
+            (Project.manager_id == user.id) | (Project.lead_id == user.id),
+            Project.is_active == True
+        ).all()
 
     project_ids = [p.id for p in my_projects]
     tasks = Task.query.filter(Task.project_id.in_(project_ids)).all() if project_ids else []
@@ -135,17 +135,17 @@ def get_pm_dashboard():
 @dashboard_bp.route('/lead/', methods=['GET'])
 @jwt_required(optional=True)
 def get_lead_dashboard():
-    today_str = datetime.utcnow().strftime('%Y-%m-%d')
-    user = _get_jwt_user()
+    user = get_auth_user()
     if not user:
-        lead_role = Role.query.filter_by(code='ROLE_LEAD').first()
-        if lead_role:
-            user = User.query.filter_by(role_id=lead_role.id).first()
-        if not user:
-            user = User.query.first()
+        return jsonify({'success': False, 'message': '401 Unauthorized: Authentication required.'}), 401
+    scope = get_user_scope(user)
+    if not (scope.is_admin or scope.is_lead):
+        return jsonify({'success': False, 'message': '403 Forbidden: Team Lead privileges required.'}), 403
 
-    my_team = Team.query.filter((Team.team_leader_id == user.id) | (Team.lead_id == user.id)).first() if user else None
-    if not my_team:
+    today_str = datetime.utcnow().strftime('%Y-%m-%d')
+
+    my_team = Team.query.filter((Team.team_leader_id == user.id) | (Team.lead_id == user.id)).first()
+    if not my_team and scope.is_admin:
         my_team = Team.query.filter_by(status='ACTIVE').first()
 
     if not my_team:
@@ -193,37 +193,41 @@ def get_lead_dashboard():
 @dashboard_bp.route('/dev/', methods=['GET'])
 @jwt_required(optional=True)
 def get_dev_dashboard():
+    user = get_auth_user()
+    if not user:
+        return jsonify({'success': False, 'message': '401 Unauthorized: Authentication required.'}), 401
+    scope = get_user_scope(user)
+
     today_str = datetime.utcnow().strftime('%Y-%m-%d')
-    user = None
+    target_user = user
+
     email_param = request.args.get('email')
     user_id_param = request.args.get('user_id')
     name_param = request.args.get('name')
 
-    if email_param:
-        user = User.query.filter(User.email.ilike(email_param.strip())).first()
-    elif user_id_param:
-        u_uuid = _parse_uuid(user_id_param)
-        user = User.query.get(u_uuid or user_id_param)
-    elif name_param:
-        user = User.query.filter((User.full_name.ilike(f"%{name_param.strip()}%")) | (User.username.ilike(f"%{name_param.strip()}%"))).first()
-
-    if not user:
-        user = _get_jwt_user()
-    if not user:
-        dev_role = Role.query.filter_by(code='ROLE_DEV').first()
-        if dev_role:
-            user = User.query.filter_by(role_id=dev_role.id).first()
-        if not user:
-            user = User.query.first()
+    if email_param or user_id_param or name_param:
+        if scope.is_admin or scope.is_pm or scope.is_lead:
+            found = None
+            if email_param:
+                found = User.query.filter(User.email.ilike(email_param.strip())).first()
+            elif user_id_param:
+                u_uuid = _parse_uuid(user_id_param)
+                found = User.query.get(u_uuid or user_id_param)
+            elif name_param:
+                found = User.query.filter((User.full_name.ilike(f"%{name_param.strip()}%")) | (User.username.ilike(f"%{name_param.strip()}%"))).first()
+            if found and (scope.is_admin or scope.can_access_user(found)):
+                target_user = found
+        elif (email_param and email_param.strip().lower() != user.email.lower()):
+            return jsonify({'success': False, 'message': '403 Forbidden: Cannot view another developer\'s dashboard.'}), 403
 
     assigned_tasks = Task.query.filter(
-        (Task.assigned_to_id == user.id) | (Task.created_by_id == user.id)
-    ).all() if user else []
+        (Task.assigned_to_id == target_user.id) | (Task.created_by_id == target_user.id)
+    ).all()
     completed_tasks = [t for t in assigned_tasks if t.status in ('COMPLETED', 'DONE')]
     pending_tasks = [t for t in assigned_tasks if t.status in ('TODO', 'IN_PROGRESS')]
     overdue_tasks = [t for t in assigned_tasks if t.status not in ('COMPLETED', 'DONE') and t.due_date and str(t.due_date) < today_str]
 
-    my_commits = Commit.query.filter_by(user_id=user.id).limit(10).all() if user else []
+    my_commits = Commit.query.filter_by(user_id=target_user.id).limit(10).all()
 
     return jsonify({
         'success': True,

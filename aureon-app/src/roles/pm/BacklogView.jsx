@@ -20,6 +20,7 @@ import {
   RefreshCw,
   Sparkles
 } from 'lucide-react';
+import { TaskSkillRecommendationModal } from '../../components/common/TaskSkillRecommendationModal';
 
 export const BacklogView = ({ onShowToast, onNavigate }) => {
   const { user } = useAuth();
@@ -27,6 +28,9 @@ export const BacklogView = ({ onShowToast, onNavigate }) => {
   const [projects, setProjects] = useState([]);
   const [sprints, setSprints] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // Skill Recommendation Modal
+  const [recommendingTask, setRecommendingTask] = useState(null);
 
   // Filters
   const [selectedProjectId, setSelectedProjectId] = useState('ALL');
@@ -44,6 +48,7 @@ export const BacklogView = ({ onShowToast, onNavigate }) => {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [newTitle, setNewTitle] = useState('');
   const [newDescription, setNewDescription] = useState('');
+  const [newRequiredSkills, setNewRequiredSkills] = useState('');
   const [newPriority, setNewPriority] = useState('MEDIUM');
   const [newType, setNewType] = useState('Task');
   const [newHours, setNewHours] = useState('4.0');
@@ -143,6 +148,7 @@ export const BacklogView = ({ onShowToast, onNavigate }) => {
           ticket_type: newType,
           estimated_hours: parseFloat(newHours) || 4.0,
           project_id: newProjectId,
+          required_skills: newRequiredSkills.trim(),
           is_backlog: true,
           status: 'BACKLOG'
         })
@@ -152,6 +158,7 @@ export const BacklogView = ({ onShowToast, onNavigate }) => {
         setIsCreateModalOpen(false);
         setNewTitle('');
         setNewDescription('');
+        setNewRequiredSkills('');
         setNewPriority('MEDIUM');
         setNewHours('4.0');
         await fetchBacklogData();
@@ -558,6 +565,14 @@ export const BacklogView = ({ onShowToast, onNavigate }) => {
                         <div className="flex items-center justify-end gap-1.5">
                           <button
                             type="button"
+                            onClick={() => setRecommendingTask(task)}
+                            className="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 hover:bg-emerald-600 hover:text-white transition cursor-pointer shadow-xs active:scale-95 flex items-center gap-1"
+                            title="Recommend Best Developer (Skills & Workload Match)"
+                          >
+                            <Sparkles className="w-3 h-3 text-emerald-500" /> Recommend
+                          </button>
+                          <button
+                            type="button"
                             onClick={() => {
                               setSelectedTaskIds(new Set([task.id]));
                               if (sprints.length > 0 && !targetSprintId) {
@@ -636,6 +651,19 @@ export const BacklogView = ({ onShowToast, onNavigate }) => {
                 placeholder="Outline the specifications and requirements for this deliverable..."
                 value={newDescription}
                 onChange={e => setNewDescription(e.target.value)}
+                className="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
+
+            <div>
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
+                Required Technical Skills (comma separated)
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. React, Python, PostgreSQL"
+                value={newRequiredSkills}
+                onChange={e => setNewRequiredSkills(e.target.value)}
                 className="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-indigo-500"
               />
             </div>
@@ -763,6 +791,25 @@ export const BacklogView = ({ onShowToast, onNavigate }) => {
             </div>
           </form>
         </Modal>
+      )}
+
+      {/* Skill-Based Task Recommendation Modal */}
+      {recommendingTask && (
+        <TaskSkillRecommendationModal
+          task={recommendingTask}
+          isOpen={Boolean(recommendingTask)}
+          onClose={() => setRecommendingTask(null)}
+          onConfirmed={(assigned) => {
+            fetchBacklogData();
+            if (onShowToast) {
+              onShowToast({
+                type: 'success',
+                title: 'Developer Assigned via Recommendation',
+                message: `Task successfully assigned to ${assigned.user_name || 'selected candidate'}.`
+              });
+            }
+          }}
+        />
       )}
     </div>
   );

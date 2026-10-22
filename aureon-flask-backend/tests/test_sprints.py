@@ -81,8 +81,13 @@ def test_sprint_backlog_and_completion_carryforward(client, app):
         db.session.add_all([t1, t2])
         db.session.commit()
 
+        from flask_jwt_extended import create_access_token
+        admin = User.query.filter_by(email='admin@aureon.com').first()
+        admin_token = create_access_token(identity=str(admin.id))
+        admin_headers = {'Authorization': f'Bearer {admin_token}'}
+
         # Check sprint tasks endpoint
-        res = client.get(f'/api/v1/sprints/{sprint.id}/tasks')
+        res = client.get(f'/api/v1/sprints/{sprint.id}/tasks', headers=admin_headers)
         assert res.status_code == 200
         tasks_data = res.get_json()
         assert tasks_data['count'] >= 2
@@ -94,7 +99,7 @@ def test_sprint_backlog_and_completion_carryforward(client, app):
         assert s_dict['completion_percentage'] == 50.0
 
         # Complete sprint: incomplete task t2 should be carried forward to product backlog
-        comp_res = client.post(f'/api/v1/sprints/{sprint.id}/complete', json={'completion_notes': 'End of sprint cycle.'})
+        comp_res = client.post(f'/api/v1/sprints/{sprint.id}/complete', json={'completion_notes': 'End of sprint cycle.'}, headers=admin_headers)
         assert comp_res.status_code == 200
         comp_data = comp_res.get_json()
         assert comp_data['carry_forward_tasks_count'] == 1
@@ -110,7 +115,7 @@ def test_sprint_backlog_and_completion_carryforward(client, app):
         assert t2.sprint_id is None
 
         # Check sprint review endpoint
-        rev_res = client.get(f'/api/v1/sprints/{sprint.id}/review')
+        rev_res = client.get(f'/api/v1/sprints/{sprint.id}/review', headers=admin_headers)
         assert rev_res.status_code == 200
         rev_data = rev_res.get_json()['review']
         assert rev_data['completed_tasks_count'] == 1

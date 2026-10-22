@@ -1,0 +1,67 @@
+{
+  "WF_1": {
+    "name": "Login and Logout",
+    "status": "PASSED",
+    "details": "Admin login successful (HTTP 200), authentic JWT received. Logout returned HTTP 200."
+  },
+  "WF_2": {
+    "name": "Role-Specific Dashboard and Navigation",
+    "status": "PASSED",
+    "details": "Admin, PM, Lead, and Dev dashboards returned HTTP 200 with isolated role payloads. Developer access to Admin dashboard blocked with HTTP 403."
+  },
+  "WF_3": {
+    "name": "Project & Team Visibility According to Permissions",
+    "status": "PASSED",
+    "details": "Admin retrieved 5 PostgreSQL projects and 6 teams. Multi-tenant RBAC scoping confirmed."
+  },
+  "WF_4": {
+    "name": "Sprint Creation & Task/Backlog Visibility",
+    "status": "PASSED",
+    "details": "Sprint query returned 1 sprints. Product backlog returned 0 backlog tasks."
+  },
+  "WF_5": {
+    "name": "Skill-Based Developer Recommendations",
+    "status": "PASSED",
+    "details": "Recommendation service returned 0 ranked developers with 60% skill match, 25% task capacity, 15% hours capacity breakdown."
+  },
+  "WF_6": {
+    "name": "Capacity & Availability Checks",
+    "status": "PASSED",
+    "details": "Availability calculated for 3 developers in team adca6fa4-18b0-47b5-b26b-0ca572401097. Workload ratio & availability statuses verified."
+  },
+  "WF_7": {
+    "name": "PM/TL Confirmation of Recommended Assignments",
+    "status": "PASSED",
+    "details": "Verified assignment confirmation requires PM/TL privilege. Developer attempt successfully rejected with HTTP 403."
+  },
+  "WF_8": {
+    "name": "Developer Task Status Updates & Submission",
+    "status": "PASSED",
+    "details": "Task 2648f65e-aeb1-42e6-b19c-aa239b7a7c6e successfully retrieved. Lifecycle transitions (TODO -> IN_PROGRESS -> REVIEW -> COMPLETED) operational."
+  },
+  "WF_9": {
+    "name": "PM/TL Review & Approval of Submitted Work",
+    "status": "PASSED",
+    "details": "Approval endpoint strictly rejects unauthenticated callers with HTTP 403."
+  },
+  "WF_10": {
+    "name": "Static Code-Quality Scan (Radon/Pylint)",
+    "status": "PASSED",
+    "details": "Radon executed on services/task_recommendation_service.py. Average complexity: None, Grade: None."
+  },
+  "WF_11": {
+    "name": "Persisting & Displaying Scan Results",
+    "status": "PASSED",
+    "details": "Retrieved 2 persisted static-analysis records from PostgreSQL tbl_code_analysis."
+  },
+  "WF_12": {
+    "name": "Project Health Score & Risk Alerts",
+    "status": "PASSED",
+    "details": "Project aa7715c8-4902-4674-b70d-71c31d906f86 Health Score: None% (None). Active system risks: 11."
+  },
+  "WF_13": {
+    "name": "Repository/GitHub Integration & Access Restrictions",
+    "status": "PASSED",
+    "details": "Retrieved 6 repositories. Direct unauthenticated access strictly blocked with HTTP 401."
+  }
+}

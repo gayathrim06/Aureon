@@ -18,6 +18,10 @@ def sync_db_schema():
                     "ALTER TABLE tbl_sprint ADD COLUMN IF NOT EXISTS completion_date DATE;",
                     "ALTER TABLE tbl_sprint ADD COLUMN IF NOT EXISTS completion_notes TEXT;",
                     "ALTER TABLE tbl_sprint ADD COLUMN IF NOT EXISTS carry_forward_tasks_count INTEGER DEFAULT 0;",
+                    # tbl_user
+                    "ALTER TABLE tbl_user ADD COLUMN IF NOT EXISTS skills TEXT;",
+                    "ALTER TABLE tbl_user ADD COLUMN IF NOT EXISTS max_concurrent_tasks INTEGER DEFAULT 3;",
+                    "ALTER TABLE tbl_user ADD COLUMN IF NOT EXISTS capacity_hours FLOAT DEFAULT 40.0;",
                     # tbl_task
                     "ALTER TABLE tbl_task ADD COLUMN IF NOT EXISTS ticket_type VARCHAR(50) DEFAULT 'Task';",
                     "ALTER TABLE tbl_task ADD COLUMN IF NOT EXISTS parent_task_id UUID;",
@@ -39,6 +43,7 @@ def sync_db_schema():
                     "ALTER TABLE tbl_task ADD COLUMN IF NOT EXISTS escalated_at TIMESTAMP;",
                     "ALTER TABLE tbl_task ADD COLUMN IF NOT EXISTS overdue_notified_lead BOOLEAN DEFAULT FALSE;",
                     "ALTER TABLE tbl_task ADD COLUMN IF NOT EXISTS overdue_notified_pm BOOLEAN DEFAULT FALSE;",
+                    "ALTER TABLE tbl_task ADD COLUMN IF NOT EXISTS required_skills TEXT;",
                     "ALTER TABLE tbl_task ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;",
                     # tbl_commit
                     "ALTER TABLE tbl_commit ADD COLUMN IF NOT EXISTS task_id UUID;",
@@ -84,6 +89,11 @@ def sync_db_schema():
 
             elif dialect_name == 'sqlite':
                 tables_cols = {
+                    'tbl_user': [
+                        ('skills', 'TEXT'),
+                        ('max_concurrent_tasks', 'INTEGER DEFAULT 3'),
+                        ('capacity_hours', 'FLOAT DEFAULT 40.0')
+                    ],
                     'tbl_sprint': [
                         ('completion_date', 'DATE'),
                         ('completion_notes', 'TEXT'),
@@ -110,6 +120,7 @@ def sync_db_schema():
                         ('escalated_at', 'DATETIME'),
                         ('overdue_notified_lead', 'BOOLEAN DEFAULT 0'),
                         ('overdue_notified_pm', 'BOOLEAN DEFAULT 0'),
+                        ('required_skills', 'TEXT'),
                         ('updated_at', 'DATETIME')
                     ],
                     'tbl_commit': [

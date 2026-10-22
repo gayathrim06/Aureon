@@ -43,25 +43,18 @@ def create_app():
     with app.app_context():
         sync_db_schema()
 
-    # Sanitize invalid/mock Authorization headers before Flask-JWT processing
-    @app.before_request
-    def sanitize_auth_header():
-        auth = request.headers.get('Authorization')
-        if auth and auth.startswith('Bearer '):
-            token = auth.split(' ', 1)[1].strip()
-            parts = token.split('.')
-            if len(parts) != 3 or not token.startswith('ey'):
-                if 'HTTP_AUTHORIZATION' in request.environ:
-                    del request.environ['HTTP_AUTHORIZATION']
-            else:
-                try:
-                    from flask_jwt_extended import decode_token
-                    decode_token(token)
-                except Exception:
-                    # Token is expired, signature-mismatched, or stale from a previous session.
-                    # Remove it from request.environ so optional auth endpoints can serve real DB data seamlessly.
-                    if 'HTTP_AUTHORIZATION' in request.environ:
-                        del request.environ['HTTP_AUTHORIZATION']
+    # Enforce strict JWT validation: expired, tampered, or invalid tokens must fail closed with 401
+    @jwt.invalid_token_loader
+    def invalid_token_callback(reason):
+        return jsonify({'success': False, 'message': f'401 Unauthorized: Invalid or tampered token ({reason}).'}), 401
+
+    @jwt.expired_token_loader
+    def expired_token_callback(jwt_header, jwt_payload):
+        return jsonify({'success': False, 'message': '401 Unauthorized: Token has expired. Please log in again.'}), 401
+
+    @jwt.unauthorized_loader
+    def missing_token_callback(reason):
+        return jsonify({'success': False, 'message': f'401 Unauthorized: Authentication required ({reason}).'}), 401
 
     # Ensure CORS headers on every response and preflight OPTIONS request
     @app.after_request

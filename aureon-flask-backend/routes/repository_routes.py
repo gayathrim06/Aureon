@@ -31,35 +31,11 @@ def _parse_uuid(val):
     except Exception:
         return None
 
+from services.rbac_service import get_auth_user
+
 def _get_authenticated_user():
-    """Retrieves authenticated user from JWT identity, X-User-Id, or X-User-Email."""
-    try:
-        user_id = get_jwt_identity()
-        if user_id:
-            u_uuid = _parse_uuid(user_id)
-            user = db.session.get(User, u_uuid or user_id)
-            if user:
-                return user
-    except Exception:
-        pass
-
-    # Check X-User-Id and X-User-Email headers
-    u_param = request.headers.get('X-User-Id') or request.args.get('user_id')
-    if u_param:
-        u_uuid = _parse_uuid(u_param)
-        user = db.session.get(User, u_uuid or u_param)
-        if user:
-            return user
-
-    email_param = request.headers.get('X-User-Email') or request.args.get('email')
-    if email_param:
-        user = User.query.filter(User.email.ilike(email_param.strip())).first()
-        if user:
-            return user
-
-    # Default to system admin for unauthenticated admin view
-    admin_user = User.query.filter_by(email='admin@aureon.com').first()
-    return admin_user
+    """Retrieves authenticated user strictly via get_auth_user()."""
+    return get_auth_user()
 
 def _get_user_role_code(user):
     """Returns normalized role code (e.g. ROLE_ADMIN, ROLE_PM, ROLE_LEAD, ROLE_DEV)."""
@@ -994,7 +970,7 @@ def create_developer_commit(repo_id):
         if user.id not in auth_user_ids:
             return jsonify({
                 'success': False,
-                'message': f"Access denied: You are not an assigned team member of project '{proj_name}'. Cannot commit to this repository."
+                'message': f"Access denied: You are not assigned to project '{proj_name}'. Cannot commit to this repository."
             }), 403
 
     data = request.get_json() or {}

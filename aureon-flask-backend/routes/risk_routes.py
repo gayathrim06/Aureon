@@ -8,9 +8,13 @@ risk_bp = Blueprint('risks', __name__, url_prefix='/api/v1/risks')
 @risk_bp.route('/', methods=['GET'])
 @risk_bp.route('', methods=['GET'])
 def get_risks():
-    # Evaluate project risks before returning
-    RuleEngine.evaluate_project_risks(1)
-    risks = Risk.query.order_by(Risk.detected_at.desc()).all()
+    project_id = request.args.get('project_id')
+    if project_id:
+        try:
+            RuleEngine.evaluate_project_risks(project_id)
+        except Exception:
+            pass
+    risks = Risk.query.order_by(Risk.created_at.desc()).all() if hasattr(Risk, 'created_at') else Risk.query.all()
     return jsonify({'success': True, 'count': len(risks), 'risks': [r.to_dict() for r in risks]}), 200
 
 @risk_bp.route('/evaluate', methods=['POST'])

@@ -43,14 +43,72 @@ def require_role(allowed_roles):
     return decorator
 
 
+def get_auth_user(allow_header_fallback=None):
+    """
+    Secure server-side user authentication.
+    - Verified JWT: Uses get_jwt_identity() from Flask-JWT-Extended.
+    - Custom header fallback (X-User-Id / X-User-Email):
+      Strictly disallowed in production to prevent header-spoofing impersonation.
+      Only permitted in automated testing (current_app.config['TESTING'] == True)
+      or when explicitly enabled via ALLOW_DEV_HEADER_AUTH=true in dev/debug mode.
+    - Fails closed: Returns None if unauthenticated. Never falls back to admin.
+    """
+    import os
+    from flask import current_app
+    from extensions import db
+
+    # 1. Primary & Secure: Verified JWT
+    try:
+        user_id = get_jwt_identity()
+        if user_id:
+            u_uuid = _parse_uuid(user_id)
+            user = db.session.get(User, u_uuid or user_id)
+            if user and user.account_status == 'ACTIVE':
+                return user
+    except Exception:
+        pass
+
+    # 2. Controlled Development / Testing Fallback (FAIL CLOSED BY DEFAULT)
+    allow_dev_headers = False
+    if allow_header_fallback is not None:
+        allow_dev_headers = bool(allow_header_fallback)
+    else:
+        try:
+            if current_app:
+                allow_dev_headers = (
+                    current_app.config.get('TESTING', False) or
+                    (current_app.config.get('DEBUG', False) and os.getenv('ALLOW_DEV_HEADER_AUTH', '').lower() == 'true')
+                )
+        except RuntimeError:
+            pass
+
+    if allow_dev_headers:
+        u_param = request.headers.get('X-User-Id') or request.args.get('user_id')
+        if u_param:
+            u_uuid = _parse_uuid(u_param)
+            user = db.session.get(User, u_uuid or u_param)
+            if user:
+                return user
+
+        email_param = request.headers.get('X-User-Email') or request.args.get('email')
+        if email_param:
+            user = User.query.filter(User.email.ilike(email_param.strip())).first()
+            if user:
+                return user
+
+    # 3. Fail closed: NEVER elevate to admin or return a default user
+    return None
+
+
 class UserScope:
     def __init__(self, user):
         self.user = user
-        self.role_name = user.role_name if user else 'ROLE_DEV'
-        self.is_admin = (self.role_name == 'ROLE_ADMIN')
-        self.is_pm = (self.role_name == 'ROLE_PM')
-        self.is_lead = (self.role_name == 'ROLE_LEAD')
-        self.is_dev = (self.role_name in ('ROLE_DEV', 'ROLE_QA'))
+        self.role_name = user.role_name if user else 'UNAUTHENTICATED'
+        self.is_admin = bool(user and self.role_name == 'ROLE_ADMIN')
+        self.is_pm = bool(user and self.role_name == 'ROLE_PM')
+        self.is_lead = bool(user and self.role_name == 'ROLE_LEAD')
+        self.is_dev = bool(user and self.role_name in ('ROLE_DEV', 'ROLE_QA'))
+        self.is_authenticated = bool(user)
 
         self.project_ids = []
         self.team_ids = []
@@ -61,7 +119,7 @@ class UserScope:
 
     def _resolve_scope(self):
         if not self.user or self.is_admin:
-            # Admin has unrestricted system-wide visibility
+            # Admin has unrestricted system-wide visibility; Unauthenticated has none
             return
 
         u_id = self.user.id
@@ -186,11 +244,22 @@ class UserScope:
             return sprint.id in self.sprint_ids
         return False
 
-    def can_access_task(self, task):
+    def can_access_user(self, user_or_id):
+        if not self.user or not user_or_id:
+            return False
         if self.is_admin:
             return True
-        if not task:
+        u_id = getattr(user_or_id, 'id', user_or_id)
+        if str(self.user.id) == str(u_id):
+            return True
+        u_uuid = _parse_uuid(u_id)
+        return (u_uuid in self.user_ids) or (u_id in self.user_ids)
+
+    def can_access_task(self, task):
+        if not self.user or not task:
             return False
+        if self.is_admin:
+            return True
         if self.is_dev:
             return str(task.assigned_to_id) == str(self.user.id)
         if self.is_lead:

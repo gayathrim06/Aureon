@@ -7,14 +7,10 @@ from models import Bug, User, Project, AuditLog
 
 bug_bp = Blueprint('bugs', __name__, url_prefix='/api/v1/bugs')
 
+from services.rbac_service import get_auth_user
+
 def _get_auth_user():
-    user_id = get_jwt_identity()
-    user = None
-    if user_id:
-        user = User.query.get(user_id)
-    if not user:
-        user = User.query.first()
-    return user
+    return get_auth_user()
 
 @bug_bp.route('/', methods=['GET'])
 @bug_bp.route('', methods=['GET'])

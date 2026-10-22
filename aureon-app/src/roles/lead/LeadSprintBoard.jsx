@@ -3,8 +3,9 @@ import { Breadcrumb } from '../../components/common/Breadcrumb';
 import { Modal } from '../../components/common/Modal';
 import { useAuth } from '../../context/AuthContext';
 import { logAuditEvent } from '../../services/auditLogger';
-import { Layers, CheckCircle2, ArrowRight, GitBranch, Plus, UserCheck, Calendar, Filter, Target, List, LayoutGrid, Search, Clock, CheckSquare, Users, Edit3, Trash2, X, RefreshCw, RotateCcw, Play } from 'lucide-react';
+import { Layers, CheckCircle2, ArrowRight, GitBranch, Plus, UserCheck, Calendar, Filter, Target, List, LayoutGrid, Search, Clock, CheckSquare, Users, Edit3, Trash2, X, RefreshCw, RotateCcw, Play, Sparkles } from 'lucide-react';
 import { getAuthHeaders } from '../../services/apiClient';
+import { TaskSkillRecommendationModal } from '../../components/common/TaskSkillRecommendationModal';
 
 export const LeadSprintBoard = ({ onShowToast, initialView = 'kanban' }) => {
   const { user } = useAuth();
@@ -26,6 +27,9 @@ export const LeadSprintBoard = ({ onShowToast, initialView = 'kanban' }) => {
   const [editingTask, setEditingTask] = useState(null);
   const [editSubmitting, setEditSubmitting] = useState(false);
 
+  // Skill Recommendation Modal State
+  const [recommendingTask, setRecommendingTask] = useState(null);
+
   // Multi-Task / Batch Sprint Assignment State
   const [selectedTaskIds, setSelectedTaskIds] = useState([]);
   const [batchAssigneeId, setBatchAssigneeId] = useState('');
@@ -38,6 +42,7 @@ export const LeadSprintBoard = ({ onShowToast, initialView = 'kanban' }) => {
     priority: 'HIGH',
     ticket_type: 'Task',
     assigned_to: '',
+    required_skills: '',
     estimated_hours: 8,
     due_date: new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0]
   });
@@ -286,6 +291,7 @@ export const LeadSprintBoard = ({ onShowToast, initialView = 'kanban' }) => {
           status: editingTask.status,
           estimated_hours: parseFloat(editingTask.estimated_hours) || 8,
           due_date: editingTask.due_date,
+          required_skills: editingTask.required_skills || '',
           assigned_to: editingTask.assigned_to_id
         })
       });
@@ -434,6 +440,7 @@ export const LeadSprintBoard = ({ onShowToast, initialView = 'kanban' }) => {
       sprint_id: selectedSprint.id,
       project_id: selectedSprint.project_id,
       assigned_to: taskForm.assigned_to,
+      required_skills: taskForm.required_skills || '',
       estimated_hours: Number(taskForm.estimated_hours) || 8,
       due_date: taskForm.due_date
     };
@@ -932,10 +939,20 @@ export const LeadSprintBoard = ({ onShowToast, initialView = 'kanban' }) => {
 
                             <button
                               type="button"
+                              onClick={() => setRecommendingTask(t)}
+                              className="px-2 py-1 rounded-lg text-[10px] bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 dark:hover:bg-indigo-900 text-indigo-700 dark:text-indigo-300 font-bold border border-indigo-200 dark:border-indigo-800 transition-all cursor-pointer flex items-center gap-1 shadow-xs active:scale-95"
+                              title="Recommend Best Developer (Skills & Capacity Match)"
+                            >
+                              <Sparkles className="w-2.5 h-2.5 text-indigo-500" /> Recommend
+                            </button>
+
+                            <button
+                              type="button"
                               onClick={() => setEditingTask({
                                 ...t,
                                 assigned_to_id: currentDevId,
                                 estimated_hours: t.estimated_hours || 8,
+                                required_skills: t.required_skills || '',
                                 due_date: t.due_date ? String(t.due_date).split('T')[0] : ''
                               })}
                               className="p-1 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-500 hover:text-indigo-600 hover:border-indigo-400 dark:hover:text-indigo-400 transition cursor-pointer"
@@ -1014,9 +1031,19 @@ export const LeadSprintBoard = ({ onShowToast, initialView = 'kanban' }) => {
 
                           {/* Inline Developer Assignment Dropdown */}
                           <div className="pt-2 border-t border-slate-200/60 dark:border-slate-800 space-y-1">
-                            <label className="text-[9px] font-bold uppercase text-slate-400 block">
-                              👤 Assigned Developer:
-                            </label>
+                            <div className="flex items-center justify-between">
+                              <label className="text-[9px] font-bold uppercase text-slate-400 block">
+                                👤 Assigned Developer:
+                              </label>
+                              <button
+                                type="button"
+                                onClick={() => setRecommendingTask(t)}
+                                className="text-[9px] font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 flex items-center gap-1 cursor-pointer"
+                                title="Auto-Recommend developer based on skills and workload"
+                              >
+                                <Sparkles className="w-2.5 h-2.5" /> Auto-Recommend
+                              </button>
+                            </div>
                             <select
                               value={currentDevId}
                               onChange={(e) => handleAssignDeveloper(t.id, e.target.value)}
@@ -1128,6 +1155,17 @@ export const LeadSprintBoard = ({ onShowToast, initialView = 'kanban' }) => {
               onChange={(e) => setTaskForm({ ...taskForm, description: e.target.value })}
               className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 font-medium"
               placeholder="Provide context and requirements..."
+            />
+          </div>
+
+          <div>
+            <label className="block font-bold mb-1">Required Technical Skills (comma separated)</label>
+            <input
+              type="text"
+              value={taskForm.required_skills}
+              onChange={(e) => setTaskForm({ ...taskForm, required_skills: e.target.value })}
+              className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 font-bold"
+              placeholder="e.g. React, TypeScript, REST API"
             />
           </div>
 
@@ -1265,7 +1303,19 @@ export const LeadSprintBoard = ({ onShowToast, initialView = 'kanban' }) => {
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block font-bold mb-1">Assigned Developer</label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block font-bold">Assigned Developer</label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setRecommendingTask(editingTask);
+                      setEditingTask(null);
+                    }}
+                    className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 flex items-center gap-1 cursor-pointer"
+                  >
+                    <Sparkles className="w-2.5 h-2.5" /> Auto-Recommend
+                  </button>
+                </div>
                 <select
                   value={editingTask.assigned_to_id || ''}
                   onChange={(e) => setEditingTask({ ...editingTask, assigned_to_id: e.target.value })}
@@ -1290,6 +1340,17 @@ export const LeadSprintBoard = ({ onShowToast, initialView = 'kanban' }) => {
                   className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 font-bold"
                 />
               </div>
+            </div>
+
+            <div>
+              <label className="block font-bold mb-1">Required Skills (comma separated)</label>
+              <input
+                type="text"
+                value={editingTask.required_skills || ''}
+                onChange={(e) => setEditingTask({ ...editingTask, required_skills: e.target.value })}
+                className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 font-bold"
+                placeholder="e.g. React, TypeScript, GraphQL"
+              />
             </div>
 
             <div>
@@ -1320,6 +1381,25 @@ export const LeadSprintBoard = ({ onShowToast, initialView = 'kanban' }) => {
             </div>
           </form>
         </Modal>
+      )}
+
+      {/* Skill-Based Task Recommendation Modal */}
+      {recommendingTask && (
+        <TaskSkillRecommendationModal
+          task={recommendingTask}
+          isOpen={Boolean(recommendingTask)}
+          onClose={() => setRecommendingTask(null)}
+          onConfirmed={(assigned) => {
+            fetchData();
+            if (onShowToast) {
+              onShowToast({
+                type: 'success',
+                title: 'Developer Assigned via Recommendation',
+                message: `Task successfully assigned to ${assigned.user_name || 'candidate'}.`
+              });
+            }
+          }}
+        />
       )}
     </div>
   );

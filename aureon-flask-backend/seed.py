@@ -90,26 +90,48 @@ def seed_database():
     ananya = User.query.filter_by(email='ananya.v@aureon.com').first()
     eli_user = User.query.filter_by(email='eli@aureon.com').first()
 
-    # 3. Seed Baseline Project
-    proj = Project.query.filter_by(name='Verona Organic').first()
-    if not proj:
-        proj = Project(
-            name='Verona Organic',
-            description='E-Commerce Platform & Organic Distribution Engine',
-            status='COMPLETED',
-            is_active=False,
-            manager_id=eli_user.id if eli_user else None,
+    # 3. Seed Baseline Projects
+    gopika = User.query.filter_by(email='gopika@aureon.com').first()
+    proj_finpulse = Project.query.filter(Project.name.ilike('%FinPulse%')).first()
+    if not proj_finpulse:
+        proj_finpulse = Project(
+            name='FinPulse Core Banking',
+            description='Financial services microservices platform and real-time ledger.',
+            status='ACTIVE',
+            is_active=True,
+            manager_id=gopika.id if gopika else (eli_user.id if eli_user else None),
+            lead_id=david.id if david else None
+        )
+        db.session.add(proj_finpulse)
+        db.session.flush()
+
+    proj_thrift = Project.query.filter(Project.name.ilike('%Thrift%')).first()
+    if not proj_thrift:
+        proj_thrift = Project(
+            name='Thrift Haven Ecommerce',
+            description='Sustainable resale and inventory tracking engine.',
+            status='ACTIVE',
+            is_active=True,
+            manager_id=gopika.id if gopika else (eli_user.id if eli_user else None),
             lead_id=krish.id if krish else None
         )
-        db.session.add(proj)
+        db.session.add(proj_thrift)
         db.session.flush()
-    else:
-        proj.status = 'COMPLETED'
-        proj.is_active = False
 
-    proj_finpulse = Project.query.filter(Project.name.ilike('%FinPulse%')).first()
-    proj_thrift = Project.query.filter(Project.name.ilike('%Thrift%')).first()
     proj_auracloud = Project.query.filter(Project.name.ilike('%AuraCloud%')).first()
+    if not proj_auracloud:
+        proj_auracloud = Project(
+            name='AuraCloud DevOps Suite',
+            description='Automated continuous deployment and container orchestration platform.',
+            status='ACTIVE',
+            is_active=True,
+            manager_id=eli_user.id if eli_user else None,
+            lead_id=vikram.id if vikram else None
+        )
+        db.session.add(proj_auracloud)
+        db.session.flush()
+
+    proj = proj_finpulse
 
     default_teams = [
         { 'name': 'Frontend UI Squad', 'description': 'User Experience', 'lead': krish, 'project': proj_thrift or proj, 'members': [sainu, ram] },

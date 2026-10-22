@@ -270,7 +270,8 @@ export const AppRouter = () => {
         case 'Tasks': return <TaskBreakdown onShowToast={showToast} onNavigate={navigateTab} />;
         case 'Repositories':
         case 'Repository': return <RepositoriesHub onNavigate={navigateTab} />;
-        case 'SonarQube': return <ComplianceReports onNavigate={navigateTab} />;
+        case 'CodeQuality':
+        case 'SonarQube': return <SonarQubeAdmin onNavigate={navigateTab} />;
         case 'SystemLogs': return <SystemLogsView onNavigate={navigateTab} />;
         case 'Reports': return <ComplianceReports onNavigate={navigateTab} />;
         case 'Notifications': return <NotificationsView onNavigate={navigateTab} />;
@@ -291,6 +292,7 @@ export const AppRouter = () => {
         case 'Milestones': return <MilestoneTracker onNavigate={navigateTab} />;
         case 'TeamMembers': return <TeamWorkload onNavigate={navigateTab} />;
         case 'Repository': return <PmRepositoryView onNavigate={navigateTab} />;
+        case 'CodeQuality': return <CodeQualityHub onNavigate={navigateTab} />;
         case 'ProjectHealth': return <AiHealthInsights onNavigate={navigateTab} />;
         case 'Reports': return <DeliveryReports onNavigate={navigateTab} />;
         case 'Calendar': return <ReleaseCalendar onNavigate={navigateTab} />;
@@ -310,7 +312,7 @@ export const AppRouter = () => {
         case 'Tasks': return <LeadSprintBoard onShowToast={showToast} onNavigate={navigateTab} initialView={tab === 'Tasks' ? 'table' : 'kanban'} />;
         case 'Developers': return <DeveloperRoster onShowToast={showToast} onNavigate={navigateTab} />;
         case 'Repository': return <LeadRepositoryView onNavigate={navigateTab} />;
-        case 'CodeQuality': return <LeadProjectHealth onNavigate={navigateTab} />;
+        case 'CodeQuality': return <CodeQualityHub onNavigate={navigateTab} />;
         case 'ProjectHealth': return <LeadProjectHealth onNavigate={navigateTab} />;
         case 'Reports': return <LeadReports onNavigate={navigateTab} />;
         case 'Notifications': return <NotificationsView onNavigate={navigateTab} />;

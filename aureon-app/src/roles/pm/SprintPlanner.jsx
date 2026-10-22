@@ -3,9 +3,10 @@ import { Breadcrumb } from '../../components/common/Breadcrumb';
 import { Modal } from '../../components/common/Modal';
 import { useAuth } from '../../context/AuthContext';
 import { logAuditEvent } from '../../services/auditLogger';
-import { Layers, Plus, CheckCircle2, Clock, Activity, FolderKanban, Users, Calendar, ShieldCheck, Filter, Target, Zap, TrendingUp, Flag, CheckSquare, UserPlus, AlertCircle } from 'lucide-react';
+import { Layers, Plus, CheckCircle2, Clock, Activity, FolderKanban, Users, Calendar, ShieldCheck, Filter, Target, Zap, TrendingUp, Flag, CheckSquare, UserPlus, AlertCircle, Sparkles } from 'lucide-react';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 import { getAuthHeaders } from '../../services/apiClient';
+import { TaskSkillRecommendationModal } from '../../components/common/TaskSkillRecommendationModal';
 
 export const SprintPlanner = ({ onShowToast }) => {
   const { user } = useAuth();
@@ -17,6 +18,9 @@ export const SprintPlanner = ({ onShowToast }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isAddTaskModalOpen, setIsAddTaskModalOpen] = useState(false);
   const [selectedSprint, setSelectedSprint] = useState(null);
+
+  // Skill Recommendation Modal State
+  const [recommendingTask, setRecommendingTask] = useState(null);
 
   // Multi-Task / Batch Sprint Assignment State
   const [selectedTaskIds, setSelectedTaskIds] = useState([]);
@@ -47,6 +51,7 @@ export const SprintPlanner = ({ onShowToast }) => {
     priority: 'MEDIUM',
     ticket_type: 'Task',
     assigned_to: '',
+    required_skills: '',
     estimated_hours: 8,
     due_date: '2026-09-25'
   });
@@ -358,6 +363,7 @@ export const SprintPlanner = ({ onShowToast }) => {
       sprint_id: selectedSprint.id,
       project_id: selectedSprint.project_id,
       assigned_to: taskFormData.assigned_to,
+      required_skills: taskFormData.required_skills || '',
       estimated_hours: Number(taskFormData.estimated_hours) || 8,
       due_date: taskFormData.due_date
     };
@@ -816,13 +822,23 @@ export const SprintPlanner = ({ onShowToast }) => {
                           {task.due_date ? String(task.due_date).split('T')[0] : '—'}
                         </td>
                         <td className="p-3 text-right">
-                          <button
-                            onClick={() => handleReturnToBacklog(task.id)}
-                            className="px-2.5 py-1 text-[11px] font-semibold rounded-lg bg-slate-100 hover:bg-rose-50 text-slate-700 hover:text-rose-600 dark:bg-slate-800 dark:hover:bg-rose-950/40 dark:text-slate-300 dark:hover:text-rose-400 border border-slate-200 dark:border-slate-700 transition"
-                            title="Remove from this sprint and return to product backlog"
-                          >
-                            To Backlog
-                          </button>
+                          <div className="flex items-center justify-end gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => setRecommendingTask(task)}
+                              className="px-2 py-1 text-[11px] font-bold rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 dark:bg-indigo-950/60 dark:hover:bg-indigo-900 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 transition flex items-center gap-1 cursor-pointer shadow-xs active:scale-95"
+                              title="Recommend Best Developer (Skills & Capacity Match)"
+                            >
+                              <Sparkles className="w-2.5 h-2.5 text-indigo-500" /> Recommend
+                            </button>
+                            <button
+                              onClick={() => handleReturnToBacklog(task.id)}
+                              className="px-2.5 py-1 text-[11px] font-semibold rounded-lg bg-slate-100 hover:bg-rose-50 text-slate-700 hover:text-rose-600 dark:bg-slate-800 dark:hover:bg-rose-950/40 dark:text-slate-300 dark:hover:text-rose-400 border border-slate-200 dark:border-slate-700 transition"
+                              title="Remove from this sprint and return to product backlog"
+                            >
+                              To Backlog
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );
@@ -1058,6 +1074,17 @@ export const SprintPlanner = ({ onShowToast }) => {
             />
           </div>
 
+          <div>
+            <label className="block font-bold mb-1">Required Technical Skills (comma separated)</label>
+            <input
+              type="text"
+              value={taskFormData.required_skills}
+              onChange={(e) => setTaskFormData({ ...taskFormData, required_skills: e.target.value })}
+              className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 font-bold"
+              placeholder="e.g. React, Python, PostgreSQL"
+            />
+          </div>
+
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block font-bold mb-1">3. Assign Developer *</label>
@@ -1129,6 +1156,25 @@ export const SprintPlanner = ({ onShowToast }) => {
           </div>
         </form>
       </Modal>
+
+      {/* Skill-Based Task Recommendation Modal */}
+      {recommendingTask && (
+        <TaskSkillRecommendationModal
+          task={recommendingTask}
+          isOpen={Boolean(recommendingTask)}
+          onClose={() => setRecommendingTask(null)}
+          onConfirmed={(assigned) => {
+            fetchSprintData();
+            if (onShowToast) {
+              onShowToast({
+                type: 'success',
+                title: 'Developer Assigned via Recommendation',
+                message: `Task successfully assigned to ${assigned.user_name || 'selected candidate'}.`
+              });
+            }
+          }}
+        />
+      )}
     </div>
   );
 };
