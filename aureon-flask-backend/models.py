@@ -962,8 +962,8 @@ class CodeAnalysis(db.Model):
             'repository_id': str(self.repository_id) if self.repository_id else None,
             'commit_hash': self.commit_hash or '',
             'tool_name': self.tool_name or 'PYLINT_RADON',
-            'status': self.status or 'PASSED',
-            'quality_score': self.quality_score or 9.5,
+            'status': self.status if self.status is not None else 'PASSED',
+            'quality_score': self.quality_score if self.quality_score is not None else 9.5,
             'executed_at': self.executed_at.isoformat() if self.executed_at else '',
             'created_at': self.executed_at.isoformat() if self.executed_at else ''
         }

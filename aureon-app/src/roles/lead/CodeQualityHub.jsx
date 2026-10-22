@@ -72,9 +72,9 @@ export const CodeQualityHub = () => {
   }, []);
 
   const smellsBySeverity = [
-    { name: 'MINOR', value: issues.filter(s => s.severity === 'MINOR').length, color: '#3b82f6' },
-    { name: 'MAJOR', value: issues.filter(s => s.severity === 'MAJOR').length, color: '#f59e0b' },
-    { name: 'INFO', value: issues.filter(s => s.severity === 'INFO' || s.severity === 'LOW').length, color: '#10b981' }
+    { name: 'HIGH', value: issues.filter(s => s.severity === 'HIGH').length, color: '#ef4444' },
+    { name: 'MEDIUM', value: issues.filter(s => s.severity === 'MEDIUM' || s.severity === 'MAJOR').length, color: '#f59e0b' },
+    { name: 'LOW', value: issues.filter(s => s.severity === 'LOW' || s.severity === 'MINOR' || s.severity === 'INFO').length, color: '#10b981' }
   ];
 
   const debtData = projects.slice(0, 10).map(p => ({
@@ -90,6 +90,8 @@ export const CodeQualityHub = () => {
     { key: 'message', label: 'Issue', render: (val, row) => <span className="text-[11px] text-gray-700 dark:text-gray-300">{val || row.description}</span> },
     { key: 'severity', label: 'Severity', render: (val) => {
       const c = {
+        HIGH: 'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300',
+        MEDIUM: 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300',
         MINOR: 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300',
         MAJOR: 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300',
         INFO: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300',
@@ -154,6 +156,10 @@ export const CodeQualityHub = () => {
             <option value="app.py">app.py (Flask Entrypoint)</option>
             <option value="models.py">models.py (Database Models)</option>
             <option value="services/static_analysis_service.py">services/static_analysis_service.py</option>
+            <option value="services/task_recommendation_service.py">services/task_recommendation_service.py</option>
+            <option value="services/project_health_service.py">services/project_health_service.py</option>
+            <option value="services/rbac_service.py">services/rbac_service.py</option>
+            <option value="seed.py">seed.py (Database Seeder)</option>
           </select>
           <button
             type="button"

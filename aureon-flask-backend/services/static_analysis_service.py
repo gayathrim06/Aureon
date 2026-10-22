@@ -56,7 +56,7 @@ class StaticAnalysisService:
                             'issue_type': item.get('type', 'convention').upper(),
                             'message_id': item.get('message-id', 'C000'),
                             'description': item.get('message', 'Pylint finding'),
-                            'severity': 'HIGH' if item.get('type') in ['error', 'fatal'] else 'MEDIUM'
+                            'severity': 'HIGH' if item.get('type') in ['error', 'fatal'] else ('MEDIUM' if item.get('type') in ['warning'] else 'LOW')
                         })
             except Exception:
                 pass

@@ -64,7 +64,7 @@ def run_analysis():
 def get_analysis_results():
     analyses = CodeAnalysis.query.order_by(CodeAnalysis.executed_at.desc()).all()
     metrics = CodeMetrics.query.all()
-    issues = CodeAnalysisIssue.query.all()
+    issues = CodeAnalysisIssue.query.join(CodeAnalysis, CodeAnalysisIssue.analysis_id == CodeAnalysis.id).order_by(CodeAnalysis.executed_at.desc()).all()
 
     return jsonify({
         'success': True,
@@ -73,12 +73,14 @@ def get_analysis_results():
         'total_issues': len(issues),
         'issues': [{
             'id': str(i.id),
+            'analysis_id': str(i.analysis_id) if i.analysis_id else None,
             'file': i.file_path,
             'line': i.line_number,
             'type': i.issue_type,
+            'category': i.category or i.issue_type,
             'message': i.description,
             'severity': i.severity
-        } for i in issues[:50]]
+        } for i in issues[:100]]
     }), 200
 
 @code_analysis_bp.route('/quality-summary', methods=['GET'])
