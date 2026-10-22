@@ -1,4 +1,7 @@
+import os
+from datetime import datetime, timezone
 from flask import Flask, jsonify, request
+from sqlalchemy import text
 from config import Config
 from extensions import db, jwt, cors
 from seed import seed_database
@@ -24,24 +27,50 @@ def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
 
-    # Enable global CORS for all origins and routes
-    CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True)
+    # Initialize CORS with explicit origin allowlist
+    CORS(
+        app,
+        resources={r"/*": {"origins": Config.CORS_ALLOWED_ORIGINS}},
+        supports_credentials=True,
+        allow_headers=["Content-Type", "Authorization", "X-Requested-With", "X-User-Id", "X-User-Email", "X-User-Role"],
+        methods=["GET", "PUT", "POST", "DELETE", "OPTIONS", "PATCH"]
+    )
     jwt.init_app(app)
 
-    # Attempt PostgreSQL database connection; fallback to local SQLite if PostgreSQL server is offline
-    try:
-        app.config['SQLALCHEMY_DATABASE_URI'] = Config.SQLALCHEMY_DATABASE_URI
-        db.init_app(app)
-        with app.app_context():
-            db.engine.connect()
-            print(f"Connected to Primary Database: {Config.SQLALCHEMY_DATABASE_URI.split('@')[-1] if '@' in Config.SQLALCHEMY_DATABASE_URI else Config.SQLALCHEMY_DATABASE_URI}")
-    except Exception as e:
-        db.init_app(app)
+    # Database Initialization & Connection Engine Configuration
+    app.config['SQLALCHEMY_DATABASE_URI'] = Config.SQLALCHEMY_DATABASE_URI
+    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+    if hasattr(Config, 'SQLALCHEMY_ENGINE_OPTIONS'):
+        app.config['SQLALCHEMY_ENGINE_OPTIONS'] = Config.SQLALCHEMY_ENGINE_OPTIONS
 
-    # Automatically synchronize schema across PostgreSQL and SQLite
-    from services.schema_sync import sync_db_schema
-    with app.app_context():
-        sync_db_schema()
+    db.init_app(app)
+
+    # Validate primary connection in local non-test environments (never printing credentials)
+    if not app.config.get('TESTING') and not os.getenv('TESTING'):
+        try:
+            with app.app_context():
+                db.engine.connect()
+                if not Config.IS_PRODUCTION:
+                    print(f"[AUREON DB] Connected to database: {Config.POSTGRES_DB}")
+        except Exception as e:
+            if not Config.IS_PRODUCTION:
+                print(f"[AUREON DB] Primary database connection warning: {e}. Check PostgreSQL service.")
+            else:
+                app.logger.error("Primary database connection error on startup: %s", str(e))
+
+    # Synchronize schema in development and testing; strictly disabled in production
+    if not Config.IS_PRODUCTION:
+        auto_sync = os.getenv('AUTO_SCHEMA_SYNC')
+        should_sync = (
+            auto_sync.lower() in ('true', '1', 'yes')
+            if auto_sync is not None
+            else True
+        )
+
+        if should_sync:
+            from services.schema_sync import sync_db_schema
+            with app.app_context():
+                sync_db_schema()
 
     # Enforce strict JWT validation: expired, tampered, or invalid tokens must fail closed with 401
     @jwt.invalid_token_loader
@@ -59,9 +88,12 @@ def create_app():
     # Ensure CORS headers on every response and preflight OPTIONS request
     @app.after_request
     def after_request(response):
-        response.headers.add('Access-Control-Allow-Origin', '*')
-        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,X-Requested-With,X-User-Id,X-User-Email,X-User-Role')
-        response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS,PATCH')
+        origin = request.headers.get('Origin')
+        if origin and (origin in Config.CORS_ALLOWED_ORIGINS or '*' in Config.CORS_ALLOWED_ORIGINS):
+            response.headers['Access-Control-Allow-Origin'] = origin
+            response.headers['Access-Control-Allow-Credentials'] = 'true'
+        response.headers['Access-Control-Allow-Headers'] = 'Content-Type,Authorization,X-Requested-With,X-User-Id,X-User-Email,X-User-Role'
+        response.headers['Access-Control-Allow-Methods'] = 'GET,PUT,POST,DELETE,OPTIONS,PATCH'
         return response
 
     # Register Blueprints
@@ -91,6 +123,34 @@ def create_app():
             'api_version': 'v1',
             'engine': 'Python Flask + SQLAlchemy ORM'
         })
+
+    @app.route('/health', methods=['GET'])
+    @app.route('/api/v1/health', methods=['GET'])
+    def health():
+        """
+        Public health and readiness check endpoint.
+        Checks process liveness and optionally verifies database connectivity via SELECT 1.
+        Never exposes database hostnames, usernames, passwords, or internal stack traces.
+        """
+        status_data = {
+            'status': 'HEALTHY',
+            'service': 'aureon-api',
+            'version': 'v1',
+            'timestamp': datetime.now(timezone.utc).isoformat()
+        }
+
+        check_db = request.args.get('check_db', 'true').lower() in ('true', '1', 'yes')
+        if check_db:
+            try:
+                db.session.execute(text('SELECT 1'))
+                status_data['database'] = 'CONNECTED'
+            except Exception as e:
+                app.logger.error("Health check database ping failed: %s", str(e))
+                status_data['status'] = 'DEGRADED'
+                status_data['database'] = 'DISCONNECTED'
+                return jsonify(status_data), 503
+
+        return jsonify(status_data), 200
 
     return app
 

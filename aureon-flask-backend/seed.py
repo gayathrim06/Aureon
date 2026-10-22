@@ -73,7 +73,12 @@ def seed_database():
             existing_user.account_status = 'ACTIVE'
             existing_user.is_active = True
             existing_user.failed_login_attempts = 0
-            existing_user.password = generate_password_hash('Aureon@123')
+            # SENSITIVE ADMINISTRATIVE OVERRIDE: Never overwrite existing user passwords automatically.
+            # Only set default password if account has no password or if FORCE_SEED_PASSWORD_RESET is explicitly enabled.
+            import os
+            force_pwd_reset = os.getenv('FORCE_SEED_PASSWORD_RESET', 'false').lower() in ('true', '1', 'yes')
+            if not existing_user.password or force_pwd_reset:
+                existing_user.password = generate_password_hash('Aureon@123')
 
     # Query users for team assignments
     krish = User.query.filter_by(email='krish@aureon.com').first()
