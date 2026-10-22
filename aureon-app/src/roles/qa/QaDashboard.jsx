@@ -6,7 +6,7 @@ import {
   RotateCcw, Activity, Plus, FileText, Upload, RefreshCw,
   ArrowRight, FolderKanban, GitBranch, Sparkles
 } from 'lucide-react';
-import { getAuthHeaders } from '../../services/apiClient';
+import { getAuthHeaders, API_BASE_URL } from '../../services/apiClient';
 
 export const QaDashboard = ({ onNavigate }) => {
   const { user } = useAuth();
@@ -22,8 +22,8 @@ export const QaDashboard = ({ onNavigate }) => {
     try {
       const headers = getAuthHeaders();
       const [bugRes, projRes] = await Promise.all([
-        fetch('http://127.0.0.1:8000/api/v1/bugs/', { headers }),
-        fetch('http://127.0.0.1:8000/api/v1/projects/', { headers })
+        fetch(`${API_BASE_URL}/bugs/`, { headers }),
+        fetch(`${API_BASE_URL}/projects/`, { headers })
       ]);
 
       if (bugRes.ok) {

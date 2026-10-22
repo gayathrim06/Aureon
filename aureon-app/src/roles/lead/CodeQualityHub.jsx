@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Breadcrumb } from '../../components/common/Breadcrumb';
 import { DataTable } from '../../components/common/DataTable';
-import { getAuthHeaders } from '../../services/apiClient';
+import { getAuthHeaders, API_BASE_URL } from '../../services/apiClient';
 import { Code2, Bug, ShieldAlert, RefreshCw, Play, CheckCircle2, AlertTriangle, FileCode } from 'lucide-react';
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 
@@ -17,10 +17,10 @@ export const CodeQualityHub = () => {
     try {
       setLoading(true);
       const [qualRes, issueRes] = await Promise.all([
-        fetch('http://127.0.0.1:8000/api/v1/analysis/quality-summary', {
+        fetch(`${API_BASE_URL}/analysis/quality-summary`, {
           headers: { 'Content-Type': 'application/json', ...getAuthHeaders() }
         }),
-        fetch('http://127.0.0.1:8000/api/v1/analysis/results', {
+        fetch(`${API_BASE_URL}/analysis/results`, {
           headers: { 'Content-Type': 'application/json', ...getAuthHeaders() }
         })
       ]);
@@ -48,7 +48,7 @@ export const CodeQualityHub = () => {
     try {
       setScanning(true);
       setScanMessage(null);
-      const res = await fetch('http://127.0.0.1:8000/api/v1/analysis/scan-source', {
+      const res = await fetch(`${API_BASE_URL}/analysis/scan-source`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         body: JSON.stringify({ file_path: scanTargetFile })

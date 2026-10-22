@@ -5,7 +5,7 @@ import { Modal } from '../../components/common/Modal';
 import { useAuth } from '../../context/AuthContext';
 import { logAuditEvent } from '../../services/auditLogger';
 import { CheckSquare, Plus, Filter, FolderKanban, Users, Clock, AlertCircle, GitBranch, Columns, List, Shield, Bug, Wrench, FileCode, CheckCircle2 } from 'lucide-react';
-import { getAuthHeaders } from '../../services/apiClient';
+import { getAuthHeaders, API_BASE_URL } from '../../services/apiClient';
 
 export const TaskBreakdown = ({ onShowToast }) => {
   const { user } = useAuth();
@@ -47,11 +47,11 @@ export const TaskBreakdown = ({ onShowToast }) => {
 
     try {
       const [tRes, pRes, sRes, tmRes, uRes] = await Promise.all([
-        fetch('http://127.0.0.1:8000/api/v1/tasks/', { headers }),
-        fetch('http://127.0.0.1:8000/api/v1/projects/', { headers }),
-        fetch('http://127.0.0.1:8000/api/v1/sprints/', { headers }),
-        fetch('http://127.0.0.1:8000/api/v1/teams/', { headers }),
-        fetch('http://127.0.0.1:8000/api/v1/users/', { headers })
+        fetch(`${API_BASE_URL}/tasks/`, { headers }),
+        fetch(`${API_BASE_URL}/projects/`, { headers }),
+        fetch(`${API_BASE_URL}/sprints/`, { headers }),
+        fetch(`${API_BASE_URL}/teams/`, { headers }),
+        fetch(`${API_BASE_URL}/users/`, { headers })
       ]);
 
       let fetchedProjects = [];
@@ -164,7 +164,7 @@ export const TaskBreakdown = ({ onShowToast }) => {
     };
 
     try {
-      const res = await fetch('http://127.0.0.1:8000/api/v1/tasks/', {
+      const res = await fetch(`${API_BASE_URL}/tasks/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -209,7 +209,7 @@ export const TaskBreakdown = ({ onShowToast }) => {
   const handleUpdateTaskStatus = async (taskId, newStatus) => {
     setTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: newStatus } : t));
     try {
-      await fetch(`http://127.0.0.1:8000/api/v1/tasks/${taskId}`, {
+      await fetch(`${API_BASE_URL}/tasks/${taskId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -223,7 +223,7 @@ export const TaskBreakdown = ({ onShowToast }) => {
   const handleApproveTask = async (taskId) => {
     if (!taskId) return;
     try {
-      const res = await fetch(`http://127.0.0.1:8000/api/v1/tasks/${taskId}/approve`, {
+      const res = await fetch(`${API_BASE_URL}/tasks/${taskId}/approve`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

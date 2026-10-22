@@ -1,11 +1,11 @@
 // Enterprise Audit Logging Engine
-import { getAuthHeaders } from './apiClient';
+import { getAuthHeaders, API_BASE_URL } from './apiClient';
 
 const AUDIT_STORAGE_KEY = 'aureon_audit_logs';
 
 export const fetchLiveAuditLogs = async (perPage = 100) => {
   try {
-    const res = await fetch(`http://127.0.0.1:8000/api/v1/audit-logs/?per_page=${perPage}`, {
+    const res = await fetch(`${API_BASE_URL}/audit-logs/?per_page=${perPage}`, {
       headers: { 'Content-Type': 'application/json', ...getAuthHeaders() }
     });
     if (res.ok) {

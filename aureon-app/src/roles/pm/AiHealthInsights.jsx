@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Breadcrumb } from '../../components/common/Breadcrumb';
-import { getAuthHeaders } from '../../services/apiClient';
+import { getAuthHeaders, API_BASE_URL } from '../../services/apiClient';
 import { Cpu, Activity, TrendingUp, Shield, Bug, AlertTriangle, CheckCircle2, Zap, RefreshCw } from 'lucide-react';
 import { ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from 'recharts';
 
@@ -11,7 +11,7 @@ export const AiHealthInsights = () => {
   const fetchHealthInsights = async () => {
     try {
       setLoading(true);
-      const res = await fetch('http://127.0.0.1:8000/api/v1/projects/', {
+      const res = await fetch(`${API_BASE_URL}/projects/`, {
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() }
       });
       if (res.ok) {

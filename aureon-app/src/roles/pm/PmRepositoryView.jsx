@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Breadcrumb } from '../../components/common/Breadcrumb';
 import { DataTable } from '../../components/common/DataTable';
-import { getAuthHeaders } from '../../services/apiClient';
+import { getAuthHeaders, API_BASE_URL } from '../../services/apiClient';
 import { 
   GitBranch, GitCommit, CheckCircle2, Clock, RefreshCw, 
   ExternalLink, Eye, Plus, Send, X, ArrowUpRight, ShieldCheck, User, Calendar
@@ -26,7 +26,7 @@ export const PmRepositoryView = () => {
   const fetchRepositories = async () => {
     try {
       setLoading(true);
-      const res = await fetch('http://127.0.0.1:8000/api/v1/repositories/', {
+      const res = await fetch(`${API_BASE_URL}/repositories/`, {
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() }
       });
       if (res.ok) {
@@ -68,7 +68,7 @@ export const PmRepositoryView = () => {
   const fetchRepoCommits = async (repoId) => {
     try {
       setCommitsLoading(true);
-      const res = await fetch(`http://127.0.0.1:8000/api/v1/repositories/${repoId}/commits`, {
+      const res = await fetch(`${API_BASE_URL}/repositories/${repoId}/commits`, {
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() }
       });
       if (res.ok) {
@@ -89,7 +89,7 @@ export const PmRepositoryView = () => {
     fetchRepoCommits(repo.id);
 
     try {
-      const res = await fetch(`http://127.0.0.1:8000/api/v1/repositories/${repo.id}`, {
+      const res = await fetch(`${API_BASE_URL}/repositories/${repo.id}`, {
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() }
       });
       if (res.ok) {
@@ -120,7 +120,7 @@ export const PmRepositoryView = () => {
     if (e) e.stopPropagation();
     try {
       setSyncingRepoId(repoId);
-      const res = await fetch(`http://127.0.0.1:8000/api/v1/repositories/${repoId}/sync`, {
+      const res = await fetch(`${API_BASE_URL}/repositories/${repoId}/sync`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() }
       });
@@ -148,7 +148,7 @@ export const PmRepositoryView = () => {
 
     try {
       setPushingCommit(true);
-      const res = await fetch(`http://127.0.0.1:8000/api/v1/repositories/${selectedRepo.id}/commits`, {
+      const res = await fetch(`${API_BASE_URL}/repositories/${selectedRepo.id}/commits`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         body: JSON.stringify({

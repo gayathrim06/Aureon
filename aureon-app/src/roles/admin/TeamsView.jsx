@@ -6,7 +6,7 @@ import {
   Users2, UserCheck, FolderKanban, Activity, Plus, RefreshCw, 
   ArrowRight, ShieldCheck, CheckCircle2, Clock, ExternalLink, X, Code2, AlertTriangle
 } from 'lucide-react';
-import { getAuthHeaders } from '../../services/apiClient';
+import { getAuthHeaders, API_BASE_URL } from '../../services/apiClient';
 
 export const TeamsView = ({ onNavigate, onShowToast }) => {
   const [teams, setTeams] = useState([]);
@@ -29,9 +29,9 @@ export const TeamsView = ({ onNavigate, onShowToast }) => {
     try {
       const headers = getAuthHeaders();
       const [tRes, uRes, pRes] = await Promise.all([
-        fetch('http://127.0.0.1:8000/api/v1/teams/', { headers }),
-        fetch('http://127.0.0.1:8000/api/v1/users/', { headers }),
-        fetch('http://127.0.0.1:8000/api/v1/projects/', { headers })
+        fetch(`${API_BASE_URL}/teams/`, { headers }),
+        fetch(`${API_BASE_URL}/users/`, { headers }),
+        fetch(`${API_BASE_URL}/projects/`, { headers })
       ]);
 
       if (tRes.ok) {
@@ -99,7 +99,7 @@ export const TeamsView = ({ onNavigate, onShowToast }) => {
 
     setFormSubmitting(true);
     try {
-      const res = await fetch('http://127.0.0.1:8000/api/v1/teams/', {
+      const res = await fetch(`${API_BASE_URL}/teams/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -5,7 +5,7 @@ import {
   GitBranch, GitPullRequest, GitCommit, CheckCircle2, Clock, HardDrive, 
   RefreshCw, Users, Shield, Plus, X, ArrowUpRight, ExternalLink, Eye, ChevronRight 
 } from 'lucide-react';
-import { getAuthHeaders } from '../../services/apiClient';
+import { getAuthHeaders, API_BASE_URL } from '../../services/apiClient';
 
 export const RepositoriesHub = ({ onNavigate }) => {
   const [repositories, setRepositories] = useState([]);
@@ -30,7 +30,7 @@ export const RepositoriesHub = ({ onNavigate }) => {
   const fetchRepositories = async () => {
     try {
       setLoading(true);
-      const res = await fetch('http://127.0.0.1:8000/api/v1/repositories/', {
+      const res = await fetch(`${API_BASE_URL}/repositories/`, {
         headers: getAuthHeaders()
       });
       if (res.ok) {
@@ -71,7 +71,7 @@ export const RepositoriesHub = ({ onNavigate }) => {
 
     try {
       // 1. Fetch commits
-      const cRes = await fetch(`http://127.0.0.1:8000/api/v1/repositories/${repo.id}/commits`, {
+      const cRes = await fetch(`${API_BASE_URL}/repositories/${repo.id}/commits`, {
         headers: getAuthHeaders()
       });
       if (cRes.ok) {
@@ -80,7 +80,7 @@ export const RepositoriesHub = ({ onNavigate }) => {
       }
 
       // 2. Fetch branches
-      const bRes = await fetch(`http://127.0.0.1:8000/api/v1/repositories/${repo.id}/branches`, {
+      const bRes = await fetch(`${API_BASE_URL}/repositories/${repo.id}/branches`, {
         headers: getAuthHeaders()
       });
       if (bRes.ok) {
@@ -90,7 +90,7 @@ export const RepositoriesHub = ({ onNavigate }) => {
       }
 
       // 3. Fetch team members
-      const tmRes = await fetch(`http://127.0.0.1:8000/api/v1/repositories/${repo.id}/team-members`, {
+      const tmRes = await fetch(`${API_BASE_URL}/repositories/${repo.id}/team-members`, {
         headers: getAuthHeaders()
       });
       if (tmRes.ok) {
@@ -110,7 +110,7 @@ export const RepositoriesHub = ({ onNavigate }) => {
 
     try {
       setCreatingBranch(true);
-      const res = await fetch(`http://127.0.0.1:8000/api/v1/repositories/${selectedRepo.id}/branches`, {
+      const res = await fetch(`${API_BASE_URL}/repositories/${selectedRepo.id}/branches`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         body: JSON.stringify({
@@ -124,7 +124,7 @@ export const RepositoriesHub = ({ onNavigate }) => {
         setNewBranchName('');
         setShowCreateBranch(false);
         // Refresh branches
-        const bRes = await fetch(`http://127.0.0.1:8000/api/v1/repositories/${selectedRepo.id}/branches`, {
+        const bRes = await fetch(`${API_BASE_URL}/repositories/${selectedRepo.id}/branches`, {
           headers: getAuthHeaders()
         });
         if (bRes.ok) {

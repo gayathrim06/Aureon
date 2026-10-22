@@ -8,7 +8,7 @@ import {
   CheckCircle2, Shield, UserCheck, Code2, AlertTriangle, Send, Edit3, ArrowRight,
   Filter, Sparkles, ChevronRight, Hash, Play, PauseCircle, CheckSquare2, XSquare, ListTodo
 } from 'lucide-react';
-import { getAuthHeaders } from '../../services/apiClient';
+import { getAuthHeaders, API_BASE_URL } from '../../services/apiClient';
 
 export const PmDashboard = ({ onNavigate }) => {
   const { user, showToast } = useAuth();
@@ -53,7 +53,7 @@ export const PmDashboard = ({ onNavigate }) => {
   // Load Projects from Flask Backend API
   const fetchProjects = async () => {
     try {
-      const res = await fetch('http://127.0.0.1:8000/api/v1/projects/', {
+      const res = await fetch(`${API_BASE_URL}/projects/`, {
         headers: getAuthHeaders()
       });
       if (res.ok) {
@@ -70,7 +70,7 @@ export const PmDashboard = ({ onNavigate }) => {
   // Load Users (Leads and Team Members) dynamically from API
   const fetchUsers = async () => {
     try {
-      const res = await fetch('http://127.0.0.1:8000/api/v1/users/', {
+      const res = await fetch(`${API_BASE_URL}/users/`, {
         headers: getAuthHeaders()
       });
       if (res.ok) {
@@ -173,7 +173,7 @@ export const PmDashboard = ({ onNavigate }) => {
 
     // Save to Backend API
     try {
-      await fetch('http://127.0.0.1:8000/api/v1/projects/', {
+      await fetch(`${API_BASE_URL}/projects/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Breadcrumb } from '../../components/common/Breadcrumb';
 import { DataTable } from '../../components/common/DataTable';
-import { getAuthHeaders } from '../../services/apiClient';
+import { getAuthHeaders, API_BASE_URL } from '../../services/apiClient';
 import { Server, AlertTriangle, Info, XCircle, RefreshCw, X } from 'lucide-react';
 
 export const SystemLogsView = () => {
@@ -13,7 +13,7 @@ export const SystemLogsView = () => {
   const fetchLogs = async () => {
     try {
       setLoading(true);
-      const res = await fetch('http://127.0.0.1:8000/api/v1/audit-logs/?per_page=100', {
+      const res = await fetch(`${API_BASE_URL}/audit-logs/?per_page=100`, {
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() }
       });
       if (res.ok) {

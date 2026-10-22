@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
-import { getApiBaseUrl } from '../services/apiClient';
+import { getApiBaseUrl, API_BASE_URL } from '../services/apiClient';
 import { 
   Shield, Key, Lock, AlertTriangle, ArrowRight, CheckCircle2, 
   ArrowLeft, Sun, Moon, Coffee, Eye, EyeOff, Loader2, XCircle, AlertCircle
@@ -334,7 +334,7 @@ export const Login = ({ onNavigateHome }) => {
     }
 
     try {
-      const res = await fetch('http://127.0.0.1:8000/api/v1/auth/forgot-password/', {
+      const res = await fetch(`${API_BASE_URL}/auth/forgot-password/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Breadcrumb } from '../../components/common/Breadcrumb';
-import { getAuthHeaders } from '../../services/apiClient';
+import { getAuthHeaders, API_BASE_URL } from '../../services/apiClient';
 import { FileText, TrendingUp, CheckSquare, GitCommit, Users, RefreshCw } from 'lucide-react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 
@@ -15,9 +15,9 @@ export const LeadReports = ({ onNavigate }) => {
       setLoading(true);
       const headers = { 'Content-Type': 'application/json', ...getAuthHeaders() };
       const [devRes, taskRes, comRes] = await Promise.all([
-        fetch('http://127.0.0.1:8000/api/v1/team-lead/my-team/availability', { headers }),
-        fetch('http://127.0.0.1:8000/api/v1/tasks/', { headers }),
-        fetch('http://127.0.0.1:8000/api/v1/repositories/commits', { headers })
+        fetch(`${API_BASE_URL}/team-lead/my-team/availability`, { headers }),
+        fetch(`${API_BASE_URL}/tasks/`, { headers }),
+        fetch(`${API_BASE_URL}/repositories/commits`, { headers })
       ]);
 
       if (devRes.ok) {

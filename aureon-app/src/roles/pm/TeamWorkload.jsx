@@ -20,7 +20,7 @@ import {
   ArrowUpDown,
   ChevronDown
 } from 'lucide-react';
-import { getAuthHeaders } from '../../services/apiClient';
+import { getAuthHeaders, API_BASE_URL } from '../../services/apiClient';
 
 export const TeamWorkload = ({ embedMode = false }) => {
   const [projectsList, setProjectsList] = useState([]);
@@ -42,9 +42,9 @@ export const TeamWorkload = ({ embedMode = false }) => {
       const headers = getAuthHeaders();
       try {
         const [projRes, taskRes, usersRes] = await Promise.all([
-          fetch('http://127.0.0.1:8000/api/v1/projects/', { headers }),
-          fetch('http://127.0.0.1:8000/api/v1/tasks/', { headers }),
-          fetch('http://127.0.0.1:8000/api/v1/users/', { headers })
+          fetch(`${API_BASE_URL}/projects/`, { headers }),
+          fetch(`${API_BASE_URL}/tasks/`, { headers }),
+          fetch(`${API_BASE_URL}/users/`, { headers })
         ]);
 
         if (projRes.ok) {

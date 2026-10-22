@@ -5,7 +5,7 @@ import {
   CheckSquare, Clock, AlertTriangle, CheckCircle2, GitPullRequest, 
   GitBranch, Layers, ArrowRight, Code2, AlertCircle, RefreshCw, Sparkles
 } from 'lucide-react';
-import { getAuthHeaders } from '../../services/apiClient';
+import { getAuthHeaders, API_BASE_URL } from '../../services/apiClient';
 
 export const DevDashboard = ({ onNavigate }) => {
   const { user } = useAuth();
@@ -25,8 +25,8 @@ export const DevDashboard = ({ onNavigate }) => {
     try {
       setLoading(true);
       const url = user?.id 
-        ? `http://127.0.0.1:8000/api/v1/developer/my-tasks?user_id=${user.id}`
-        : 'http://127.0.0.1:8000/api/v1/developer/my-tasks';
+        ? `${API_BASE_URL}/developer/my-tasks?user_id=${user.id}`
+        : `${API_BASE_URL}/developer/my-tasks`;
 
       const res = await fetch(url, {
         headers: getAuthHeaders()

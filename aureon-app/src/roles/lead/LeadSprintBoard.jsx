@@ -4,7 +4,7 @@ import { Modal } from '../../components/common/Modal';
 import { useAuth } from '../../context/AuthContext';
 import { logAuditEvent } from '../../services/auditLogger';
 import { Layers, CheckCircle2, ArrowRight, GitBranch, Plus, UserCheck, Calendar, Filter, Target, List, LayoutGrid, Search, Clock, CheckSquare, Users, Edit3, Trash2, X, RefreshCw, RotateCcw, Play, Sparkles } from 'lucide-react';
-import { getAuthHeaders } from '../../services/apiClient';
+import { getAuthHeaders, API_BASE_URL } from '../../services/apiClient';
 import { TaskSkillRecommendationModal } from '../../components/common/TaskSkillRecommendationModal';
 
 export const LeadSprintBoard = ({ onShowToast, initialView = 'kanban' }) => {
@@ -53,10 +53,10 @@ export const LeadSprintBoard = ({ onShowToast, initialView = 'kanban' }) => {
 
     try {
       const [spRes, tkRes, tmRes, usRes] = await Promise.all([
-        fetch('http://127.0.0.1:8000/api/v1/sprints/', { headers }),
-        fetch('http://127.0.0.1:8000/api/v1/tasks/', { headers }),
-        fetch('http://127.0.0.1:8000/api/v1/teams/', { headers }),
-        fetch('http://127.0.0.1:8000/api/v1/users/', { headers })
+        fetch(`${API_BASE_URL}/sprints/`, { headers }),
+        fetch(`${API_BASE_URL}/tasks/`, { headers }),
+        fetch(`${API_BASE_URL}/teams/`, { headers }),
+        fetch(`${API_BASE_URL}/users/`, { headers })
       ]);
 
       let myTeams = [];
@@ -233,7 +233,7 @@ export const LeadSprintBoard = ({ onShowToast, initialView = 'kanban' }) => {
     setTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: newStatus } : t));
 
     try {
-      await fetch(`http://127.0.0.1:8000/api/v1/tasks/${taskId}`, {
+      await fetch(`${API_BASE_URL}/tasks/${taskId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -256,7 +256,7 @@ export const LeadSprintBoard = ({ onShowToast, initialView = 'kanban' }) => {
     e && e.stopPropagation();
     if (!window.confirm('Are you sure you want to delete this sprint task?')) return;
     try {
-      const res = await fetch(`http://127.0.0.1:8000/api/v1/tasks/${taskId}`, {
+      const res = await fetch(`${API_BASE_URL}/tasks/${taskId}`, {
         method: 'DELETE',
         headers: getAuthHeaders()
       });
@@ -278,7 +278,7 @@ export const LeadSprintBoard = ({ onShowToast, initialView = 'kanban' }) => {
     if (!editingTask) return;
     setEditSubmitting(true);
     try {
-      const res = await fetch(`http://127.0.0.1:8000/api/v1/tasks/${editingTask.id}`, {
+      const res = await fetch(`${API_BASE_URL}/tasks/${editingTask.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -330,7 +330,7 @@ export const LeadSprintBoard = ({ onShowToast, initialView = 'kanban' }) => {
     }));
 
     try {
-      const res = await fetch(`http://127.0.0.1:8000/api/v1/tasks/${taskId}/assign`, {
+      const res = await fetch(`${API_BASE_URL}/tasks/${taskId}/assign`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -393,7 +393,7 @@ export const LeadSprintBoard = ({ onShowToast, initialView = 'kanban' }) => {
     try {
       await Promise.all(
         selectedTaskIds.map(taskId => 
-          fetch(`http://127.0.0.1:8000/api/v1/tasks/${taskId}/assign`, {
+          fetch(`${API_BASE_URL}/tasks/${taskId}/assign`, {
             method: 'PATCH',
             headers: {
               'Content-Type': 'application/json',
@@ -446,7 +446,7 @@ export const LeadSprintBoard = ({ onShowToast, initialView = 'kanban' }) => {
     };
 
     try {
-      const res = await fetch('http://127.0.0.1:8000/api/v1/tasks/', {
+      const res = await fetch(`${API_BASE_URL}/tasks/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -4,7 +4,7 @@ import { DataTable } from '../../components/common/DataTable';
 import { Modal } from '../../components/common/Modal';
 import { logAuditEvent } from '../../services/auditLogger';
 import { useAuth } from '../../context/AuthContext';
-import { getAuthHeaders } from '../../services/apiClient';
+import { getAuthHeaders, API_BASE_URL } from '../../services/apiClient';
 import { Bug, Plus, Upload, CheckCircle2, AlertOctagon, FileText, Paperclip, Check, RefreshCw } from 'lucide-react';
 
 export const BugTracker = ({ onShowToast }) => {
@@ -30,9 +30,9 @@ export const BugTracker = ({ onShowToast }) => {
       setLoading(true);
       const headers = { 'Content-Type': 'application/json', ...getAuthHeaders() };
       const [bugRes, projRes, userRes] = await Promise.all([
-        fetch('http://127.0.0.1:8000/api/v1/bugs/', { headers }),
-        fetch('http://127.0.0.1:8000/api/v1/projects/', { headers }),
-        fetch('http://127.0.0.1:8000/api/v1/users/', { headers })
+        fetch(`${API_BASE_URL}/bugs/`, { headers }),
+        fetch(`${API_BASE_URL}/projects/`, { headers }),
+        fetch(`${API_BASE_URL}/users/`, { headers })
       ]);
 
       if (bugRes.ok) {
@@ -91,7 +91,7 @@ export const BugTracker = ({ onShowToast }) => {
         evidence_file: evidenceFileName
       };
 
-      const res = await fetch('http://127.0.0.1:8000/api/v1/bugs/', {
+      const res = await fetch(`${API_BASE_URL}/bugs/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         body: JSON.stringify(payload)
@@ -129,7 +129,7 @@ export const BugTracker = ({ onShowToast }) => {
   const handleStatusChange = async (bugRow, newStatus) => {
     setBugs(prev => prev.map(b => b.id === bugRow.id ? { ...b, status: newStatus } : b));
     try {
-      await fetch(`http://127.0.0.1:8000/api/v1/bugs/${bugRow.rawId || bugRow.id}/status`, {
+      await fetch(`${API_BASE_URL}/bugs/${bugRow.rawId || bugRow.id}/status`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         body: JSON.stringify({ status: newStatus })

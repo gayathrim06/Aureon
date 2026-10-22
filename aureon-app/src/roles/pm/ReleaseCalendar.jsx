@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Breadcrumb } from '../../components/common/Breadcrumb';
-import { getAuthHeaders } from '../../services/apiClient';
+import { getAuthHeaders, API_BASE_URL } from '../../services/apiClient';
 import { Calendar, Layers, Rocket, Award, Users, RefreshCw } from 'lucide-react';
 
 export const ReleaseCalendar = () => {
@@ -12,8 +12,8 @@ export const ReleaseCalendar = () => {
       setLoading(true);
       const headers = { 'Content-Type': 'application/json', ...getAuthHeaders() };
       const [sprintRes, projRes] = await Promise.all([
-        fetch('http://127.0.0.1:8000/api/v1/sprints/', { headers }),
-        fetch('http://127.0.0.1:8000/api/v1/projects/', { headers })
+        fetch(`${API_BASE_URL}/sprints/`, { headers }),
+        fetch(`${API_BASE_URL}/projects/`, { headers })
       ]);
 
       const liveEvents = [];

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Breadcrumb } from '../../components/common/Breadcrumb';
 import { DataTable } from '../../components/common/DataTable';
-import { getAuthHeaders } from '../../services/apiClient';
+import { getAuthHeaders, API_BASE_URL } from '../../services/apiClient';
 import { Cpu, Bug, ShieldAlert, Code2, CheckCircle2, RefreshCw } from 'lucide-react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 
@@ -19,7 +19,7 @@ export const SonarQubeAdmin = ({ onNavigate }) => {
   const fetchQualityData = async () => {
     try {
       setLoading(true);
-      const res = await fetch('http://127.0.0.1:8000/api/v1/analysis/quality-summary', {
+      const res = await fetch(`${API_BASE_URL}/analysis/quality-summary`, {
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() }
       });
       if (res.ok) {

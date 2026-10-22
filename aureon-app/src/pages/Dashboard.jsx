@@ -17,6 +17,7 @@ import {
   Globe
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { API_BASE_URL } from '../services/apiClient';
 import { Card, CardHeader, CardTitle, CardDescription } from '../components/common/Card';
 import { Badge } from '../components/common/Badge';
 import { Button } from '../components/common/Button';
@@ -46,7 +47,7 @@ export const Dashboard = () => {
   useEffect(() => {
     const fetchRealStatus = async () => {
       try {
-        const res = await fetch('http://127.0.0.1:8000/api/v1/auth/sessions/');
+        const res = await fetch(`${API_BASE_URL}/auth/sessions/`);
         if (res.ok || res.status === 401) {
           setBackendConnected(true);
         }
@@ -145,7 +146,7 @@ export const Dashboard = () => {
             {backendConnected ? 'Online & Operational' : 'Offline / Standalone'}
           </div>
           <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">
-            Endpoint: http://127.0.0.1:8000
+            Endpoint: {API_BASE_URL.replace('/api/v1', '')}
           </div>
         </Card>
 

@@ -4,7 +4,7 @@ import { DataTable } from '../../components/common/DataTable';
 import { Modal } from '../../components/common/Modal';
 import { useAuth } from '../../context/AuthContext';
 import { UserPlus, Trash2, RefreshCw, Filter, ArrowUpDown, ChevronDown } from 'lucide-react';
-import { getAuthHeaders } from '../../services/apiClient';
+import { getAuthHeaders, API_BASE_URL } from '../../services/apiClient';
 
 const REAL_20_USERS = [
   { id: 1, name: 'GAYATHRI M', email: 'admin@aureon.com', username: 'admin', role: 'ROLE_ADMIN', department: 'Executive Management', designation: 'CTO', employeeId: 'EMP-001', status: 'ACTIVE', lastActive: 'Active Now' },
@@ -49,7 +49,7 @@ export const UserManagement = ({ onShowToast }) => {
   const fetchUsersList = async () => {
     setIsLoading(true);
     try {
-      const res = await fetch('http://127.0.0.1:8000/api/v1/users/', {
+      const res = await fetch(`${API_BASE_URL}/users/`, {
         headers: getAuthHeaders()
       });
       if (res.ok) {

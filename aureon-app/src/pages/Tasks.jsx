@@ -5,7 +5,7 @@ import { Button } from '../components/common/Button';
 import { Modal } from '../components/common/Modal';
 import { CheckSquare, Plus, Filter, Search, UserCheck, Layers, ArrowRight, Code2, Bug } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { getAuthHeaders } from '../services/apiClient';
+import { getAuthHeaders, API_BASE_URL } from '../services/apiClient';
 
 export const Tasks = () => {
   const { user, showToast } = useAuth();
@@ -31,10 +31,10 @@ export const Tasks = () => {
     try {
       const headers = getAuthHeaders();
       const [pRes, sRes, tRes, uRes] = await Promise.all([
-        fetch('http://127.0.0.1:8000/api/v1/projects/', { headers }),
-        fetch('http://127.0.0.1:8000/api/v1/sprints/', { headers }),
-        fetch('http://127.0.0.1:8000/api/v1/tasks/', { headers }),
-        fetch('http://127.0.0.1:8000/api/v1/users/', { headers })
+        fetch(`${API_BASE_URL}/projects/`, { headers }),
+        fetch(`${API_BASE_URL}/sprints/`, { headers }),
+        fetch(`${API_BASE_URL}/tasks/`, { headers }),
+        fetch(`${API_BASE_URL}/users/`, { headers })
       ]);
 
       if (pRes.ok) {
@@ -82,7 +82,7 @@ export const Tasks = () => {
 
     try {
       const targetSprint = sprintsList.find(s => s.id === selectedSprintId) || sprintsList[0];
-      const res = await fetch('http://127.0.0.1:8000/api/v1/tasks/', {
+      const res = await fetch(`${API_BASE_URL}/tasks/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

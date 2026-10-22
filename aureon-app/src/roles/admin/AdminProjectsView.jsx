@@ -6,7 +6,7 @@ import {
   FolderKanban, Plus, RefreshCw, CheckSquare, Activity, 
   Layers, ArrowRight, ShieldCheck, Clock, ExternalLink, Filter 
 } from 'lucide-react';
-import { getAuthHeaders } from '../../services/apiClient';
+import { getAuthHeaders, API_BASE_URL } from '../../services/apiClient';
 
 export const AdminProjectsView = ({ onNavigate }) => {
   const [projects, setProjects] = useState([]);
@@ -18,7 +18,7 @@ export const AdminProjectsView = ({ onNavigate }) => {
   const fetchLiveProjects = async () => {
     setLoading(true);
     try {
-      const res = await fetch('http://127.0.0.1:8000/api/v1/projects/', {
+      const res = await fetch(`${API_BASE_URL}/projects/`, {
         headers: getAuthHeaders()
       });
       if (res.ok) {

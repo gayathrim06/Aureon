@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Breadcrumb } from '../../components/common/Breadcrumb';
 import { Modal } from '../../components/common/Modal';
 import { useAuth } from '../../context/AuthContext';
-import { getAuthHeaders } from '../../services/apiClient';
+import { getAuthHeaders, API_BASE_URL } from '../../services/apiClient';
 import {
   ListTodo,
   Plus,
@@ -61,7 +61,7 @@ export const BacklogView = ({ onShowToast, onNavigate }) => {
       setLoading(true);
 
       // 1. Projects
-      const projRes = await fetch('http://127.0.0.1:8000/api/v1/projects/', {
+      const projRes = await fetch(`${API_BASE_URL}/projects/`, {
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() }
       });
       let fetchedProjects = [];
@@ -75,7 +75,7 @@ export const BacklogView = ({ onShowToast, onNavigate }) => {
       }
 
       // 2. Sprints
-      const spRes = await fetch('http://127.0.0.1:8000/api/v1/sprints/', {
+      const spRes = await fetch(`${API_BASE_URL}/sprints/`, {
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() }
       });
       if (spRes.ok) {
@@ -88,7 +88,7 @@ export const BacklogView = ({ onShowToast, onNavigate }) => {
       }
 
       // 3. Backlog tasks (sprint_id IS NULL)
-      let backlogUrl = 'http://127.0.0.1:8000/api/v1/tasks/backlog';
+      let backlogUrl = `${API_BASE_URL}/tasks/backlog`;
       if (selectedProjectId !== 'ALL') {
         backlogUrl += `?project_id=${selectedProjectId}`;
       }
@@ -138,7 +138,7 @@ export const BacklogView = ({ onShowToast, onNavigate }) => {
 
     try {
       setCreateSubmitting(true);
-      const res = await fetch('http://127.0.0.1:8000/api/v1/tasks/', {
+      const res = await fetch(`${API_BASE_URL}/tasks/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         body: JSON.stringify({
@@ -189,7 +189,7 @@ export const BacklogView = ({ onShowToast, onNavigate }) => {
 
     try {
       setPlanningSubmitting(true);
-      const res = await fetch(`http://127.0.0.1:8000/api/v1/sprints/${targetSprintId}/tasks`, {
+      const res = await fetch(`${API_BASE_URL}/sprints/${targetSprintId}/tasks`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         body: JSON.stringify({
@@ -228,7 +228,7 @@ export const BacklogView = ({ onShowToast, onNavigate }) => {
     if (!window.confirm('Are you sure you want to remove this backlog item?')) return;
 
     try {
-      const res = await fetch(`http://127.0.0.1:8000/api/v1/tasks/${taskId}`, {
+      const res = await fetch(`${API_BASE_URL}/tasks/${taskId}`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() }
       });

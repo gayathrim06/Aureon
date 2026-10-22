@@ -1,7 +1,11 @@
 // Aureon REST API Client Service
-// Integrates React Frontend with Node/Express REST Backend API on port 5000
+// Integrates React Frontend with Flask REST Backend API
 
 export const getApiBaseUrl = () => {
+  const envUrl = import.meta.env?.VITE_API_URL?.trim();
+  if (envUrl) {
+    return envUrl.replace(/\/+$/, '');
+  }
   const host = typeof window !== 'undefined' && window.location.hostname && window.location.hostname !== 'localhost'
     ? window.location.hostname 
     : '127.0.0.1';

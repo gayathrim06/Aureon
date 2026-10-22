@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Breadcrumb } from '../../components/common/Breadcrumb';
 import { DataTable } from '../../components/common/DataTable';
 import { useAuth } from '../../context/AuthContext';
-import { getAuthHeaders } from '../../services/apiClient';
+import { getAuthHeaders, API_BASE_URL } from '../../services/apiClient';
 import { GitBranch, Plus, Minus, RefreshCw } from 'lucide-react';
 
 export const DevRepositoryView = () => {
@@ -14,7 +14,7 @@ export const DevRepositoryView = () => {
   const fetchCommits = async () => {
     try {
       setLoading(true);
-      const res = await fetch('http://127.0.0.1:8000/api/v1/repositories/commits', {
+      const res = await fetch(`${API_BASE_URL}/repositories/commits`, {
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() }
       });
       if (res.ok) {

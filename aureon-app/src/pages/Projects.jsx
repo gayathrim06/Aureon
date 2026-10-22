@@ -7,7 +7,7 @@ import { Modal } from '../components/common/Modal';
 import { FolderKanban, Plus, Search, Filter, Layers, UserCheck, Users, Shield, ArrowRight, CheckCircle2, Clock, Activity, AlertTriangle, X, CheckSquare, Sparkles, Hash, GitBranch, GitCommit, GitPullRequest, ExternalLink, RefreshCw } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { TeamWorkload } from '../roles/pm/TeamWorkload';
-import { getAuthHeaders } from '../services/apiClient';
+import { getAuthHeaders, API_BASE_URL } from '../services/apiClient';
 
 export const Projects = () => {
   const { user, showToast } = useAuth();
@@ -52,9 +52,9 @@ export const Projects = () => {
 
     try {
       const [projRes, taskRes, usersRes] = await Promise.all([
-        fetch('http://127.0.0.1:8000/api/v1/projects/', { headers }),
-        fetch('http://127.0.0.1:8000/api/v1/tasks/', { headers }),
-        fetch('http://127.0.0.1:8000/api/v1/users/', { headers })
+        fetch(`${API_BASE_URL}/projects/`, { headers }),
+        fetch(`${API_BASE_URL}/tasks/`, { headers }),
+        fetch(`${API_BASE_URL}/users/`, { headers })
       ]);
 
       if (projRes.ok) {
@@ -220,7 +220,7 @@ export const Projects = () => {
 
     const token = sessionStorage.getItem('aureon_jwt_access_token');
     try {
-      await fetch('http://127.0.0.1:8000/api/v1/projects/', {
+      await fetch(`${API_BASE_URL}/projects/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -249,7 +249,7 @@ export const Projects = () => {
       try {
         const rawToken = sessionStorage.getItem('aureon_jwt_access_token') || localStorage.getItem('aureon_jwt_access_token') || sessionStorage.getItem('aureon_access_token');
         const headers = rawToken ? { 'Authorization': `Bearer ${rawToken}` } : {};
-        const res = await fetch(`http://127.0.0.1:8000/api/v1/repositories/${repoId}`, { headers });
+        const res = await fetch(`${API_BASE_URL}/repositories/${repoId}`, { headers });
         if (res.ok) {
           const data = await res.json();
           setGitRepoDetails(data.repository || {});
@@ -272,13 +272,13 @@ export const Projects = () => {
     try {
       const rawToken = sessionStorage.getItem('aureon_jwt_access_token') || localStorage.getItem('aureon_jwt_access_token') || sessionStorage.getItem('aureon_access_token');
       const headers = rawToken ? { 'Authorization': `Bearer ${rawToken}` } : {};
-      const res = await fetch(`http://127.0.0.1:8000/api/v1/repositories/${repoId}/sync`, {
+      const res = await fetch(`${API_BASE_URL}/repositories/${repoId}/sync`, {
         method: 'POST',
         headers
       });
       if (res.ok) {
         // Refetch repo details
-        const rRes = await fetch(`http://127.0.0.1:8000/api/v1/repositories/${repoId}`, { headers });
+        const rRes = await fetch(`${API_BASE_URL}/repositories/${repoId}`, { headers });
         if (rRes.ok) {
           const rData = await rRes.json();
           setGitRepoDetails(rData.repository || {});
@@ -303,7 +303,7 @@ export const Projects = () => {
     try {
       const rawToken = sessionStorage.getItem('aureon_jwt_access_token') || localStorage.getItem('aureon_jwt_access_token') || sessionStorage.getItem('aureon_access_token');
       const headers = rawToken ? { 'Authorization': `Bearer ${rawToken}`, 'Content-Type': 'application/json' } : { 'Content-Type': 'application/json' };
-      const res = await fetch('http://127.0.0.1:8000/api/v1/repositories/connect', {
+      const res = await fetch(`${API_BASE_URL}/repositories/connect`, {
         method: 'POST',
         headers,
         body: JSON.stringify({

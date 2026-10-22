@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Breadcrumb } from '../../components/common/Breadcrumb';
 import { Modal } from '../../components/common/Modal';
 import { useAuth } from '../../context/AuthContext';
-import { getAuthHeaders } from '../../services/apiClient';
+import { getAuthHeaders, API_BASE_URL } from '../../services/apiClient';
 import {
   Layers,
   Calendar,
@@ -61,7 +61,7 @@ export const DevSprintTasks = ({ onShowToast }) => {
       setLoading(true);
 
       // 1. Fetch Sprint details
-      const sprintRes = await fetch('http://127.0.0.1:8000/api/v1/sprints/', {
+      const sprintRes = await fetch(`${API_BASE_URL}/sprints/`, {
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() }
       });
       if (sprintRes.ok) {
@@ -74,7 +74,7 @@ export const DevSprintTasks = ({ onShowToast }) => {
       }
 
       // 2. Fetch Developer Assigned Tasks
-      const tasksRes = await fetch('http://127.0.0.1:8000/api/v1/developer/my-tasks', {
+      const tasksRes = await fetch(`${API_BASE_URL}/developer/my-tasks`, {
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() }
       });
       if (tasksRes.ok) {
@@ -111,7 +111,7 @@ export const DevSprintTasks = ({ onShowToast }) => {
   // Update status action (Developers can move: TODO -> IN_PROGRESS -> CODE_REVIEW)
   const handleUpdateStatus = async (taskId, newStatus) => {
     try {
-      const res = await fetch(`http://127.0.0.1:8000/api/v1/tasks/${taskId}/status`, {
+      const res = await fetch(`${API_BASE_URL}/tasks/${taskId}/status`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         body: JSON.stringify({ status: newStatus })
@@ -146,7 +146,7 @@ export const DevSprintTasks = ({ onShowToast }) => {
   const handleOpenTask = async (task) => {
     setActiveTask(task);
     try {
-      const res = await fetch(`http://127.0.0.1:8000/api/v1/tasks/${task.id}/comments`, {
+      const res = await fetch(`${API_BASE_URL}/tasks/${task.id}/comments`, {
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() }
       });
       if (res.ok) {
@@ -165,7 +165,7 @@ export const DevSprintTasks = ({ onShowToast }) => {
     if (!commentInput.trim() || !activeTask) return;
 
     try {
-      const res = await fetch(`http://127.0.0.1:8000/api/v1/tasks/${activeTask.id}/comments`, {
+      const res = await fetch(`${API_BASE_URL}/tasks/${activeTask.id}/comments`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         body: JSON.stringify({ comment: commentInput.trim() })
@@ -192,7 +192,7 @@ export const DevSprintTasks = ({ onShowToast }) => {
 
     try {
       setDelaySubmitting(true);
-      const res = await fetch(`http://127.0.0.1:8000/api/v1/tasks/${activeTask.id}/delay-remark`, {
+      const res = await fetch(`${API_BASE_URL}/tasks/${activeTask.id}/delay-remark`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         body: JSON.stringify({

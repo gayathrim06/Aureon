@@ -4,7 +4,7 @@ import { Modal } from '../../components/common/Modal';
 import { useAuth } from '../../context/AuthContext';
 import { logAuditEvent } from '../../services/auditLogger';
 import { Award, CheckCircle2, AlertTriangle, Clock, Plus, Filter, FolderKanban, Target, ShieldCheck, Flag } from 'lucide-react';
-import { getAuthHeaders } from '../../services/apiClient';
+import { getAuthHeaders, API_BASE_URL } from '../../services/apiClient';
 
 export const MilestoneTracker = ({ onShowToast }) => {
   const { user } = useAuth();
@@ -27,7 +27,7 @@ export const MilestoneTracker = ({ onShowToast }) => {
     const headers = getAuthHeaders();
 
     try {
-      const pRes = await fetch('http://127.0.0.1:8000/api/v1/projects/', { headers });
+      const pRes = await fetch(`${API_BASE_URL}/projects/`, { headers });
       if (pRes.ok) {
         const pData = await pRes.json();
         const projs = pData.projects || [];

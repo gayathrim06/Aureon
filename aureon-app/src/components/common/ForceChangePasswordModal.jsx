@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { KeyRound, ShieldAlert, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import { getAuthHeaders } from '../../services/apiClient';
+import { getAuthHeaders, API_BASE_URL } from '../../services/apiClient';
 
 export const ForceChangePasswordModal = ({ isOpen, onPasswordChanged }) => {
   const { user, updateProfile, showToast } = useAuth();
@@ -40,7 +40,7 @@ export const ForceChangePasswordModal = ({ isOpen, onPasswordChanged }) => {
     setIsSubmitting(true);
 
     try {
-      const res = await fetch('http://127.0.0.1:8000/api/v1/auth/change-password/', {
+      const res = await fetch(`${API_BASE_URL}/auth/change-password/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

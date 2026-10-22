@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Breadcrumb } from '../../components/common/Breadcrumb';
-import { getAuthHeaders } from '../../services/apiClient';
+import { getAuthHeaders, API_BASE_URL } from '../../services/apiClient';
 import { 
   Bell, ShieldAlert, Server, FolderKanban, CheckSquare, Bug, 
   GitPullRequest, Rocket, CheckCircle2, Circle, RefreshCw, Trash2,
@@ -107,7 +107,7 @@ export const NotificationsView = ({ roleFilter }) => {
   const fetchNotifications = async () => {
     try {
       setLoading(true);
-      const res = await fetch('http://127.0.0.1:8000/api/v1/notifications/?scope=all', {
+      const res = await fetch(`${API_BASE_URL}/notifications/?scope=all`, {
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() }
       });
       if (res.ok) {
@@ -181,7 +181,7 @@ export const NotificationsView = ({ roleFilter }) => {
     const newStatus = !currentRead;
     setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: newStatus } : n));
     try {
-      await fetch(`http://127.0.0.1:8000/api/v1/notifications/${id}/read`, {
+      await fetch(`${API_BASE_URL}/notifications/${id}/read`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() }
       });
@@ -193,7 +193,7 @@ export const NotificationsView = ({ roleFilter }) => {
   const markAllRead = async () => {
     setNotifications(prev => prev.map(n => ({ ...n, read: true })));
     try {
-      await fetch('http://127.0.0.1:8000/api/v1/notifications/read-all', {
+      await fetch(`${API_BASE_URL}/notifications/read-all`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() }
       });
@@ -205,7 +205,7 @@ export const NotificationsView = ({ roleFilter }) => {
   const deleteNotification = async (id) => {
     setNotifications(prev => prev.filter(n => n.id !== id));
     try {
-      await fetch(`http://127.0.0.1:8000/api/v1/notifications/${id}`, {
+      await fetch(`${API_BASE_URL}/notifications/${id}`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() }
       });
@@ -217,7 +217,7 @@ export const NotificationsView = ({ roleFilter }) => {
   const clearReadNotifications = async () => {
     setNotifications(prev => prev.filter(n => !n.read));
     try {
-      await fetch('http://127.0.0.1:8000/api/v1/notifications/clear-all', {
+      await fetch(`${API_BASE_URL}/notifications/clear-all`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() }
       });

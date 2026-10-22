@@ -4,7 +4,7 @@ import { DataTable } from '../../components/common/DataTable';
 import { useAuth } from '../../context/AuthContext';
 import { logAuditEvent } from '../../services/auditLogger';
 import { ClipboardList, Plus, UserCheck, CheckCircle2, Clock, Sparkles } from 'lucide-react';
-import { getAuthHeaders } from '../../services/apiClient';
+import { getAuthHeaders, API_BASE_URL } from '../../services/apiClient';
 import { TaskSkillRecommendationModal } from '../../components/common/TaskSkillRecommendationModal';
 
 export const LeadTaskAllocation = ({ onShowToast }) => {
@@ -21,9 +21,9 @@ export const LeadTaskAllocation = ({ onShowToast }) => {
 
     try {
       const [tRes, uRes, tmRes] = await Promise.all([
-        fetch('http://127.0.0.1:8000/api/v1/tasks/', { headers }),
-        fetch('http://127.0.0.1:8000/api/v1/users/', { headers }),
-        fetch('http://127.0.0.1:8000/api/v1/teams/', { headers })
+        fetch(`${API_BASE_URL}/tasks/`, { headers }),
+        fetch(`${API_BASE_URL}/users/`, { headers }),
+        fetch(`${API_BASE_URL}/teams/`, { headers })
       ]);
 
       if (tRes.ok) {
@@ -72,7 +72,7 @@ export const LeadTaskAllocation = ({ onShowToast }) => {
     }));
 
     try {
-      const res = await fetch(`http://127.0.0.1:8000/api/v1/tasks/${taskId}/assign`, {
+      const res = await fetch(`${API_BASE_URL}/tasks/${taskId}/assign`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -102,7 +102,7 @@ export const LeadTaskAllocation = ({ onShowToast }) => {
     setTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: newStatus } : t));
 
     try {
-      await fetch(`http://127.0.0.1:8000/api/v1/tasks/${taskId}`, {
+      await fetch(`${API_BASE_URL}/tasks/${taskId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -120,7 +120,7 @@ export const LeadTaskAllocation = ({ onShowToast }) => {
   const handleApproveTask = async (taskId) => {
     if (!taskId) return;
     try {
-      const res = await fetch(`http://127.0.0.1:8000/api/v1/tasks/${taskId}/approve`, {
+      const res = await fetch(`${API_BASE_URL}/tasks/${taskId}/approve`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

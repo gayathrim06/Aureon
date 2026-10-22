@@ -8,7 +8,7 @@ import {
   User, Mail, Shield, Briefcase, Building, Edit3, Plus, X, Award, Phone, Calendar, Key, Hash,
   Activity, CheckSquare, GitCommit, Code2, Bug, TestTube2, Layers, Server, Sparkles, CheckCircle2, Save
 } from 'lucide-react';
-import { getAuthHeaders } from '../../services/apiClient';
+import { getAuthHeaders, API_BASE_URL } from '../../services/apiClient';
 
 export const UserProfile = () => {
   const { user, updateProfile, showToast } = useAuth();
@@ -39,7 +39,7 @@ export const UserProfile = () => {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const res = await fetch('http://127.0.0.1:8000/api/v1/users/me/stats', {
+        const res = await fetch(`${API_BASE_URL}/users/me/stats`, {
           headers: getAuthHeaders()
         });
         if (res.ok) {
@@ -136,7 +136,7 @@ export const UserProfile = () => {
 
     try {
       const targetEmail = email || user?.email || '';
-      await fetch(`http://127.0.0.1:8000/api/v1/users/me?email=${encodeURIComponent(targetEmail)}`, {
+      await fetch(`${API_BASE_URL}/users/me?email=${encodeURIComponent(targetEmail)}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

@@ -5,7 +5,7 @@ import { Modal } from '../../components/common/Modal';
 import { logAuditEvent } from '../../services/auditLogger';
 import { useAuth } from '../../context/AuthContext';
 import { FolderKanban, Plus, Edit2, Archive, Users, GitBranch, Cpu, Shield, UserCheck } from 'lucide-react';
-import { getAuthHeaders } from '../../services/apiClient';
+import { getAuthHeaders, API_BASE_URL } from '../../services/apiClient';
 
 export const ProjectManagement = ({ onShowToast }) => {
   const { user } = useAuth();
@@ -23,7 +23,7 @@ export const ProjectManagement = ({ onShowToast }) => {
 
   const fetchProjects = async () => {
     try {
-      const res = await fetch('http://127.0.0.1:8000/api/v1/projects/', {
+      const res = await fetch(`${API_BASE_URL}/projects/`, {
         headers: getAuthHeaders()
       });
       if (res.ok) {
@@ -57,7 +57,7 @@ export const ProjectManagement = ({ onShowToast }) => {
     setProjects([newProj, ...projects]);
 
     try {
-      await fetch('http://127.0.0.1:8000/api/v1/projects/', {
+      await fetch(`${API_BASE_URL}/projects/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

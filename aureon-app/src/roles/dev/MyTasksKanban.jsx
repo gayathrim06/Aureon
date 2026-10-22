@@ -4,7 +4,7 @@ import { Modal } from '../../components/common/Modal';
 import { logAuditEvent } from '../../services/auditLogger';
 import { useAuth } from '../../context/AuthContext';
 import { CheckSquare, MessageSquare, Paperclip, Plus, ArrowRight, User, RefreshCw } from 'lucide-react';
-import { getAuthHeaders } from '../../services/apiClient';
+import { getAuthHeaders, API_BASE_URL } from '../../services/apiClient';
 
 export const MyTasksKanban = ({ onShowToast }) => {
   const { user } = useAuth();
@@ -30,7 +30,7 @@ export const MyTasksKanban = ({ onShowToast }) => {
   const fetchTasks = async () => {
     try {
       setLoading(true);
-      const res = await fetch('http://127.0.0.1:8000/api/v1/developer/my-tasks', {
+      const res = await fetch(`${API_BASE_URL}/developer/my-tasks`, {
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() }
       });
       if (res.ok) {
@@ -87,7 +87,7 @@ export const MyTasksKanban = ({ onShowToast }) => {
     };
 
     try {
-      const res = await fetch('http://127.0.0.1:8000/api/v1/tasks/', {
+      const res = await fetch(`${API_BASE_URL}/tasks/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         body: JSON.stringify(newTaskData)
@@ -122,7 +122,7 @@ export const MyTasksKanban = ({ onShowToast }) => {
     setTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: newStatus } : t));
 
     try {
-      await fetch(`http://127.0.0.1:8000/api/v1/tasks/${taskId}/status`, {
+      await fetch(`${API_BASE_URL}/tasks/${taskId}/status`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         body: JSON.stringify({ status: backendStatus })
@@ -161,7 +161,7 @@ export const MyTasksKanban = ({ onShowToast }) => {
     }));
 
     try {
-      await fetch(`http://127.0.0.1:8000/api/v1/tasks/${activeTask.id}/comments`, {
+      await fetch(`${API_BASE_URL}/tasks/${activeTask.id}/comments`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         body: JSON.stringify({ comment: commentText })

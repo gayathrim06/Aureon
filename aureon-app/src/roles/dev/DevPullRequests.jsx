@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Breadcrumb } from '../../components/common/Breadcrumb';
 import { DataTable } from '../../components/common/DataTable';
-import { getAuthHeaders } from '../../services/apiClient';
+import { getAuthHeaders, API_BASE_URL } from '../../services/apiClient';
 import { GitPullRequest, GitMerge, CheckCircle2, Clock, Plus, Minus, MessageSquare, RefreshCw } from 'lucide-react';
 
 export const DevPullRequests = () => {
@@ -12,7 +12,7 @@ export const DevPullRequests = () => {
   const fetchPRs = async () => {
     try {
       setLoading(true);
-      const res = await fetch('http://127.0.0.1:8000/api/v1/repositories/pull-requests', {
+      const res = await fetch(`${API_BASE_URL}/repositories/pull-requests`, {
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() }
       });
       if (res.ok) {

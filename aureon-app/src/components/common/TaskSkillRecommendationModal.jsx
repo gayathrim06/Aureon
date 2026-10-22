@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Modal } from './Modal';
-import { getAuthHeaders } from '../../services/apiClient';
+import { getAuthHeaders, API_BASE_URL } from '../../services/apiClient';
 import { 
   CheckCircle2, AlertTriangle, Users, Award, 
   ArrowRight, Sparkles, Check, ChevronDown, ChevronUp, UserCheck, ShieldAlert
@@ -25,7 +25,7 @@ export const TaskSkillRecommendationModal = ({
     try {
       setLoading(true);
       setError(null);
-      const res = await fetch(`http://127.0.0.1:8000/api/v1/tasks/${task.id}/recommendations`, {
+      const res = await fetch(`${API_BASE_URL}/tasks/${task.id}/recommendations`, {
         headers: {
           'Content-Type': 'application/json',
           ...getAuthHeaders()
@@ -66,7 +66,7 @@ export const TaskSkillRecommendationModal = ({
 
     try {
       setConfirming(true);
-      const res = await fetch(`http://127.0.0.1:8000/api/v1/tasks/${task.id}/confirm-assignment`, {
+      const res = await fetch(`${API_BASE_URL}/tasks/${task.id}/confirm-assignment`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

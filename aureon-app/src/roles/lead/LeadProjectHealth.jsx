@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Breadcrumb } from '../../components/common/Breadcrumb';
-import { getAuthHeaders } from '../../services/apiClient';
+import { getAuthHeaders, API_BASE_URL } from '../../services/apiClient';
 import { Activity, Shield, Cpu, TrendingUp, RefreshCw, Layers } from 'lucide-react';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, BarChart, Bar } from 'recharts';
 
@@ -14,8 +14,8 @@ export const LeadProjectHealth = ({ onNavigate }) => {
       setLoading(true);
       const headers = { 'Content-Type': 'application/json', ...getAuthHeaders() };
       const [res, spRes] = await Promise.all([
-        fetch('http://127.0.0.1:8000/api/v1/analysis/quality-summary', { headers }),
-        fetch('http://127.0.0.1:8000/api/v1/sprints/', { headers })
+        fetch(`${API_BASE_URL}/analysis/quality-summary`, { headers }),
+        fetch(`${API_BASE_URL}/sprints/`, { headers })
       ]);
 
       if (res.ok) {

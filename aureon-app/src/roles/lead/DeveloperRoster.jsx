@@ -4,7 +4,7 @@ import { Modal } from '../../components/common/Modal';
 import { useAuth } from '../../context/AuthContext';
 import { logAuditEvent } from '../../services/auditLogger';
 import { Users, CheckSquare, Plus, Layers, ShieldCheck, UserCheck, CheckCircle2, Clock, Filter, Search, ArrowUpDown, ChevronDown } from 'lucide-react';
-import { getAuthHeaders } from '../../services/apiClient';
+import { getAuthHeaders, API_BASE_URL } from '../../services/apiClient';
 
 export const DeveloperRoster = ({ onShowToast }) => {
   const { user } = useAuth();
@@ -50,11 +50,11 @@ export const DeveloperRoster = ({ onShowToast }) => {
 
     try {
       const [availRes, uRes, tRes, pRes, sRes] = await Promise.all([
-        fetch('http://127.0.0.1:8000/api/v1/team-lead/my-team/availability', { headers }),
-        fetch('http://127.0.0.1:8000/api/v1/users/', { headers }),
-        fetch('http://127.0.0.1:8000/api/v1/tasks/', { headers }),
-        fetch('http://127.0.0.1:8000/api/v1/projects/', { headers }),
-        fetch('http://127.0.0.1:8000/api/v1/sprints/', { headers })
+        fetch(`${API_BASE_URL}/team-lead/my-team/availability`, { headers }),
+        fetch(`${API_BASE_URL}/users/`, { headers }),
+        fetch(`${API_BASE_URL}/tasks/`, { headers }),
+        fetch(`${API_BASE_URL}/projects/`, { headers }),
+        fetch(`${API_BASE_URL}/sprints/`, { headers })
       ]);
 
       let devs = [];
@@ -162,7 +162,7 @@ export const DeveloperRoster = ({ onShowToast }) => {
     };
 
     try {
-      await fetch('http://127.0.0.1:8000/api/v1/tasks/', {
+      await fetch(`${API_BASE_URL}/tasks/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -208,7 +208,7 @@ export const DeveloperRoster = ({ onShowToast }) => {
     };
 
     try {
-      await fetch('http://127.0.0.1:8000/api/v1/sprints/', {
+      await fetch(`${API_BASE_URL}/sprints/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

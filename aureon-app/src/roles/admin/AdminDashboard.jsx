@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Breadcrumb } from '../../components/common/Breadcrumb';
 import { useAuth } from '../../context/AuthContext';
+import { API_BASE_URL } from '../../services/apiClient';
 import { 
   Users, ShieldCheck, Activity, Globe, FileText, Database, ShieldAlert,
   Terminal, Server, Cpu, RefreshCw, AlertTriangle, Layers, CheckSquare, Plus
@@ -39,7 +40,7 @@ export const AdminDashboard = ({ onNavigate }) => {
     const headers = isRealJwt ? { 'Authorization': `Bearer ${rawToken}` } : {};
 
     try {
-      const res = await fetch('http://127.0.0.1:8000/api/v1/dashboards/admin', { headers });
+      const res = await fetch(`${API_BASE_URL}/dashboards/admin`, { headers });
       if (res.ok) {
         const data = await res.json();
         const metricsData = data.metrics || data.dashboard?.metrics || data;

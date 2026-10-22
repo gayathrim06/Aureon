@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Breadcrumb } from '../../components/common/Breadcrumb';
 import { useAuth } from '../../context/AuthContext';
 import { FolderKanban, Activity, CheckCircle2, ShieldCheck, Users, CheckSquare, Layers, ArrowRight, Search, RefreshCw } from 'lucide-react';
-import { getAuthHeaders } from '../../services/apiClient';
+import { getAuthHeaders, API_BASE_URL } from '../../services/apiClient';
 
 export const LeadAssignedProjects = ({ onNavigate }) => {
   const { user } = useAuth();
@@ -17,8 +17,8 @@ export const LeadAssignedProjects = ({ onNavigate }) => {
 
     try {
       const [pRes, tRes] = await Promise.all([
-        fetch('http://127.0.0.1:8000/api/v1/projects/', { headers }),
-        fetch('http://127.0.0.1:8000/api/v1/tasks/', { headers })
+        fetch(`${API_BASE_URL}/projects/`, { headers }),
+        fetch(`${API_BASE_URL}/tasks/`, { headers })
       ]);
 
       let liveTasks = [];

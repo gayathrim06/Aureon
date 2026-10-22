@@ -5,7 +5,7 @@ import { useAuth } from '../../context/AuthContext';
 import { logAuditEvent } from '../../services/auditLogger';
 import { Layers, Plus, CheckCircle2, Clock, Activity, FolderKanban, Users, Calendar, ShieldCheck, Filter, Target, Zap, TrendingUp, Flag, CheckSquare, UserPlus, AlertCircle, Sparkles } from 'lucide-react';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
-import { getAuthHeaders } from '../../services/apiClient';
+import { getAuthHeaders, API_BASE_URL } from '../../services/apiClient';
 import { TaskSkillRecommendationModal } from '../../components/common/TaskSkillRecommendationModal';
 
 export const SprintPlanner = ({ onShowToast }) => {
@@ -61,11 +61,11 @@ export const SprintPlanner = ({ onShowToast }) => {
 
     try {
       const [spRes, prRes, tmRes, tkRes, usRes] = await Promise.all([
-        fetch('http://127.0.0.1:8000/api/v1/sprints/', { headers }),
-        fetch('http://127.0.0.1:8000/api/v1/projects/', { headers }),
-        fetch('http://127.0.0.1:8000/api/v1/teams/', { headers }),
-        fetch('http://127.0.0.1:8000/api/v1/tasks/', { headers }),
-        fetch('http://127.0.0.1:8000/api/v1/users/', { headers })
+        fetch(`${API_BASE_URL}/sprints/`, { headers }),
+        fetch(`${API_BASE_URL}/projects/`, { headers }),
+        fetch(`${API_BASE_URL}/teams/`, { headers }),
+        fetch(`${API_BASE_URL}/tasks/`, { headers }),
+        fetch(`${API_BASE_URL}/users/`, { headers })
       ]);
 
       if (prRes.ok) {
@@ -230,7 +230,7 @@ export const SprintPlanner = ({ onShowToast }) => {
     }));
 
     try {
-      const res = await fetch(`http://127.0.0.1:8000/api/v1/tasks/${taskId}/assign`, {
+      const res = await fetch(`${API_BASE_URL}/tasks/${taskId}/assign`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -273,7 +273,7 @@ export const SprintPlanner = ({ onShowToast }) => {
   const handleReturnToBacklog = async (taskId) => {
     if (!selectedSprint) return;
     try {
-      const res = await fetch(`http://127.0.0.1:8000/api/v1/sprints/${selectedSprint.id}/tasks/${taskId}`, {
+      const res = await fetch(`${API_BASE_URL}/sprints/${selectedSprint.id}/tasks/${taskId}`, {
         method: 'DELETE',
         headers: getAuthHeaders()
       });
@@ -316,7 +316,7 @@ export const SprintPlanner = ({ onShowToast }) => {
     try {
       await Promise.all(
         selectedTaskIds.map(taskId => 
-          fetch(`http://127.0.0.1:8000/api/v1/tasks/${taskId}/assign`, {
+          fetch(`${API_BASE_URL}/tasks/${taskId}/assign`, {
             method: 'PATCH',
             headers: {
               'Content-Type': 'application/json',
@@ -369,7 +369,7 @@ export const SprintPlanner = ({ onShowToast }) => {
     };
 
     try {
-      const res = await fetch('http://127.0.0.1:8000/api/v1/tasks/', {
+      const res = await fetch(`${API_BASE_URL}/tasks/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -443,7 +443,7 @@ export const SprintPlanner = ({ onShowToast }) => {
     setSelectedSprint(newSprint);
 
     try {
-      await fetch('http://127.0.0.1:8000/api/v1/sprints/', {
+      await fetch(`${API_BASE_URL}/sprints/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

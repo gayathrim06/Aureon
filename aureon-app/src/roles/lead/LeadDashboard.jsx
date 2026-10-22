@@ -6,7 +6,7 @@ import {
   GitBranch, CheckCircle2, AlertTriangle, ArrowRight, UserCheck, Code2, 
   FolderKanban, FileText, ChevronRight, Sparkles, ExternalLink, Plus
 } from 'lucide-react';
-import { getAuthHeaders } from '../../services/apiClient';
+import { getAuthHeaders, API_BASE_URL } from '../../services/apiClient';
 
 export const LeadDashboard = ({ onNavigate }) => {
   const { user } = useAuth();
@@ -34,10 +34,10 @@ export const LeadDashboard = ({ onNavigate }) => {
 
     try {
       const [tRes, pRes, sRes, aRes] = await Promise.all([
-        fetch('http://127.0.0.1:8000/api/v1/tasks/', { headers }),
-        fetch('http://127.0.0.1:8000/api/v1/projects/', { headers }),
-        fetch('http://127.0.0.1:8000/api/v1/sprints/', { headers }),
-        fetch('http://127.0.0.1:8000/api/v1/team-lead/my-team/availability', { headers })
+        fetch(`${API_BASE_URL}/tasks/`, { headers }),
+        fetch(`${API_BASE_URL}/projects/`, { headers }),
+        fetch(`${API_BASE_URL}/sprints/`, { headers }),
+        fetch(`${API_BASE_URL}/team-lead/my-team/availability`, { headers })
       ]);
 
       let tasks = [];
