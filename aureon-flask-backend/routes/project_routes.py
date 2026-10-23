@@ -36,10 +36,9 @@ def manage_projects():
         if not user:
             return jsonify({'success': False, 'message': '401 Unauthorized: Authentication required to view projects.'}), 401
         if scope.is_admin:
-            include_inactive = request.args.get('include_inactive') == 'true' or request.args.get('all') == 'true'
-            query = Project.query if include_inactive else Project.query.filter_by(is_active=True)
+            query = Project.query.filter_by(is_deleted=False)
         else:
-            query = Project.query.filter_by(is_active=True).filter(Project.id.in_(scope.project_ids))
+            query = Project.query.filter_by(is_deleted=False).filter(Project.id.in_(scope.project_ids))
         projects = query.all()
         return jsonify({'success': True, 'count': len(projects), 'projects': [p.to_dict() for p in projects]}), 200
 

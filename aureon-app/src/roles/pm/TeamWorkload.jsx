@@ -209,8 +209,8 @@ export const TeamWorkload = ({ embedMode = false }) => {
       return true;
     });
 
-    const roleOrder = { LEAD: 1, PM: 2, DEV: 3, QA: 4, ADMIN: 5 };
-    if (sortBy === 'role') {
+    const roleOrder = { PM: 1, LEAD: 2, DEV: 3, QA: 4, ADMIN: 5 };
+    if (sortBy === 'role' || sortBy === 'default') {
       list.sort((a, b) => (roleOrder[a.roleCategory] || 99) - (roleOrder[b.roleCategory] || 99));
     } else if (sortBy === 'name_asc') {
       list.sort((a, b) => a.name.localeCompare(b.name));

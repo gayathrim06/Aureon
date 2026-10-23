@@ -284,6 +284,12 @@ class Team(db.Model):
         if self.leader and self.leader not in all_users:
             all_users.append(self.leader)
 
+        # Include Project Manager in team roster if bound to a project
+        if self.project and self.project.manager_id:
+            proj_mgr = User.query.get(self.project.manager_id)
+            if proj_mgr and proj_mgr not in all_users:
+                all_users.append(proj_mgr)
+
         member_details = []
         user_ids_seen = set()
 
@@ -320,6 +326,26 @@ class Team(db.Model):
                 'status': status_desc,
                 'availability': 'AVAILABLE' if is_avail else 'BUSY'
             })
+
+        # Sort members by strict role priority: PM (1) -> TL (2) -> DEV (3) -> QA (4)
+        def _get_role_priority(m):
+            role = (m.get('role') or '').upper()
+            desig = (m.get('designation') or '').upper()
+            if self.project and str(self.project.manager_id) == str(m.get('id')):
+                return 1
+            if 'PM' in role or 'PROJECT MANAGER' in role or 'PROJECT MANAGER' in desig:
+                return 1
+            if (self.team_leader_id and str(self.team_leader_id) == str(m.get('id'))) or (self.lead_id and str(self.lead_id) == str(m.get('id'))):
+                return 2
+            if 'LEAD' in role or 'TL' in role or 'LEAD' in desig or 'TECH LEAD' in desig:
+                return 2
+            if 'QA' in role or 'TEST' in role or 'QA' in desig or 'TEST' in desig:
+                return 4
+            if 'DEV' in role or 'DEVELOP' in desig or 'ENGINEER' in desig:
+                return 3
+            return 5
+
+        member_details.sort(key=lambda m: (_get_role_priority(m), m.get('full_name', '')))
 
         leader_name = self.leader.full_name if self.leader else None
         proj_name = self.project.name if self.project else None

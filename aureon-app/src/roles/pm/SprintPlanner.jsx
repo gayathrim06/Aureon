@@ -30,6 +30,7 @@ export const SprintPlanner = ({ onShowToast }) => {
   // Filters
   const [projectFilter, setProjectFilter] = useState('ALL');
   const [teamFilter, setTeamFilter] = useState('ALL');
+  const [selectedMemberFilter, setSelectedMemberFilter] = useState(null);
 
   // Modal Form State - Strategic Sprint Milestone
   const [formData, setFormData] = useState({
@@ -131,6 +132,11 @@ export const SprintPlanner = ({ onShowToast }) => {
     fetchSprintData();
   }, []);
 
+  // Reset member filter on sprint change
+  useEffect(() => {
+    setSelectedMemberFilter(null);
+  }, [selectedSprint?.id]);
+
   // Resolve the sprint's specific assigned team
   const sprintTeam = useMemo(() => {
     if (!selectedSprint || !teamsList.length) return null;
@@ -141,33 +147,104 @@ export const SprintPlanner = ({ onShowToast }) => {
     ) || null;
   }, [selectedSprint, teamsList]);
 
-  // Strictly filter developers to ONLY those who belong to the sprint's team with live availability stats
+  // Resolve current project to fetch assigned Project Manager
+  const currentProject = useMemo(() => {
+    if (!projectsList.length) return null;
+    const pId = selectedSprint?.project_id || selectedSprint?.projectId || formData.projectId;
+    return projectsList.find(p => String(p.id) === String(pId)) || null;
+  }, [selectedSprint, formData.projectId, projectsList]);
+
+  // Strictly filter and prioritize squad roster members:
+  // Priority Hierarchy: Project Manager (PM) -> Team Lead (TL) -> Developers -> QA Engineers
   const sprintDevelopers = useMemo(() => {
-    if (!sprintTeam) return developersList;
-    if (sprintTeam.member_details && sprintTeam.member_details.length > 0) {
-      return sprintTeam.member_details.map(m => {
-        const u = developersList.find(d => String(d.id) === String(m.id)) || {};
-        return {
-          id: m.id,
-          name: m.name || u.display_name || u.full_name,
-          full_name: m.full_name || m.name || u.full_name,
-          email: m.email || u.email,
-          role: m.role || u.role || 'ROLE_DEV',
-          designation: m.designation || u.designation || 'Software Engineer',
-          status: m.status || (m.active_tasks_count === 0 ? 'Available' : `Busy (${m.active_tasks_count} active)`),
-          is_available: m.is_available !== undefined ? m.is_available : (m.active_tasks_count === 0),
-          active_tasks_count: m.active_tasks_count !== undefined ? m.active_tasks_count : 0,
-          completed_tasks_count: m.completed_tasks_count !== undefined ? m.completed_tasks_count : 0
-        };
+    const rawMap = new Map();
+
+    const addMemberCandidate = (candidate, defaultRole = 'ROLE_DEV', defaultDesig = 'Software Engineer') => {
+      if (!candidate || !candidate.id) return;
+      const cId = String(candidate.id);
+      if (rawMap.has(cId)) return;
+
+      const u = developersList.find(d => String(d.id) === cId) || {};
+      const full_name = candidate.full_name || candidate.name || u.full_name || u.name || candidate.email || u.email || 'Team Member';
+      const role = candidate.role || candidate.role_name || u.role || u.role_name || defaultRole;
+      const designation = candidate.designation || u.designation || defaultDesig;
+
+      const userTasks = tasks.filter(t => String(t.assigned_to_id) === cId || t.assignee === full_name);
+      const activeCount = userTasks.filter(t => !['COMPLETED', 'DONE', 'CLOSED', 'CANCELLED'].includes(t.status)).length;
+      const completedCount = userTasks.filter(t => ['COMPLETED', 'DONE', 'CLOSED'].includes(t.status)).length;
+      const isAvail = activeCount === 0;
+
+      rawMap.set(cId, {
+        id: candidate.id,
+        name: candidate.name || full_name,
+        full_name: full_name,
+        email: candidate.email || u.email,
+        role: role,
+        designation: designation,
+        status: isAvail ? (completedCount > 0 ? `Available (${completedCount} tasks completed)` : 'Available (Ready)') : `Busy (${activeCount} active)`,
+        is_available: isAvail,
+        active_tasks_count: activeCount,
+        completed_tasks_count: completedCount
       });
+    };
+
+    // 1. Add Project Manager for this project
+    if (currentProject) {
+      const pmId = currentProject.manager_id || currentProject.project_manager_id;
+      if (pmId) {
+        const pmCandidate = developersList.find(d => String(d.id) === String(pmId)) || { id: pmId, name: currentProject.manager_name, role: 'ROLE_PM', designation: 'Project Manager' };
+        addMemberCandidate(pmCandidate, 'ROLE_PM', 'Project Manager');
+      }
     }
 
-    const memberIds = new Set((sprintTeam.member_details || []).map(m => String(m.id)));
-    if (sprintTeam.team_leader_id) memberIds.add(String(sprintTeam.team_leader_id));
-    if (sprintTeam.lead_id) memberIds.add(String(sprintTeam.lead_id));
+    // 2. Add Team Lead for this squad
+    if (sprintTeam) {
+      const leadId = sprintTeam.team_leader_id || sprintTeam.lead_id || (currentProject && (currentProject.lead_id || currentProject.team_lead_id));
+      if (leadId) {
+        const leadCandidate = developersList.find(d => String(d.id) === String(leadId)) || { id: leadId, name: sprintTeam.lead_name || sprintTeam.lead, role: 'ROLE_LEAD', designation: 'Technical Lead' };
+        addMemberCandidate(leadCandidate, 'ROLE_LEAD', 'Technical Lead');
+      }
 
-    return developersList.filter(d => memberIds.has(String(d.id)));
-  }, [sprintTeam, developersList]);
+      // 3. Add Squad Members from team details
+      if (sprintTeam.member_details && sprintTeam.member_details.length > 0) {
+        sprintTeam.member_details.forEach(m => addMemberCandidate(m));
+      }
+    } else {
+      developersList.forEach(d => addMemberCandidate(d));
+    }
+
+    const membersArray = Array.from(rawMap.values());
+
+    // Role priority ranking: PM (1) -> TL (2) -> DEV (3) -> QA (4)
+    const getRoleRank = (dev) => {
+      const role = (dev.role || '').toUpperCase();
+      const desig = (dev.designation || '').toUpperCase();
+      const pMgrId = currentProject?.manager_id || currentProject?.project_manager_id;
+      const isPM = (pMgrId && String(dev.id) === String(pMgrId)) ||
+                   role === 'ROLE_PM' || role.includes('PM') || role.includes('MANAGER') || desig.includes('PROJECT MANAGER');
+      if (isPM) return 1;
+
+      const tLeadId = sprintTeam?.team_leader_id || sprintTeam?.lead_id || currentProject?.lead_id;
+      const isLead = (tLeadId && String(dev.id) === String(tLeadId)) ||
+                     role === 'ROLE_LEAD' || role.includes('LEAD') || role.includes('TL') || desig.includes('LEAD') || desig.includes('TECH LEAD');
+      if (isLead) return 2;
+
+      const isQA = role === 'ROLE_QA' || role.includes('QA') || role.includes('TEST') || desig.includes('QA') || desig.includes('TEST');
+      if (isQA) return 4;
+
+      const isDev = role === 'ROLE_DEV' || role.includes('DEV') || desig.includes('DEVELOP') || desig.includes('ENGINEER');
+      if (isDev) return 3;
+
+      return 5;
+    };
+
+    return membersArray.sort((a, b) => {
+      const rankA = getRoleRank(a);
+      const rankB = getRoleRank(b);
+      if (rankA !== rankB) return rankA - rankB;
+      return (a.full_name || a.name || '').localeCompare(b.full_name || b.name || '');
+    });
+  }, [sprintTeam, currentProject, developersList, tasks]);
 
   const formatDevOption = (dev) => {
     if (!dev) return 'Unassigned';
@@ -175,9 +252,14 @@ export const SprintPlanner = ({ onShowToast }) => {
     const completed = dev.completed_tasks_count || 0;
     const active = dev.active_tasks_count || 0;
     const availText = isAvail
-      ? (completed > 0 ? `Available (All ${completed} tasks completed)` : 'Available (Ready)')
-      : `Busy (${active} active, ${completed} completed)`;
-    return `${isAvail ? '🟢' : '🔴'} ${dev.full_name || dev.name} — ${availText} [${dev.role || 'DEV'}]`;
+      ? (completed > 0 ? `Available (${completed} completed)` : 'Available (Ready)')
+      : `Busy (${active} active, ${completed} done)`;
+    
+    const roleRank = (dev.role === 'ROLE_PM' || dev.designation?.toLowerCase().includes('project manager')) ? 'PM' :
+                     (dev.role === 'ROLE_LEAD' || dev.role === 'ROLE_TL' || dev.designation?.toLowerCase().includes('lead')) ? 'TL' :
+                     (dev.role === 'ROLE_QA' || dev.designation?.toLowerCase().includes('qa') || dev.designation?.toLowerCase().includes('test')) ? 'QA' : 'DEV';
+
+    return `[${roleRank}] ${dev.full_name || dev.name} — ${availText} ${isAvail ? '🟢' : '🔴'}`;
   };
 
   // Keep modal assignee aligned with team members
@@ -476,6 +558,16 @@ export const SprintPlanner = ({ onShowToast }) => {
     ? tasks.filter(t => (t.sprint_id && String(t.sprint_id) === String(selectedSprint.id)) || (t.sprint_name && t.sprint_name === selectedSprint.name))
     : [];
 
+  const displayedSprintTasks = useMemo(() => {
+    if (!selectedMemberFilter) return selectedSprintTasks;
+    const filterDev = sprintDevelopers.find(d => String(d.id) === String(selectedMemberFilter));
+    const filterName = filterDev ? (filterDev.full_name || filterDev.name) : '';
+    return selectedSprintTasks.filter(t => 
+      String(t.assigned_to_id) === String(selectedMemberFilter) || 
+      (filterName && (t.assignee === filterName || t.assignee_name === filterName))
+    );
+  }, [selectedSprintTasks, selectedMemberFilter, sprintDevelopers]);
+
   return (
     <div className="space-y-6 font-sans text-slate-900 dark:text-slate-100 warm:text-[#342314]">
       <Breadcrumb activeTab="Sprint Planner" />
@@ -609,6 +701,15 @@ export const SprintPlanner = ({ onShowToast }) => {
                   <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 font-bold text-slate-500">
                     {sprintDevelopers.length} Members
                   </span>
+                  {selectedMemberFilter && (
+                    <button
+                      type="button"
+                      onClick={() => setSelectedMemberFilter(null)}
+                      className="text-[10px] px-2.5 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 font-bold hover:bg-indigo-200 cursor-pointer transition"
+                    >
+                      Clear Member Filter ✕
+                    </button>
+                  )}
                 </div>
                 <div className="flex items-center gap-3 text-[11px] font-bold">
                   <span className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
@@ -622,22 +723,42 @@ export const SprintPlanner = ({ onShowToast }) => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-2.5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2.5">
                 {sprintDevelopers.map(dev => {
                   const inThisSprintCount = selectedSprintTasks.filter(t => String(t.assigned_to_id) === String(dev.id) || t.assignee === dev.full_name).length;
+                  const isFiltered = String(selectedMemberFilter) === String(dev.id);
+                  const roleRank = (dev.role === 'ROLE_PM' || dev.designation?.toLowerCase().includes('project manager')) ? 'PM' :
+                                   (dev.role === 'ROLE_LEAD' || dev.role === 'ROLE_TL' || dev.designation?.toLowerCase().includes('lead')) ? 'TL' :
+                                   (dev.role === 'ROLE_QA' || dev.designation?.toLowerCase().includes('qa') || dev.designation?.toLowerCase().includes('test')) ? 'QA' : 'DEV';
+
                   return (
-                    <div
+                    <button
                       key={dev.id}
-                      className={`p-3 rounded-xl border transition-all ${
-                        dev.is_available
-                          ? 'bg-emerald-50/40 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800/60 shadow-xs'
-                          : 'bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800'
+                      type="button"
+                      onClick={() => setSelectedMemberFilter(prev => String(prev) === String(dev.id) ? null : dev.id)}
+                      className={`p-3 rounded-xl border text-left transition-all duration-150 cursor-pointer w-full relative group hover:shadow-md hover:-translate-y-0.5 active:translate-y-0 select-none ${
+                        isFiltered
+                          ? 'ring-2 ring-indigo-600 border-indigo-600 bg-indigo-50/90 dark:bg-indigo-950/70 shadow-md'
+                          : dev.is_available
+                          ? 'bg-emerald-50/40 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800/60 hover:border-emerald-400'
+                          : 'bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 hover:border-slate-400'
                       }`}
+                      title={`Click to filter deliverables assigned to ${dev.full_name || dev.name}`}
                     >
-                      <div className="flex items-center justify-between">
-                        <span className="font-extrabold text-xs text-slate-900 dark:text-white truncate" title={dev.full_name || dev.name}>
-                          {dev.full_name || dev.name}
-                        </span>
+                      <div className="flex items-center justify-between gap-1">
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <span className={`px-1.5 py-0.2 rounded text-[9px] font-black uppercase tracking-wider shrink-0 ${
+                            roleRank === 'PM' ? 'bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 border border-purple-200 dark:border-purple-800' :
+                            roleRank === 'TL' ? 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 border border-blue-200 dark:border-blue-800' :
+                            roleRank === 'QA' ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border border-amber-200 dark:border-amber-800' :
+                            'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
+                          }`}>
+                            {roleRank}
+                          </span>
+                          <span className="font-extrabold text-xs text-slate-900 dark:text-white truncate" title={dev.full_name || dev.name}>
+                            {dev.full_name || dev.name}
+                          </span>
+                        </div>
                         <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${dev.is_available ? 'bg-emerald-500 ring-2 ring-emerald-300 dark:ring-emerald-800' : 'bg-rose-500'}`} />
                       </div>
                       <div className="text-[10px] text-slate-400 font-medium truncate mt-0.5">
@@ -651,7 +772,13 @@ export const SprintPlanner = ({ onShowToast }) => {
                           ⚡ {inThisSprintCount} in sprint
                         </span>
                       </div>
-                    </div>
+                      {isFiltered && (
+                        <div className="mt-1.5 pt-1 border-t border-indigo-200 dark:border-indigo-800/80 flex items-center justify-between text-[9px] font-bold text-indigo-600 dark:text-indigo-400">
+                          <span>Filtering deliverables</span>
+                          <span className="px-1 py-0.2 rounded bg-indigo-100 dark:bg-indigo-900">Click to reset</span>
+                        </div>
+                      )}
+                    </button>
                   );
                 })}
               </div>
@@ -664,7 +791,7 @@ export const SprintPlanner = ({ onShowToast }) => {
               <div>
                 <h4 className="text-sm font-black text-slate-900 dark:text-white flex items-center gap-2">
                   <CheckSquare className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-                  Sprint Deliverables & Developer Allocation ({selectedSprintTasks.length})
+                  Sprint Deliverables & Developer Allocation ({selectedMemberFilter ? `${displayedSprintTasks.length} of ${selectedSprintTasks.length}` : selectedSprintTasks.length})
                 </h4>
                 <p className="text-[11px] text-slate-500">
                   Manage tasks committed to <strong>{selectedSprint.name}</strong>. Assign or reassign developers directly within this sprint.
@@ -678,6 +805,27 @@ export const SprintPlanner = ({ onShowToast }) => {
                 <Plus className="w-3.5 h-3.5" /> Add Task to this Sprint
               </button>
             </div>
+
+            {selectedMemberFilter && (
+              <div className="p-3 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 flex flex-wrap items-center justify-between gap-2 text-xs animate-fadeIn">
+                <div className="flex items-center gap-2">
+                  <Filter className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                  <span className="font-bold text-slate-800 dark:text-slate-200">
+                    Filtered by team member: <strong>{sprintDevelopers.find(d => String(d.id) === String(selectedMemberFilter))?.full_name || 'Member'}</strong>
+                  </span>
+                  <span className="text-[11px] text-slate-500">
+                    ({displayedSprintTasks.length} task{displayedSprintTasks.length !== 1 ? 's' : ''})
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSelectedMemberFilter(null)}
+                  className="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs cursor-pointer transition shadow-xs"
+                >
+                  Clear Filter (Show All {selectedSprintTasks.length} Deliverables)
+                </button>
+              </div>
+            )}
 
             {/* Multi-Task / Batch Sprint Assignment Bar */}
             {selectedTaskIds.length > 0 && (
@@ -726,7 +874,7 @@ export const SprintPlanner = ({ onShowToast }) => {
               </div>
             )}
 
-            {selectedSprintTasks.length === 0 ? (
+            {displayedSprintTasks.length === 0 ? (
               <div className="p-8 rounded-2xl bg-slate-50 dark:bg-slate-950 warm:bg-[#f3e8d2] border border-dashed border-slate-300 dark:border-slate-800 text-center space-y-2">
                 <p className="text-xs font-bold text-slate-600 dark:text-slate-400">No tasks currently assigned to this sprint.</p>
                 <p className="text-[11px] text-slate-500">Click <strong>"Add Task to this Sprint"</strong> above to break down deliverables and assign developers.</p>
@@ -739,10 +887,10 @@ export const SprintPlanner = ({ onShowToast }) => {
                       <th className="p-3 w-10 text-center">
                         <input
                           type="checkbox"
-                          checked={selectedSprintTasks.length > 0 && selectedTaskIds.length === selectedSprintTasks.length}
+                          checked={displayedSprintTasks.length > 0 && selectedTaskIds.length === displayedSprintTasks.length}
                           onChange={(e) => {
                             if (e.target.checked) {
-                              setSelectedTaskIds(selectedSprintTasks.map(t => t.id));
+                              setSelectedTaskIds(displayedSprintTasks.map(t => t.id));
                             } else {
                               setSelectedTaskIds([]);
                             }
@@ -761,7 +909,7 @@ export const SprintPlanner = ({ onShowToast }) => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium">
-                    {selectedSprintTasks.map(task => {
+                    {displayedSprintTasks.map(task => {
                       const currentDevId = task.assigned_to_id || sprintDevelopers.find(d => (d.full_name === task.assignee || d.email === task.assignee))?.id || '';
                       const isSelected = selectedTaskIds.includes(task.id);
                       return (
