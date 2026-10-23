@@ -393,7 +393,7 @@ export const PmDashboard = ({ onNavigate }) => {
             </div>
           </div>
           <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-800 text-[10px] text-emerald-600 dark:text-emerald-400 font-bold flex items-center justify-between">
-            <span>AI health insights</span>
+            <span>Project health insights</span>
             <span className="group-hover:translate-x-1 transition-transform">→</span>
           </div>
         </button>
@@ -599,7 +599,7 @@ export const PmDashboard = ({ onNavigate }) => {
                       onClick={() => onNavigate && onNavigate('ProjectHealth')}
                       className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs transition-all cursor-pointer"
                     >
-                      <Activity className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" /> AI Health
+                      <Activity className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" /> Project Health
                     </button>
                   </div>
                   <span className="text-[11px] text-slate-500 font-mono">

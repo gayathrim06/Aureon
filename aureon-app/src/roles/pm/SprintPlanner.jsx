@@ -405,10 +405,14 @@ export const SprintPlanner = ({ onShowToast }) => {
 
   const handleProjectSelect = (projId) => {
     const found = projectsList.find(p => p.id === projId);
+    const projTeam = teamsList.find(t => String(t.project_id || t.projectId) === String(projId));
     setFormData(prev => ({
       ...prev,
       projectId: projId,
-      projectName: found ? found.name : ''
+      projectName: found ? found.name : '',
+      teamId: projTeam?.id || prev.teamId || '',
+      assignedTeam: projTeam?.name || prev.assignedTeam,
+      scrumMaster: projTeam?.lead_name || prev.scrumMaster
     }));
   };
 
@@ -416,6 +420,7 @@ export const SprintPlanner = ({ onShowToast }) => {
     const found = teamsList.find(t => t.name === teamName);
     setFormData(prev => ({
       ...prev,
+      teamId: found?.id || '',
       assignedTeam: teamName,
       scrumMaster: found?.lead_name || 'Team Lead'
     }));
@@ -634,8 +639,12 @@ export const SprintPlanner = ({ onShowToast }) => {
       id: `SPR-${Math.floor(100 + Math.random() * 900)}`,
       name: formData.name,
       project_id: formData.projectId,
+      projectId: formData.projectId,
+      team_id: formData.teamId,
+      teamId: formData.teamId,
       project_name: formData.projectName || (projectsList.find(p => p.id === formData.projectId)?.name || 'General System'),
       assigned_team: formData.assignedTeam,
+      team_name: formData.assignedTeam,
       team_lead: formData.scrumMaster,
       epic_category: formData.epicCategory,
       capacity: targetCapacity,
@@ -1300,26 +1309,41 @@ export const SprintPlanner = ({ onShowToast }) => {
         <div className="p-12 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-center space-y-3">
           <Layers className="w-12 h-12 text-slate-300 dark:text-slate-700 mx-auto" />
           <h3 className="text-base font-extrabold text-slate-900 dark:text-white">
-            {projectFilter !== 'ALL' 
-              ? `No Sprint Milestones Created for ${projectsList.find(p => p.id === projectFilter)?.name || 'Selected Project'}` 
-              : 'No Sprint Milestones Created'}
+            {teamFilter !== 'ALL' && projectFilter !== 'ALL'
+              ? `No Sprints for ${projectsList.find(p => p.id === projectFilter)?.name || 'Selected Project'} matching team "${teamFilter}"`
+              : (projectFilter !== 'ALL' 
+                ? `No Sprint Milestones Created for ${projectsList.find(p => p.id === projectFilter)?.name || 'Selected Project'}` 
+                : 'No Sprint Milestones Created')}
           </h3>
           <p className="text-xs text-slate-500 max-w-md mx-auto">
-            Click <strong>"Create Strategic Sprint Milestone"</strong> to commit story points capacity, define timeboxed milestones, and assign teams.
+            {teamFilter !== 'ALL' 
+              ? `Sprints for this project may be assigned to a different Scrum Team. Reset the team filter to see all project sprints.`
+              : `Click "Create Strategic Sprint Milestone" to commit story points capacity, define timeboxed milestones, and assign teams.`}
           </p>
-          <button
-            type="button"
-            onClick={() => {
-              if (projectFilter !== 'ALL') {
-                const foundP = projectsList.find(p => p.id === projectFilter);
-                setFormData(prev => ({ ...prev, projectId: projectFilter, projectName: foundP?.name || '' }));
-              }
-              setIsModalOpen(true);
-            }}
-            className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs cursor-pointer shadow-xs transition"
-          >
-            Create Sprint Milestone
-          </button>
+          <div className="flex flex-wrap items-center justify-center gap-2 pt-2">
+            {teamFilter !== 'ALL' && (
+              <button
+                type="button"
+                onClick={() => setTeamFilter('ALL')}
+                className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs cursor-pointer shadow-xs transition"
+              >
+                Reset Team Filter to "All Teams"
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => {
+                if (projectFilter !== 'ALL') {
+                  const foundP = projectsList.find(p => p.id === projectFilter);
+                  setFormData(prev => ({ ...prev, projectId: projectFilter, projectName: foundP?.name || '' }));
+                }
+                setIsModalOpen(true);
+              }}
+              className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs cursor-pointer shadow-xs transition"
+            >
+              Create Sprint Milestone
+            </button>
+          </div>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

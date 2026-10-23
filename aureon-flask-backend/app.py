@@ -22,6 +22,7 @@ from routes.audit_routes import audit_bp
 from routes.sprint_routes import sprint_bp
 from routes.notification_routes import notification_bp
 from routes.bug_routes import bug_bp
+from routes.chat_routes import chat_bp
 
 def create_app():
     app = Flask(__name__)
@@ -114,6 +115,7 @@ def create_app():
     app.register_blueprint(report_bp)
     app.register_blueprint(audit_bp)
     app.register_blueprint(bug_bp)
+    app.register_blueprint(chat_bp)
 
     @app.route('/')
     def root():

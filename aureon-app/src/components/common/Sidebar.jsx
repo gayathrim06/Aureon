@@ -3,7 +3,7 @@ import { useAuth } from '../../context/AuthContext';
 import { 
   LayoutDashboard, Building, Users, Users2, FolderKanban, GitBranch, 
   Activity, FileText, Server, Bell, Settings, Calendar, Award, Code2, 
-  CheckSquare, GitPullRequest, User, Bug, Layers, ListTodo
+  CheckSquare, GitPullRequest, User, Bug, Layers, ListTodo, MessageSquare
 } from 'lucide-react';
 
 export const Sidebar = ({ activeTab, onSelectTab }) => {
@@ -35,6 +35,7 @@ export const Sidebar = ({ activeTab, onSelectTab }) => {
       { id: 'Backlog', label: 'Backlog', icon: ListTodo },
       { id: 'Sprints', label: 'Sprints', icon: Layers },
       { id: 'Tasks', label: 'Tasks', icon: CheckSquare },
+      { id: 'Chat', label: 'Team Chat', icon: MessageSquare },
       { id: 'Repositories', label: 'Repositories', icon: GitBranch },
       { id: 'CodeQuality', label: 'Code Quality', icon: Code2 },
       { id: 'AuditLogs', label: 'Audit Logs', icon: FileText },
@@ -52,6 +53,7 @@ export const Sidebar = ({ activeTab, onSelectTab }) => {
       { id: 'Sprints', label: 'Sprint Planning', icon: Layers },
       { id: 'Milestones', label: 'Milestones', icon: Award },
       { id: 'TeamMembers', label: 'Team Members', icon: Users },
+      { id: 'Chat', label: 'Team Chat', icon: MessageSquare },
       { id: 'Repository', label: 'Repository', icon: GitBranch },
       { id: 'CodeQuality', label: 'Code Quality', icon: Code2 },
       { id: 'ProjectHealth', label: 'Project Health', icon: Activity },
@@ -67,6 +69,7 @@ export const Sidebar = ({ activeTab, onSelectTab }) => {
       { id: 'Backlog', label: 'Backlog', icon: ListTodo },
       { id: 'SprintBoard', label: 'Sprint & Tasks', icon: Layers },
       { id: 'Developers', label: 'Developers', icon: Users },
+      { id: 'Chat', label: 'Team Chat', icon: MessageSquare },
       { id: 'Repository', label: 'Repository', icon: GitBranch },
       { id: 'CodeQuality', label: 'Code Quality', icon: Code2 },
       { id: 'ProjectHealth', label: 'Project Health', icon: Activity },
@@ -78,6 +81,7 @@ export const Sidebar = ({ activeTab, onSelectTab }) => {
     ROLE_DEV: [
       { id: 'Dashboard', label: 'Dashboard', icon: LayoutDashboard },
       { id: 'SprintTasks', label: 'Sprint & Tasks', icon: Layers },
+      { id: 'Chat', label: 'Developer Chat', icon: MessageSquare },
       { id: 'Repository', label: 'Repository', icon: GitBranch },
       { id: 'PullRequests', label: 'Pull Requests', icon: GitPullRequest },
       { id: 'Profile', label: 'Profile', icon: User },
@@ -89,6 +93,7 @@ export const Sidebar = ({ activeTab, onSelectTab }) => {
       { id: 'BugTracker', label: 'Bug Tracker', icon: Bug },
       { id: 'TestSuites', label: 'Test Suites', icon: Layers },
       { id: 'TestCases', label: 'Test Cases', icon: CheckSquare },
+      { id: 'Chat', label: 'Team Chat', icon: MessageSquare },
       { id: 'Projects', label: 'Projects', icon: FolderKanban },
       { id: 'Repository', label: 'Repository', icon: GitBranch },
       { id: 'Reports', label: 'Reports', icon: FileText },
@@ -156,5 +161,3 @@ export const Sidebar = ({ activeTab, onSelectTab }) => {
     </aside>
   );
 };
-
-

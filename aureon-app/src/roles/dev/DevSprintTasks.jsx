@@ -300,13 +300,23 @@ export const DevSprintTasks = ({ onShowToast }) => {
       <section className="bg-gradient-to-br from-indigo-900/10 via-purple-900/5 to-slate-900/10 dark:from-indigo-950/40 dark:via-purple-950/20 dark:to-slate-900/50 p-6 rounded-2xl border border-indigo-200/80 dark:border-indigo-900/50 shadow-sm relative overflow-hidden">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
           <div className="space-y-3 max-w-2xl">
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-indigo-100 text-indigo-800 dark:bg-indigo-900/60 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-700/50">
                 Current Sprint
               </span>
               {sprint && (
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/40">
                   {sprint.status || 'ACTIVE'}
+                </span>
+              )}
+              {sprint && (sprint.projectName || sprint.project_name || sprint.project) && (
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-purple-100 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-200 dark:border-purple-800/50 flex items-center gap-1">
+                  📁 Project: {sprint.projectName || sprint.project_name || sprint.project}
+                </span>
+              )}
+              {sprint && (sprint.team || sprint.team_name) && (
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-200 dark:border-blue-800/50 flex items-center gap-1">
+                  👥 Team: {sprint.team || sprint.team_name}
                 </span>
               )}
             </div>

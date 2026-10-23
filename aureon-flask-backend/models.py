@@ -1288,3 +1288,57 @@ class GitHubContributor(db.Model):
         }
 
 
+
+
+class ChatMessage(db.Model):
+    __tablename__ = 'tbl_chat_message'
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    channel_id = db.Column(db.String(100), default='general', nullable=False)
+    channel_type = db.Column(db.String(30), default='GENERAL', nullable=False)
+    project_id = db.Column(UUID(as_uuid=True), db.ForeignKey('tbl_project.id'), nullable=True)
+    team_id = db.Column(UUID(as_uuid=True), db.ForeignKey('tbl_team.id'), nullable=True)
+    sender_id = db.Column(UUID(as_uuid=True), db.ForeignKey('tbl_user.id'), nullable=True)
+    recipient_id = db.Column(UUID(as_uuid=True), db.ForeignKey('tbl_user.id'), nullable=True)
+    sender_name = db.Column(db.String(150), nullable=True)
+    sender_role = db.Column(db.String(50), nullable=True)
+    message = db.Column(db.Text, nullable=False)
+    message_type = db.Column(db.String(30), default='TEXT', nullable=False)
+    code_language = db.Column(db.String(50), nullable=True)
+    is_ai_response = db.Column(db.Boolean, default=False, nullable=False)
+    is_deleted = db.Column(db.Boolean, default=False, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    sender = db.relationship('User', foreign_keys=[sender_id])
+    recipient = db.relationship('User', foreign_keys=[recipient_id])
+    project = db.relationship('Project', foreign_keys=[project_id])
+    team = db.relationship('Team', foreign_keys=[team_id])
+
+    def to_dict(self):
+        u = self.sender or (User.query.get(self.sender_id) if self.sender_id else None)
+        r = self.recipient or (User.query.get(self.recipient_id) if self.recipient_id else None)
+        s_name = self.sender_name or (u.display_name if u else ('Aureon AI Copilot' if self.is_ai_response else 'Engineering Lead'))
+        s_role = self.sender_role or (u.role_name if u else ('AI_COPILOT' if self.is_ai_response else 'ROLE_DEV'))
+
+        return {
+            'id': str(self.id),
+            'channel_id': self.channel_id,
+            'channel_type': self.channel_type,
+            'project_id': str(self.project_id) if self.project_id else None,
+            'project_name': self.project.name if self.project else None,
+            'team_id': str(self.team_id) if self.team_id else None,
+            'team_name': self.team.name if self.team else None,
+            'sender_id': str(self.sender_id) if self.sender_id else None,
+            'sender_name': s_name,
+            'sender_email': u.email if u else ('copilot@aureon.internal' if self.is_ai_response else ''),
+            'sender_role': s_role,
+            'recipient_id': str(self.recipient_id) if self.recipient_id else None,
+            'recipient_name': r.display_name if r else None,
+            'message': self.message,
+            'message_type': self.message_type,
+            'code_language': self.code_language,
+            'is_ai_response': bool(self.is_ai_response),
+            'is_deleted': self.is_deleted,
+            'created_at': self.created_at.isoformat() if self.created_at else '',
+            'formatted_time': self.created_at.strftime('%I:%M %p') if self.created_at else ''
+        }

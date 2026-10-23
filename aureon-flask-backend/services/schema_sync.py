@@ -78,7 +78,33 @@ def sync_db_schema():
                         engineering_risk_score FLOAT,
                         metrics_breakdown TEXT,
                         calculated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                    );"""
+                    );""",
+                    """CREATE TABLE IF NOT EXISTS tbl_chat_message (
+                        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+                        channel_id VARCHAR(100) NOT NULL DEFAULT 'general',
+                        channel_type VARCHAR(30) NOT NULL DEFAULT 'GENERAL',
+                        project_id UUID REFERENCES tbl_project(id),
+                        team_id UUID REFERENCES tbl_team(id),
+                        sender_id UUID REFERENCES tbl_user(id),
+                        recipient_id UUID REFERENCES tbl_user(id),
+                        sender_name VARCHAR(150),
+                        sender_role VARCHAR(50),
+                        message TEXT NOT NULL,
+                        message_type VARCHAR(30) NOT NULL DEFAULT 'TEXT',
+                        code_language VARCHAR(50),
+                        is_ai_response BOOLEAN NOT NULL DEFAULT FALSE,
+                        is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    );""",
+                    "ALTER TABLE tbl_chat_message ADD COLUMN IF NOT EXISTS recipient_id UUID;",
+                    "ALTER TABLE tbl_chat_message ADD COLUMN IF NOT EXISTS sender_name VARCHAR(150);",
+                    "ALTER TABLE tbl_chat_message ADD COLUMN IF NOT EXISTS sender_role VARCHAR(50);",
+                    "ALTER TABLE tbl_chat_message ADD COLUMN IF NOT EXISTS is_ai_response BOOLEAN DEFAULT FALSE;",
+                    "ALTER TABLE tbl_chat_message ALTER COLUMN sender_id DROP NOT NULL;",
+                    "CREATE INDEX IF NOT EXISTS idx_chat_channel ON tbl_chat_message(channel_id);",
+                    "CREATE INDEX IF NOT EXISTS idx_chat_recipient ON tbl_chat_message(recipient_id);",
+                    "CREATE INDEX IF NOT EXISTS idx_chat_sender ON tbl_chat_message(sender_id);"
                 ]
                 for q in pg_queries:
                     try:
@@ -137,6 +163,12 @@ def sync_db_schema():
                         ('updated_at', 'DATETIME'),
                         ('is_active', 'BOOLEAN DEFAULT 1'),
                         ('is_deleted', 'BOOLEAN DEFAULT 0')
+                    ],
+                    'tbl_chat_message': [
+                        ('recipient_id', 'VARCHAR(36)'),
+                        ('sender_name', 'VARCHAR(150)'),
+                        ('sender_role', 'VARCHAR(50)'),
+                        ('is_ai_response', 'BOOLEAN DEFAULT 0')
                     ]
                 }
 

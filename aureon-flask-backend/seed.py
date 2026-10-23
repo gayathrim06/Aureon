@@ -1,5 +1,5 @@
 from extensions import db
-from models import Role, User, Project, Team, TeamMember
+from models import Role, User, Project, Team, TeamMember, ChatMessage
 from werkzeug.security import generate_password_hash
 import uuid
 
@@ -172,4 +172,33 @@ def seed_database():
                     db.session.add(TeamMember(team_id=team.id, user_id=m.id))
 
     db.session.commit()
-    print("[DATABASE SEED] Successfully seeded 20 real PostgreSQL users, teams, and member allocations into Aureon database tables.")
+
+    # 5. Seed Initial Developer Chat Messages if empty
+    try:
+        if ChatMessage.query.count() == 0:
+            david_lead = User.query.filter_by(email='david.c@aureon.com').first()
+            sainu_dev = User.query.filter_by(email='sainu@aureon.com').first()
+            ram_dev = User.query.filter_by(email='ram.kumar@aureon.com').first()
+            admin_cto = User.query.filter_by(email='admin@aureon.com').first()
+
+            starter_messages = [
+                (admin_cto, "Welcome to Aureon Developer Chat! 🚀 This workspace connects engineers, leads, and PMs for sprint syncs, code reviews, and technical discussions.", "TEXT", None),
+                (david_lead, "Sprint tasks and PR reviews are tracked here. Feel free to share code snippets using the code block toggle or raise any blockers directly.", "TEXT", None),
+                (sainu_dev, "Here is the utility helper function for standardizing ISO dates across frontend dashboard widgets:\n\nconst formatSprintDate = (d) => new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' }).format(new Date(d));", "CODE", "javascript"),
+                (ram_dev, "Thanks @sainu! Clean helper. I am finishing the responsive Kanban board alignment today. PR will be up soon.", "TEXT", None)
+            ]
+            for sender, text_body, msg_type, lang in starter_messages:
+                if sender:
+                    db.session.add(ChatMessage(
+                        channel_id='general',
+                        channel_type='GENERAL',
+                        sender_id=sender.id,
+                        message=text_body,
+                        message_type=msg_type,
+                        code_language=lang
+                    ))
+            db.session.commit()
+    except Exception as e:
+        print(f"[SEED CHAT ERROR] {e}")
+
+    print("[DATABASE SEED] Successfully seeded 20 real PostgreSQL users, teams, member allocations, and developer chat into Aureon database tables.")

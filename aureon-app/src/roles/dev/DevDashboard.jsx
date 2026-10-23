@@ -3,7 +3,7 @@ import { Breadcrumb } from '../../components/common/Breadcrumb';
 import { useAuth } from '../../context/AuthContext';
 import { 
   CheckSquare, Clock, AlertTriangle, CheckCircle2, GitPullRequest, 
-  GitBranch, Layers, ArrowRight, Code2, AlertCircle, RefreshCw, Sparkles
+  GitBranch, Layers, ArrowRight, Code2, AlertCircle, RefreshCw, Sparkles, MessageSquare
 } from 'lucide-react';
 import { getAuthHeaders, API_BASE_URL } from '../../services/apiClient';
 
@@ -203,6 +203,15 @@ export const DevDashboard = ({ onNavigate }) => {
           >
             <GitBranch className="w-3.5 h-3.5" /> 
             Git Repository
+          </button>
+
+          <button
+            onClick={() => handleNav('Chat')}
+            className="cursor-pointer flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-white/20 hover:bg-white/30 text-white text-xs font-semibold border border-white/30 shadow-md transition-all hover:scale-105 active:scale-95"
+            title="Open Developer Chat & Squad Hub"
+          >
+            <MessageSquare className="w-3.5 h-3.5" /> 
+            Developer Chat
           </button>
 
           <button

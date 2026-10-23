@@ -47,6 +47,7 @@ import { LeadRepositoryView } from '../roles/lead/LeadRepositoryView';
 import { CodeQualityHub } from '../roles/lead/CodeQualityHub';
 import { LeadProjectHealth } from '../roles/lead/LeadProjectHealth';
 import { LeadReports } from '../roles/lead/LeadReports';
+import { LeadTeamChat } from '../roles/lead/LeadTeamChat';
 
 // ─── Developer Role Pages (8 total) ──────────────
 import { DevDashboard } from '../roles/dev/DevDashboard';
@@ -58,6 +59,7 @@ import { DevPullRequests } from '../roles/dev/DevPullRequests';
 import { DevCodeIssues } from '../roles/dev/DevCodeIssues';
 import { DevProfile } from '../roles/dev/DevProfile';
 import { DevNotifications } from '../roles/dev/DevNotifications';
+import { DevChat } from '../roles/dev/DevChat';
 
 // ─── QA Engineer Role Pages (8 total) ────────────
 import { QaDashboard } from '../roles/qa/QaDashboard';
@@ -148,6 +150,12 @@ export const AppRouter = () => {
     systemlogs: 'SystemLogs',
     compliance: 'Reports',
     settings: 'Settings',
+    chat: 'Chat',
+    teamchat: 'Chat',
+    leadchat: 'Chat',
+    copilot: 'Chat',
+    developerchat: 'Chat',
+    devchat: 'Chat',
     bugtracker: 'BugTracker',
     testsuites: 'TestSuites',
     testcases: 'TestCases',
@@ -276,6 +284,7 @@ export const AppRouter = () => {
         case 'Reports': return <ComplianceReports onNavigate={navigateTab} />;
         case 'Notifications': return <NotificationsView onNavigate={navigateTab} />;
         case 'Profile': return <UserProfile onNavigate={navigateTab} />;
+        case 'Chat': return <LeadTeamChat onShowToast={showToast} onNavigate={navigateTab} />;
         case 'Settings': return <PlatformSettings onShowToast={showToast} onNavigate={navigateTab} />;
         default: return <AdminDashboard onNavigate={navigateTab} />;
       }
@@ -295,6 +304,7 @@ export const AppRouter = () => {
         case 'CodeQuality': return <CodeQualityHub onNavigate={navigateTab} />;
         case 'ProjectHealth': return <AiHealthInsights onNavigate={navigateTab} />;
         case 'Reports': return <DeliveryReports onNavigate={navigateTab} />;
+        case 'Chat': return <LeadTeamChat onShowToast={showToast} onNavigate={navigateTab} />;
         case 'Calendar': return <ReleaseCalendar onNavigate={navigateTab} />;
         case 'Notifications': return <PmNotifications onNavigate={navigateTab} />;
         case 'Profile': return <UserProfile onNavigate={navigateTab} />;
@@ -311,6 +321,7 @@ export const AppRouter = () => {
         case 'SprintTasks':
         case 'Tasks': return <LeadSprintBoard onShowToast={showToast} onNavigate={navigateTab} initialView={tab === 'Tasks' ? 'table' : 'kanban'} />;
         case 'Developers': return <DeveloperRoster onShowToast={showToast} onNavigate={navigateTab} />;
+        case 'Chat': return <LeadTeamChat onShowToast={showToast} onNavigate={navigateTab} />;
         case 'Repository': return <LeadRepositoryView onNavigate={navigateTab} />;
         case 'CodeQuality': return <CodeQualityHub onNavigate={navigateTab} />;
         case 'ProjectHealth': return <LeadProjectHealth onNavigate={navigateTab} />;
@@ -329,6 +340,7 @@ export const AppRouter = () => {
         case 'SprintBoard':
         case 'Sprint': return <DevSprintTasks onShowToast={showToast} onNavigate={navigateTab} />;
         case 'Repository': return <DevRepositoryView onNavigate={navigateTab} />;
+        case 'Chat': return <DevChat onShowToast={showToast} onNavigate={navigateTab} />;
         case 'PullRequests': return <DevPullRequests onNavigate={navigateTab} />;
         case 'CodeIssues': return <DevSprintTasks onShowToast={showToast} onNavigate={navigateTab} />;
         case 'Profile': return <UserProfile onNavigate={navigateTab} />;

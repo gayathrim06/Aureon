@@ -6,10 +6,13 @@ import { logAuditEvent } from '../../services/auditLogger';
 import { Award, CheckCircle2, AlertTriangle, Clock, Plus, Filter, FolderKanban, Target, ShieldCheck, Flag } from 'lucide-react';
 import { getAuthHeaders, API_BASE_URL } from '../../services/apiClient';
 
+// Live PostgreSQL milestones and projects directory
+
 export const MilestoneTracker = ({ onShowToast }) => {
   const { user } = useAuth();
   const [milestones, setMilestones] = useState([]);
   const [projectsList, setProjectsList] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [projectFilter, setProjectFilter] = useState('ALL');
 
@@ -27,27 +30,49 @@ export const MilestoneTracker = ({ onShowToast }) => {
     const headers = getAuthHeaders();
 
     try {
-      const pRes = await fetch(`${API_BASE_URL}/projects/`, { headers });
-      if (pRes.ok) {
+      const [pRes, sRes] = await Promise.all([
+        fetch(`${API_BASE_URL}/projects/`, { headers }).catch(() => null),
+        fetch(`${API_BASE_URL}/sprints/`, { headers }).catch(() => null)
+      ]);
+
+      let projs = [];
+      if (pRes && pRes.ok) {
         const pData = await pRes.json();
-        const projs = pData.projects || [];
-        setProjectsList(projs);
-        if (projs.length > 0 && !formData.projectId) {
+        if (pData.projects && pData.projects.length > 0) {
+          projs = pData.projects;
+          setProjectsList(projs);
           setFormData(prev => ({
             ...prev,
-            projectId: projs[0].id,
-            projectName: projs[0].name
+            projectId: prev.projectId || projs[0].id,
+            projectName: prev.projectName || projs[0].name
           }));
         }
       }
-    } catch (err) {}
 
-    // Default Baseline Milestones
-    setMilestones([
-      { id: 'MS-101', name: 'Phase 1: Core System Architecture & Auth Gate', category: 'Architecture Phase', project_name: 'Aureon SaaS', dueDate: '2026-09-30', status: 'ON_TRACK', progress: 65, completedTasks: 13, tasks: 20 },
-      { id: 'MS-102', name: 'Phase 2: SonarQube & Vulnerability Integration', category: 'Security Gate', project_name: 'Aureon SaaS', dueDate: '2026-10-31', status: 'ON_TRACK', progress: 30, completedTasks: 6, tasks: 20 },
-      { id: 'MS-103', name: 'Phase 3: Production Release Candidate 1.0', category: 'Release Gate', project_name: 'Aureon SaaS', dueDate: '2026-11-30', status: 'ON_TRACK', progress: 0, completedTasks: 0, tasks: 25 }
-    ]);
+      if (sRes && sRes.ok) {
+        const sData = await sRes.json();
+        const sprints = sData.sprints || [];
+        const fetchedMilestones = sprints.map((s) => ({
+          id: s.sprint_code || s.code || `MS-${String(s.id).slice(0, 4).toUpperCase()}`,
+          real_id: s.id,
+          name: s.name,
+          category: s.epic_category || (s.goal ? 'Sprint Milestone' : 'Release Gate'),
+          project_id: s.project_id || s.projectId,
+          project_name: s.project_name || s.projectName || s.project || (projs.find(p => p.id === s.project_id)?.name) || 'Project',
+          dueDate: s.end_date || s.endDate || '2026-11-30',
+          status: s.status === 'COMPLETED' ? 'ON_TRACK' : ((s.overdue_tasks > 0 || s.overdueTasks > 0) ? 'AT_RISK' : 'ON_TRACK'),
+          progress: Math.round(Number(s.completion_percentage || s.progress || 0)),
+          completedTasks: Number(s.completed_tasks || s.completedTasks || 0),
+          tasks: Number(s.total_tasks || s.totalTasks || 0),
+          deliverables: s.goal || s.sprint_goal || ''
+        }));
+        setMilestones(fetchedMilestones);
+      }
+    } catch (err) {
+      console.error('Error fetching milestones from database:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -63,40 +88,67 @@ export const MilestoneTracker = ({ onShowToast }) => {
     }));
   };
 
-  const handleCreateMilestone = (e) => {
+  const handleCreateMilestone = async (e) => {
     e.preventDefault();
     if (!formData.name.trim()) return;
 
-    const newMs = {
+    const targetProject = projectsList.find(p => p.id === formData.projectId);
+    const projName = formData.projectName || targetProject?.name || 'Project';
+
+    const localMs = {
       id: `MS-${Math.floor(100 + Math.random() * 900)}`,
       name: formData.name,
       category: formData.category,
       project_id: formData.projectId,
-      project_name: formData.projectName || (projectsList.find(p => p.id === formData.projectId)?.name || 'Aureon SaaS'),
+      project_name: projName,
       dueDate: formData.dueDate,
       status: 'ON_TRACK',
       progress: 0,
       completedTasks: 0,
-      tasks: 10,
+      tasks: 0,
       deliverables: formData.targetDeliverables
     };
 
-    setMilestones([newMs, ...milestones]);
+    setMilestones(prev => [localMs, ...prev]);
+
+    // Persist as a milestone sprint in PostgreSQL
+    try {
+      await fetch(`${API_BASE_URL}/sprints/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        body: JSON.stringify({
+          name: formData.name,
+          project_id: formData.projectId,
+          goal: formData.targetDeliverables || 'Strategic milestone deliverables.',
+          startDate: new Date().toISOString().split('T')[0],
+          endDate: formData.dueDate || '2026-11-30',
+          status: 'PLANNED',
+          epic_category: formData.category
+        })
+      });
+      fetchProjectsAndMilestones();
+    } catch (err) {
+      console.error('Error persisting milestone:', err);
+    }
 
     logAuditEvent({
       user,
       role: user?.role,
       action: 'MILESTONE_CREATE',
-      resource: `Created Milestone Checkpoint: ${newMs.name} for ${newMs.project_name}`,
+      resource: `Created Milestone Checkpoint: ${localMs.name} for ${projName}`,
       status: 'SUCCESS'
     });
 
-    if (onShowToast) onShowToast({ type: 'success', title: 'Milestone Created', message: `${newMs.name} added to project roadmap.` });
+    if (onShowToast) onShowToast({ type: 'success', title: 'Milestone Created', message: `${localMs.name} added to project roadmap.` });
     setIsModalOpen(false);
   };
 
   const filteredMilestones = milestones.filter(m => {
-    return projectFilter === 'ALL' || m.project_id === projectFilter || m.project_name === projectFilter;
+    if (projectFilter === 'ALL') return true;
+    const target = String(projectFilter).toLowerCase();
+    const pid = String(m.project_id || '').toLowerCase();
+    const pname = String(m.project_name || '').toLowerCase();
+    return pid === target || pname === target;
   });
 
   const statusIcons = {
