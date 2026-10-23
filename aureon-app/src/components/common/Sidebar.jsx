@@ -3,7 +3,7 @@ import { useAuth } from '../../context/AuthContext';
 import { 
   LayoutDashboard, Building, Users, Users2, FolderKanban, GitBranch, 
   Activity, FileText, Server, Bell, Settings, Calendar, Award, Code2, 
-  CheckSquare, GitPullRequest, AlertCircle, User, Cpu, Bug, FileCheck, Layers, Sparkles, ListTodo
+  CheckSquare, GitPullRequest, User, Bug, Layers, ListTodo
 } from 'lucide-react';
 
 export const Sidebar = ({ activeTab, onSelectTab }) => {
@@ -128,7 +128,7 @@ export const Sidebar = ({ activeTab, onSelectTab }) => {
         </div>
 
         {/* Sidebar Nav Items */}
-        <div className="p-3 space-y-1 overflow-y-auto max-h-[calc(100vh-8rem)]">
+        <div className="p-3 space-y-1 overflow-y-auto max-h-[calc(100vh-4.5rem)]">
           <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
             Navigation ({navItems.length} modules)
           </div>
@@ -151,16 +151,6 @@ export const Sidebar = ({ activeTab, onSelectTab }) => {
               </button>
             );
           })}
-        </div>
-      </div>
-
-      {/* Role Footer */}
-      <div className="p-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/40">
-        <div className="flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-emerald-500 status-pulse" />
-          <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">
-            RBAC Governance: ACTIVE
-          </span>
         </div>
       </div>
     </aside>
