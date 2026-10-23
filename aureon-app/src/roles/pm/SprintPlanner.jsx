@@ -10,27 +10,67 @@ import { TaskSkillRecommendationModal } from '../../components/common/TaskSkillR
 
 export const SprintPlanner = ({ onShowToast }) => {
   const { user } = useAuth();
-  const [sprints, setSprints] = useState([]);
-  const [projectsList, setProjectsList] = useState([]);
-  const [teamsList, setTeamsList] = useState([]);
-  const [developersList, setDevelopersList] = useState([]);
-  const [tasks, setTasks] = useState([]);
+
+  // Instant local/session caching to ensure zero empty flash on reload/cold start
+  const [sprints, setSprints] = useState(() => {
+    try {
+      const c = sessionStorage.getItem('aureon_cached_sprints');
+      return c ? JSON.parse(c) : [];
+    } catch { return []; }
+  });
+  const [projectsList, setProjectsList] = useState(() => {
+    try {
+      const c = sessionStorage.getItem('aureon_cached_projects');
+      return c ? JSON.parse(c) : [];
+    } catch { return []; }
+  });
+  const [teamsList, setTeamsList] = useState(() => {
+    try {
+      const c = sessionStorage.getItem('aureon_cached_teams');
+      return c ? JSON.parse(c) : [];
+    } catch { return []; }
+  });
+  const [developersList, setDevelopersList] = useState(() => {
+    try {
+      const c = sessionStorage.getItem('aureon_cached_users');
+      return c ? JSON.parse(c) : [];
+    } catch { return []; }
+  });
+  const [tasks, setTasks] = useState(() => {
+    try {
+      const c = sessionStorage.getItem('aureon_cached_tasks');
+      return c ? JSON.parse(c) : [];
+    } catch { return []; }
+  });
+
+  const [loading, setLoading] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isAddTaskModalOpen, setIsAddTaskModalOpen] = useState(false);
-  const [selectedSprint, setSelectedSprint] = useState(null);
+  const [selectedSprint, setSelectedSprint] = useState(() => {
+    try {
+      const c = sessionStorage.getItem('aureon_cached_sprints');
+      if (c) {
+        const parsed = JSON.parse(c);
+        return parsed.length > 0 ? parsed[0] : null;
+      }
+      return null;
+    } catch { return null; }
+  });
 
-  // Skill Recommendation Modal State
-  const [recommendingTask, setRecommendingTask] = useState(null);
+  // Filters
+  const [projectFilter, setProjectFilter] = useState('ALL');
+  const [teamFilter, setTeamFilter] = useState('ALL');
+  const [selectedMemberFilter, setSelectedMemberFilter] = useState(null);
 
   // Multi-Task / Batch Sprint Assignment State
   const [selectedTaskIds, setSelectedTaskIds] = useState([]);
   const [batchAssigneeId, setBatchAssigneeId] = useState('');
   const [isBatchAssigning, setIsBatchAssigning] = useState(false);
 
-  // Filters
-  const [projectFilter, setProjectFilter] = useState('ALL');
-  const [teamFilter, setTeamFilter] = useState('ALL');
-  const [selectedMemberFilter, setSelectedMemberFilter] = useState(null);
+    // Skill Recommendation Modal State
+  const [recommendingTask, setRecommendingTask] = useState(null);
+
+
 
   // Modal Form State - Strategic Sprint Milestone
   const [formData, setFormData] = useState({
@@ -57,8 +97,11 @@ export const SprintPlanner = ({ onShowToast }) => {
     due_date: '2026-09-25'
   });
 
-  const fetchSprintData = async () => {
+  const fetchSprintData = async (retryCount = 0) => {
     const headers = getAuthHeaders();
+    if (!projectsList.length && !sprints.length) {
+      setLoading(true);
+    }
 
     try {
       const [spRes, prRes, tmRes, tkRes, usRes] = await Promise.all([
@@ -69,62 +112,92 @@ export const SprintPlanner = ({ onShowToast }) => {
         fetch(`${API_BASE_URL}/users/`, { headers })
       ]);
 
+      let hadError = false;
+
       if (prRes.ok) {
         const pData = await prRes.json();
         const projs = pData.projects || [];
-        setProjectsList(projs);
-        if (projs.length > 0 && !formData.projectId) {
-          setFormData(prev => ({
-            ...prev,
-            projectId: projs[0].id,
-            projectName: projs[0].name
-          }));
+        if (projs.length > 0) {
+          setProjectsList(projs);
+          sessionStorage.setItem('aureon_cached_projects', JSON.stringify(projs));
+          if (!formData.projectId) {
+            setFormData(prev => ({
+              ...prev,
+              projectId: projs[0].id,
+              projectName: projs[0].name
+            }));
+          }
         }
+      } else {
+        hadError = true;
       }
 
       if (tmRes.ok) {
         const tData = await tmRes.json();
         const teams = tData.teams || [];
-        setTeamsList(teams);
-        if (teams.length > 0 && !formData.assignedTeam) {
-          setFormData(prev => ({
-            ...prev,
-            assignedTeam: teams[0].name,
-            scrumMaster: teams[0].lead_name || 'Team Lead'
-          }));
+        if (teams.length > 0) {
+          setTeamsList(teams);
+          sessionStorage.setItem('aureon_cached_teams', JSON.stringify(teams));
+          if (!formData.assignedTeam) {
+            setFormData(prev => ({
+              ...prev,
+              assignedTeam: teams[0].name,
+              scrumMaster: teams[0].lead_name || 'Team Lead'
+            }));
+          }
         }
+      } else {
+        hadError = true;
       }
 
       if (usRes.ok) {
         const uData = await usRes.json();
         const users = uData.users || [];
-        setDevelopersList(users);
-        if (users.length > 0 && !taskFormData.assigned_to) {
-          setTaskFormData(prev => ({ ...prev, assigned_to: users[0].id }));
+        if (users.length > 0) {
+          setDevelopersList(users);
+          sessionStorage.setItem('aureon_cached_users', JSON.stringify(users));
+          if (!taskFormData.assigned_to) {
+            setTaskFormData(prev => ({ ...prev, assigned_to: users[0].id }));
+          }
         }
       }
 
       if (tkRes.ok) {
         const tkData = await tkRes.json();
-        setTasks(tkData.tasks || []);
+        const tks = tkData.tasks || [];
+        setTasks(tks);
+        sessionStorage.setItem('aureon_cached_tasks', JSON.stringify(tks));
       }
 
       if (spRes.ok) {
         const sData = await spRes.json();
         const apiSprints = sData.sprints || [];
-        setSprints(apiSprints);
         if (apiSprints.length > 0) {
+          setSprints(apiSprints);
+          sessionStorage.setItem('aureon_cached_sprints', JSON.stringify(apiSprints));
           setSelectedSprint(prev => {
             if (prev) {
-              const matched = apiSprints.find(s => s.id === prev.id);
+              const matched = apiSprints.find(s => String(s.id) === String(prev.id));
               return matched || apiSprints[0];
             }
             return apiSprints[0];
           });
         }
+      } else {
+        hadError = true;
+      }
+
+      // If backend was cold-starting or restarting, retry automatically up to 3 times
+      if (hadError && retryCount < 3) {
+        setTimeout(() => fetchSprintData(retryCount + 1), 2000);
       }
     } catch (err) {
-      console.error('Failed to load sprint planner data:', err);
+      console.warn(`Sprint data fetch retry ${retryCount + 1}/3...`, err);
+      if (retryCount < 3) {
+        setTimeout(() => fetchSprintData(retryCount + 1), 2000);
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -132,7 +205,7 @@ export const SprintPlanner = ({ onShowToast }) => {
     fetchSprintData();
   }, []);
 
-  // Reset member filter on sprint change
+    // Reset member filter on sprint change
   useEffect(() => {
     setSelectedMemberFilter(null);
   }, [selectedSprint?.id]);
@@ -743,32 +816,6 @@ export const SprintPlanner = ({ onShowToast }) => {
         </div>
       </div>
 
-      {/* Empty State when no sprint matches selected filter */}
-      {!selectedSprint && (
-        <div className="p-8 rounded-3xl bg-white dark:bg-slate-900 warm:bg-[#f3e8d2] border border-slate-200 dark:border-slate-800 text-center space-y-3">
-          <Layers className="w-10 h-10 text-indigo-500 mx-auto" />
-          <h3 className="text-base font-bold text-slate-900 dark:text-white">
-            No Sprint Milestones for {projectFilter !== 'ALL' ? (projectsList.find(p => p.id === projectFilter)?.name || 'Selected Project') : 'Current Filter'}
-          </h3>
-          <p className="text-xs text-slate-500 max-w-md mx-auto">
-            There are currently no active sprints matching this selection. Create a new strategic sprint to begin committing story points and allocating developers.
-          </p>
-          <button
-            type="button"
-            onClick={() => {
-              if (projectFilter !== 'ALL') {
-                const foundP = projectsList.find(p => p.id === projectFilter);
-                setFormData(prev => ({ ...prev, projectId: projectFilter, projectName: foundP?.name || '' }));
-              }
-              setIsModalOpen(true);
-            }}
-            className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs cursor-pointer shadow-xs transition"
-          >
-            Create Sprint for this Project
-          </button>
-        </div>
-      )}
-
       {/* Burndown Velocity Chart Banner */}
       {selectedSprint && (
         <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 warm:bg-[#f3e8d2] border border-slate-200 dark:border-slate-800 warm:border-[#cbb68e] shadow-sm space-y-4">
@@ -1148,15 +1195,26 @@ export const SprintPlanner = ({ onShowToast }) => {
       {filteredSprints.length === 0 ? (
         <div className="p-12 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-center space-y-3">
           <Layers className="w-12 h-12 text-slate-300 dark:text-slate-700 mx-auto" />
-          <h3 className="text-base font-extrabold">No Sprint Milestones Created</h3>
+          <h3 className="text-base font-extrabold text-slate-900 dark:text-white">
+            {projectFilter !== 'ALL' 
+              ? `No Sprint Milestones Created for ${projectsList.find(p => p.id === projectFilter)?.name || 'Selected Project'}` 
+              : 'No Sprint Milestones Created'}
+          </h3>
           <p className="text-xs text-slate-500 max-w-md mx-auto">
             Click <strong>"Create Strategic Sprint Milestone"</strong> to commit story points capacity, define timeboxed milestones, and assign teams.
           </p>
           <button
-            onClick={() => setIsModalOpen(true)}
-            className="px-4 py-2 rounded-xl bg-indigo-600 text-white font-bold text-xs"
+            type="button"
+            onClick={() => {
+              if (projectFilter !== 'ALL') {
+                const foundP = projectsList.find(p => p.id === projectFilter);
+                setFormData(prev => ({ ...prev, projectId: projectFilter, projectName: foundP?.name || '' }));
+              }
+              setIsModalOpen(true);
+            }}
+            className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs cursor-pointer shadow-xs transition"
           >
-            Create First Sprint Milestone
+            Create Sprint Milestone
           </button>
         </div>
       ) : (
