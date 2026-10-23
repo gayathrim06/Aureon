@@ -549,11 +549,93 @@ export const SprintPlanner = ({ onShowToast }) => {
     setIsModalOpen(false);
   };
 
-  const filteredSprints = sprints.filter(sp => {
-    const matchProj = projectFilter === 'ALL' || sp.project_id === projectFilter || sp.project_name === projectFilter;
-    const matchTeam = teamFilter === 'ALL' || sp.assigned_team === teamFilter;
-    return matchProj && matchTeam;
-  });
+  // Robust case-insensitive project and team matching
+  const filteredSprints = useMemo(() => {
+    return sprints.filter(sp => {
+      const pid = String(sp.project_id || sp.projectId || '').toLowerCase();
+      const pname = String(sp.project_name || sp.projectName || sp.project || '').toLowerCase();
+      const targetP = String(projectFilter).toLowerCase();
+      const matchProj = projectFilter === 'ALL' || pid === targetP || pname === targetP;
+
+      const tid = String(sp.team_id || sp.teamId || '').toLowerCase();
+      const tname = String(sp.assigned_team || sp.team_name || sp.team || '').toLowerCase();
+      const targetT = String(teamFilter).toLowerCase();
+      const matchTeam = teamFilter === 'ALL' || tid === targetT || tname === targetT;
+
+      return matchProj && matchTeam;
+    });
+  }, [sprints, projectFilter, teamFilter]);
+
+  // Synchronize selectedSprint whenever filteredSprints change so the active view NEVER stays stuck
+  useEffect(() => {
+    if (filteredSprints.length > 0) {
+      const isCurrentInFiltered = selectedSprint && filteredSprints.some(s => String(s.id) === String(selectedSprint.id));
+      if (!isCurrentInFiltered) {
+        setSelectedSprint(filteredSprints[0]);
+        setSelectedMemberFilter(null);
+      }
+    } else if (sprints.length > 0) {
+      setSelectedSprint(null);
+      setSelectedMemberFilter(null);
+    }
+  }, [filteredSprints]);
+
+  const handleProjectFilterChange = (newProj) => {
+    setProjectFilter(newProj);
+    setSelectedMemberFilter(null);
+
+    const matching = sprints.filter(sp => {
+      if (newProj === 'ALL') return true;
+      const pid = String(sp.project_id || sp.projectId || '').toLowerCase();
+      const pname = String(sp.project_name || sp.projectName || sp.project || '').toLowerCase();
+      const target = String(newProj).toLowerCase();
+      return pid === target || pname === target;
+    });
+
+    if (matching.length > 0) {
+      // Check if teamFilter still allows any matching sprint
+      const teamMatch = matching.find(sp => {
+        if (teamFilter === 'ALL') return true;
+        const tid = String(sp.team_id || sp.teamId || '').toLowerCase();
+        const tname = String(sp.assigned_team || sp.team_name || sp.team || '').toLowerCase();
+        return tid === String(teamFilter).toLowerCase() || tname === String(teamFilter).toLowerCase();
+      });
+
+      if (teamMatch) {
+        setSelectedSprint(teamMatch);
+      } else {
+        setTeamFilter('ALL');
+        setSelectedSprint(matching[0]);
+      }
+    } else {
+      setSelectedSprint(null);
+    }
+  };
+
+  const handleTeamFilterChange = (newTeam) => {
+    setTeamFilter(newTeam);
+    setSelectedMemberFilter(null);
+
+    const matching = sprints.filter(sp => {
+      const pid = String(sp.project_id || sp.projectId || '').toLowerCase();
+      const pname = String(sp.project_name || sp.projectName || sp.project || '').toLowerCase();
+      const targetP = String(projectFilter).toLowerCase();
+      const matchP = projectFilter === 'ALL' || pid === targetP || pname === targetP;
+
+      const tid = String(sp.team_id || sp.teamId || '').toLowerCase();
+      const tname = String(sp.assigned_team || sp.team_name || sp.team || '').toLowerCase();
+      const targetT = String(newTeam).toLowerCase();
+      const matchT = newTeam === 'ALL' || tid === targetT || tname === targetT;
+
+      return matchP && matchT;
+    });
+
+    if (matching.length > 0) {
+      setSelectedSprint(matching[0]);
+    } else {
+      setSelectedSprint(null);
+    }
+  };
 
   const selectedSprintTasks = selectedSprint 
     ? tasks.filter(t => (t.sprint_id && String(t.sprint_id) === String(selectedSprint.id)) || (t.sprint_name && t.sprint_name === selectedSprint.name))
@@ -609,8 +691,8 @@ export const SprintPlanner = ({ onShowToast }) => {
             <label className="text-[10px] font-bold text-slate-500 uppercase mr-2">Project Roadmap:</label>
             <select
               value={projectFilter}
-              onChange={(e) => setProjectFilter(e.target.value)}
-              className="p-1.5 px-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 text-xs font-bold"
+              onChange={(e) => handleProjectFilterChange(e.target.value)}
+              className="p-1.5 px-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 text-xs font-bold cursor-pointer"
             >
               <option value="ALL">All Projects ({projectsList.length})</option>
               {projectsList.map(p => (
@@ -623,17 +705,69 @@ export const SprintPlanner = ({ onShowToast }) => {
             <label className="text-[10px] font-bold text-slate-500 uppercase mr-2">Scrum Team:</label>
             <select
               value={teamFilter}
-              onChange={(e) => setTeamFilter(e.target.value)}
-              className="p-1.5 px-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 text-xs font-bold"
+              onChange={(e) => handleTeamFilterChange(e.target.value)}
+              className="p-1.5 px-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 text-xs font-bold cursor-pointer"
             >
-              <option value="ALL">All Teams</option>
+              <option value="ALL">All Teams ({teamsList.length})</option>
               {teamsList.map(t => (
                 <option key={t.id} value={t.name}>{t.name}</option>
               ))}
             </select>
           </div>
+
+          <div>
+            <label className="text-[10px] font-bold text-slate-500 uppercase mr-2">Active Sprint Milestone:</label>
+            <select
+              value={selectedSprint?.id || ''}
+              onChange={(e) => {
+                const found = sprints.find(s => String(s.id) === String(e.target.value));
+                if (found) {
+                  setSelectedSprint(found);
+                  setSelectedMemberFilter(null);
+                }
+              }}
+              disabled={filteredSprints.length === 0}
+              className="p-1.5 px-3 rounded-xl border border-indigo-400 dark:border-indigo-600 bg-indigo-50/80 dark:bg-indigo-950/80 text-indigo-900 dark:text-indigo-200 text-xs font-bold cursor-pointer shadow-xs"
+            >
+              {filteredSprints.length === 0 ? (
+                <option value="">No Sprints for Selection</option>
+              ) : (
+                filteredSprints.map(s => (
+                  <option key={s.id} value={s.id}>
+                    ⚡ {s.name} [{s.project_name || s.projectName || 'Project'}]
+                  </option>
+                ))
+              )}
+            </select>
+          </div>
         </div>
       </div>
+
+      {/* Empty State when no sprint matches selected filter */}
+      {!selectedSprint && (
+        <div className="p-8 rounded-3xl bg-white dark:bg-slate-900 warm:bg-[#f3e8d2] border border-slate-200 dark:border-slate-800 text-center space-y-3">
+          <Layers className="w-10 h-10 text-indigo-500 mx-auto" />
+          <h3 className="text-base font-bold text-slate-900 dark:text-white">
+            No Sprint Milestones for {projectFilter !== 'ALL' ? (projectsList.find(p => p.id === projectFilter)?.name || 'Selected Project') : 'Current Filter'}
+          </h3>
+          <p className="text-xs text-slate-500 max-w-md mx-auto">
+            There are currently no active sprints matching this selection. Create a new strategic sprint to begin committing story points and allocating developers.
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              if (projectFilter !== 'ALL') {
+                const foundP = projectsList.find(p => p.id === projectFilter);
+                setFormData(prev => ({ ...prev, projectId: projectFilter, projectName: foundP?.name || '' }));
+              }
+              setIsModalOpen(true);
+            }}
+            className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs cursor-pointer shadow-xs transition"
+          >
+            Create Sprint for this Project
+          </button>
+        </div>
+      )}
 
       {/* Burndown Velocity Chart Banner */}
       {selectedSprint && (
