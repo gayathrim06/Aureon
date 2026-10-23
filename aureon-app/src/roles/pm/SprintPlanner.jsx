@@ -7,6 +7,61 @@ import { Layers, Plus, CheckCircle2, Clock, Activity, FolderKanban, Users, Calen
 import { getAuthHeaders, API_BASE_URL } from '../../services/apiClient';
 import { TaskSkillRecommendationModal } from '../../components/common/TaskSkillRecommendationModal';
 
+// Helper functions for story points and sprint capacity calculations
+export const getTaskStoryPoints = (task) => {
+  if (!task) return 0;
+  if (task.story_points !== undefined && task.story_points !== null) {
+    const num = Number(task.story_points);
+    if (!isNaN(num) && num > 0) return num;
+  }
+  const estHours = Number(task.estimated_hours);
+  if (!isNaN(estHours) && estHours > 0) {
+    const pts = Math.round((estHours / 4) * 10) / 10;
+    return Number.isInteger(pts) ? pts : pts;
+  }
+  const prio = (task.priority || 'MEDIUM').toUpperCase();
+  const prioMap = { CRITICAL: 8, HIGH: 5, MEDIUM: 3, LOW: 1 };
+  return prioMap[prio] || 3;
+};
+
+export const isTaskCompleted = (task) => {
+  if (!task) return false;
+  const st = (task.status || '').toUpperCase();
+  return st === 'DONE' || st === 'COMPLETED';
+};
+
+export const calculateSprintMetrics = (sprintTasks = [], sprintConfig = {}) => {
+  const totalDeliverables = sprintTasks.length;
+  const completedTasks = sprintTasks.filter(isTaskCompleted);
+  const remainingTasks = sprintTasks.filter(t => !isTaskCompleted(t));
+
+  const plannedPoints = sprintTasks.reduce((sum, t) => sum + getTaskStoryPoints(t), 0);
+  const completedPoints = completedTasks.reduce((sum, t) => sum + getTaskStoryPoints(t), 0);
+  const remainingPoints = Math.max(0, plannedPoints - completedPoints);
+
+  const roundedPlanned = Math.round(plannedPoints * 10) / 10;
+  const roundedCompleted = Math.round(completedPoints * 10) / 10;
+  const roundedRemaining = Math.round(remainingPoints * 10) / 10;
+
+  // Capacity handling: strictly use configured capacity, never invent or default to 40
+  const rawCap = sprintConfig.capacity ?? sprintConfig.velocity ?? sprintConfig.capacity_points;
+  const capacity = (rawCap !== null && rawCap !== undefined && rawCap !== '' && !isNaN(Number(rawCap)) && Number(rawCap) > 0)
+    ? Number(rawCap)
+    : null;
+
+  return {
+    totalDeliverables,
+    completedCount: completedTasks.length,
+    remainingCount: remainingTasks.length,
+    plannedPoints: Number.isInteger(roundedPlanned) ? roundedPlanned : roundedPlanned,
+    completedPoints: Number.isInteger(roundedCompleted) ? roundedCompleted : roundedCompleted,
+    remainingPoints: Number.isInteger(roundedRemaining) ? roundedRemaining : roundedRemaining,
+    capacity,
+    capacityDisplay: capacity ? `${capacity} SP` : 'Not configured'
+  };
+};
+
+
 export const SprintPlanner = ({ onShowToast }) => {
   const { user } = useAuth();
 
@@ -78,7 +133,7 @@ export const SprintPlanner = ({ onShowToast }) => {
     projectName: '',
     assignedTeam: '',
     scrumMaster: '',
-    storyPoints: 40,
+    capacityStoryPoints: '',
     startDate: '2026-09-01',
     endDate: '2026-09-15',
     goal: ''
@@ -571,6 +626,10 @@ export const SprintPlanner = ({ onShowToast }) => {
     e.preventDefault();
     if (!formData.name.trim()) return;
 
+    const targetCapacity = formData.capacityStoryPoints && !isNaN(Number(formData.capacityStoryPoints)) && Number(formData.capacityStoryPoints) > 0
+      ? Number(formData.capacityStoryPoints)
+      : null;
+
     const newSprint = {
       id: `SPR-${Math.floor(100 + Math.random() * 900)}`,
       name: formData.name,
@@ -579,7 +638,12 @@ export const SprintPlanner = ({ onShowToast }) => {
       assigned_team: formData.assignedTeam,
       team_lead: formData.scrumMaster,
       epic_category: formData.epicCategory,
-      story_points: Number(formData.capacityStoryPoints) || 40,
+      capacity: targetCapacity,
+      velocity: targetCapacity,
+      story_points: 0,
+      planned_story_points: 0,
+      completed_story_points: 0,
+      remaining_story_points: 0,
       startDate: formData.startDate,
       endDate: formData.endDate,
       goal: formData.goal || 'Deliver sprint features on schedule.',
@@ -607,11 +671,21 @@ export const SprintPlanner = ({ onShowToast }) => {
       user,
       role: user?.role,
       action: 'SPRINT_CREATE',
-      resource: `Strategic Sprint: ${newSprint.name} (${newSprint.story_points} Points)`,
+      resource: targetCapacity
+        ? `Strategic Sprint: ${newSprint.name} (${targetCapacity} Capacity SP)`
+        : `Strategic Sprint: ${newSprint.name} (Capacity Unconfigured)`,
       status: 'SUCCESS'
     });
 
-    if (onShowToast) onShowToast({ type: 'success', title: 'Sprint Milestone Created', message: `${newSprint.name} committed with ${newSprint.story_points} Story Points capacity.` });
+    if (onShowToast) {
+      onShowToast({
+        type: 'success',
+        title: 'Sprint Milestone Created',
+        message: targetCapacity
+          ? `${newSprint.name} committed with ${targetCapacity} Story Points capacity.`
+          : `${newSprint.name} created. Story points will be calculated from committed tasks.`
+      });
+    }
     setIsModalOpen(false);
   };
 
@@ -703,9 +777,25 @@ export const SprintPlanner = ({ onShowToast }) => {
     }
   };
 
-  const selectedSprintTasks = selectedSprint 
-    ? tasks.filter(t => (t.sprint_id && String(t.sprint_id) === String(selectedSprint.id)) || (t.sprint_name && t.sprint_name === selectedSprint.name))
-    : [];
+  const selectedSprintTasks = useMemo(() => {
+    if (!selectedSprint) return [];
+    const sId = String(selectedSprint.id);
+    const sProjId = selectedSprint.project_id || selectedSprint.projectId;
+
+    return tasks.filter(t => {
+      // Must match project if both have project_id to avoid cross-project leakage
+      if (sProjId && t.project_id && String(t.project_id) !== String(sProjId)) {
+        return false;
+      }
+      const matchId = t.sprint_id && String(t.sprint_id) === sId;
+      const matchName = t.sprint_name && t.sprint_name === selectedSprint.name;
+      return matchId || matchName;
+    });
+  }, [selectedSprint, tasks]);
+
+  const selectedSprintMetrics = useMemo(() => {
+    return calculateSprintMetrics(selectedSprintTasks, selectedSprint || {});
+  }, [selectedSprintTasks, selectedSprint]);
 
   const displayedSprintTasks = useMemo(() => {
     if (!selectedMemberFilter) return selectedSprintTasks;
@@ -819,8 +909,15 @@ export const SprintPlanner = ({ onShowToast }) => {
                   {selectedSprint.sprint_code || selectedSprint.code || (selectedSprint.id && String(selectedSprint.id).length > 8 ? 'SPRINT MILESTONE' : selectedSprint.id)}
                 </span>
                 <h3 className="text-lg font-black text-slate-900 dark:text-white warm:text-[#342314]">{selectedSprint.name}</h3>
-                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
-                  ⚡ {selectedSprint.story_points || 40} Story Points Capacity
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+                  ⚡ {selectedSprintMetrics.plannedPoints} Planned Story Points
+                </span>
+                <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase border ${
+                  selectedSprintMetrics.capacity
+                    ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
+                    : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 border-slate-300 dark:border-slate-700'
+                }`}>
+                  🎯 Capacity: {selectedSprintMetrics.capacityDisplay}
                 </span>
               </div>
               <p className="text-xs text-slate-600 dark:text-slate-300 warm:text-[#69523c] mt-1 font-medium">
@@ -841,7 +938,7 @@ export const SprintPlanner = ({ onShowToast }) => {
           </div>
 
           {/* Verified Sprint Milestone Metrics from PostgreSQL Database */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1">
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 pt-1">
             <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-950 warm:bg-[#e8dbbe] border border-slate-200/80 dark:border-slate-800">
               <span className="text-[10px] font-bold uppercase text-slate-400 dark:text-slate-500 block">Sprint Timeline</span>
               <span className="font-mono text-xs font-bold text-slate-800 dark:text-slate-200 mt-0.5 block">
@@ -849,21 +946,27 @@ export const SprintPlanner = ({ onShowToast }) => {
               </span>
             </div>
             <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-950 warm:bg-[#e8dbbe] border border-slate-200/80 dark:border-slate-800">
-              <span className="text-[10px] font-bold uppercase text-slate-400 dark:text-slate-500 block">Committed Tasks</span>
+              <span className="text-[10px] font-bold uppercase text-slate-400 dark:text-slate-500 block">Sprint Capacity</span>
+              <span className="font-mono text-xs font-extrabold text-slate-700 dark:text-slate-300 mt-0.5 block">
+                {selectedSprintMetrics.capacityDisplay}
+              </span>
+            </div>
+            <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-950 warm:bg-[#e8dbbe] border border-slate-200/80 dark:border-slate-800">
+              <span className="text-[10px] font-bold uppercase text-slate-400 dark:text-slate-500 block">Planned Points</span>
               <span className="font-mono text-xs font-extrabold text-indigo-600 dark:text-indigo-400 mt-0.5 block">
-                {selectedSprintTasks.length} Deliverables
+                {selectedSprintMetrics.plannedPoints} SP ({selectedSprintMetrics.totalDeliverables} tasks)
               </span>
             </div>
             <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-950 warm:bg-[#e8dbbe] border border-slate-200/80 dark:border-slate-800">
-              <span className="text-[10px] font-bold uppercase text-slate-400 dark:text-slate-500 block">Completed</span>
+              <span className="text-[10px] font-bold uppercase text-slate-400 dark:text-slate-500 block">Completed Points</span>
               <span className="font-mono text-xs font-extrabold text-emerald-600 dark:text-emerald-400 mt-0.5 block">
-                {selectedSprintTasks.filter(t => t.status === 'DONE' || t.status === 'COMPLETED').length} Finished
+                {selectedSprintMetrics.completedPoints} SP ({selectedSprintMetrics.completedCount} finished)
               </span>
             </div>
             <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-950 warm:bg-[#e8dbbe] border border-slate-200/80 dark:border-slate-800">
-              <span className="text-[10px] font-bold uppercase text-slate-400 dark:text-slate-500 block">In-Flight / Remaining</span>
+              <span className="text-[10px] font-bold uppercase text-slate-400 dark:text-slate-500 block">Remaining Points</span>
               <span className="font-mono text-xs font-extrabold text-amber-600 dark:text-amber-400 mt-0.5 block">
-                {selectedSprintTasks.filter(t => t.status !== 'DONE' && t.status !== 'COMPLETED').length} Active
+                {selectedSprintMetrics.remainingPoints} SP ({selectedSprintMetrics.remainingCount} active)
               </span>
             </div>
           </div>
@@ -1080,6 +1183,7 @@ export const SprintPlanner = ({ onShowToast }) => {
                       </th>
                       <th className="p-3">Ticket ID</th>
                       <th className="p-3">Task Deliverable</th>
+                      <th className="p-3">Story Points</th>
                       <th className="p-3">Priority</th>
                       <th className="p-3">Status</th>
                       <th className="p-3">Assigned Developer & Availability</th>
@@ -1115,6 +1219,9 @@ export const SprintPlanner = ({ onShowToast }) => {
                           {task.description && (
                             <span className="text-[10px] text-slate-500 line-clamp-1">{task.description}</span>
                           )}
+                        </td>
+                        <td className="p-3 font-mono text-[11px] font-bold text-indigo-600 dark:text-indigo-400">
+                          ⚡ {getTaskStoryPoints(task)} SP <span className="text-[10px] text-slate-400 font-normal">({task.estimated_hours || 0}h)</span>
                         </td>
                         <td className="p-3">
                           <span className={`px-2 py-0.5 rounded text-[10px] font-extrabold ${
@@ -1216,48 +1323,60 @@ export const SprintPlanner = ({ onShowToast }) => {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredSprints.map(sp => (
-            <button
-              type="button"
-              key={sp.id}
-              onClick={() => setSelectedSprint(sp)}
-              className={`w-full text-left p-5 rounded-3xl bg-white dark:bg-slate-900 border shadow-xs cursor-pointer transition-all hover:shadow-lg hover:-translate-y-0.5 active:scale-95 space-y-3 ${
-                selectedSprint?.id === sp.id ? 'border-indigo-600 ring-2 ring-indigo-500/20' : 'border-slate-200 dark:border-slate-800'
-              }`}
-            >
-              <div className="flex items-center justify-between">
-                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-indigo-50 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 border border-indigo-200">
-                  ⚡ {sp.story_points || 40} Story Points
-                </span>
-                <span className="text-[10px] font-mono text-slate-400 font-bold">{sp.startDate || '2026-09-01'} → {sp.endDate || '2026-09-15'}</span>
-              </div>
+          {filteredSprints.map(sp => {
+            const spTasks = tasks.filter(t => {
+              const spProjId = sp.project_id || sp.projectId;
+              if (spProjId && t.project_id && String(t.project_id) !== String(spProjId)) return false;
+              return (t.sprint_id && String(t.sprint_id) === String(sp.id)) || (t.sprint_name && t.sprint_name === sp.name);
+            });
+            const cardMetrics = calculateSprintMetrics(spTasks, sp);
 
-              <div>
-                <h4 className="text-sm font-black text-slate-900 dark:text-white">{sp.name}</h4>
-                <div className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 mt-0.5">
-                  📁 Project: {sp.project_name || 'Aureon SaaS'}
+            return (
+              <button
+                type="button"
+                key={sp.id}
+                onClick={() => setSelectedSprint(sp)}
+                className={`w-full text-left p-5 rounded-3xl bg-white dark:bg-slate-900 border shadow-xs cursor-pointer transition-all hover:shadow-lg hover:-translate-y-0.5 active:scale-95 space-y-3 ${
+                  selectedSprint?.id === sp.id ? 'border-indigo-600 ring-2 ring-indigo-500/20' : 'border-slate-200 dark:border-slate-800'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-indigo-50 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 border border-indigo-200">
+                    ⚡ {cardMetrics.plannedPoints} Planned SP
+                  </span>
+                  <span className="text-[10px] font-mono text-slate-400 font-bold">{sp.startDate || sp.start_date || '—'} → {sp.endDate || sp.end_date || '—'}</span>
                 </div>
-                <div className="text-[10px] text-purple-600 dark:text-purple-400 font-bold">
-                  👑 Scrum Master: {sp.team_lead || 'Krishna Deepesh'} ({sp.assigned_team})
-                </div>
-              </div>
 
-              <p className="text-[11px] text-slate-500 font-medium line-clamp-2">{sp.goal}</p>
+                <div>
+                  <h4 className="text-sm font-black text-slate-900 dark:text-white">{sp.name}</h4>
+                  <div className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 mt-0.5">
+                    📁 Project: {sp.project_name || sp.projectName || 'Aureon SaaS'}
+                  </div>
+                  <div className="text-[10px] text-purple-600 dark:text-purple-400 font-bold">
+                    👑 Scrum Master: {sp.team_lead || 'Krishna Deepesh'} ({sp.assigned_team || sp.team_name || 'Assigned Squad'})
+                  </div>
+                  <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 font-medium">
+                    🎯 Capacity: {cardMetrics.capacityDisplay}
+                  </div>
+                </div>
 
-              <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
-                <div className="flex items-center justify-between text-[10px] mb-1 font-bold">
-                  <span className="text-emerald-600 flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> {sp.completedTasks || 0} Points Delivered</span>
-                  <span className="text-indigo-600 flex items-center gap-1"><Clock className="w-3 h-3" /> {(sp.totalTasks || 0) - (sp.completedTasks || 0)} Points Remaining</span>
+                <p className="text-[11px] text-slate-500 font-medium line-clamp-2">{sp.goal}</p>
+
+                <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
+                  <div className="flex items-center justify-between text-[10px] mb-1 font-bold">
+                    <span className="text-emerald-600 flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> {cardMetrics.completedPoints} SP Delivered ({cardMetrics.completedCount} tasks)</span>
+                    <span className="text-indigo-600 flex items-center gap-1"><Clock className="w-3 h-3" /> {cardMetrics.remainingPoints} SP Remaining ({cardMetrics.remainingCount} tasks)</span>
+                  </div>
+                  <div className="w-full h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-gradient-to-r from-indigo-500 to-purple-600 rounded-full"
+                      style={{ width: `${cardMetrics.plannedPoints > 0 ? ((cardMetrics.completedPoints / cardMetrics.plannedPoints) * 100) : 0}%` }}
+                    />
+                  </div>
                 </div>
-                <div className="w-full h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-gradient-to-r from-indigo-500 to-purple-600 rounded-full"
-                    style={{ width: `${sp.totalTasks > 0 ? ((sp.completedTasks / sp.totalTasks) * 100) : 0}%` }}
-                  />
-                </div>
-              </div>
-            </button>
-          ))}
+              </button>
+            );
+          })}
         </div>
       )}
 
@@ -1312,13 +1431,13 @@ export const SprintPlanner = ({ onShowToast }) => {
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block font-bold mb-1">4. Target Velocity Capacity (Story Points)</label>
+              <label className="block font-bold mb-1">4. Target Velocity Capacity (Story Points) (Optional)</label>
               <input
                 type="number"
-                value={formData.capacityStoryPoints}
+                value={formData.capacityStoryPoints || ''}
                 onChange={(e) => setFormData({ ...formData, capacityStoryPoints: e.target.value })}
                 className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 font-bold"
-                placeholder="e.g. 40"
+                placeholder="Leave blank for Not configured, or enter target capacity"
               />
             </div>
             <div>

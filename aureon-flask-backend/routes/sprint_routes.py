@@ -163,6 +163,17 @@ def manage_sprints():
         if status == 'ACTIVE' and s_date > date.today():
             status = 'PLANNED'
 
+        # Configured Capacity (Velocity target in Story Points)
+        capacity_raw = data.get('capacity') if 'capacity' in data else (data.get('velocity') if 'velocity' in data else data.get('capacityStoryPoints'))
+        velocity_val = None
+        if capacity_raw is not None and str(capacity_raw).strip() != '' and str(capacity_raw).lower() != 'null':
+            try:
+                v = int(float(str(capacity_raw).strip()))
+                if v > 0:
+                    velocity_val = v
+            except (ValueError, TypeError):
+                velocity_val = None
+
         sprint = Sprint(
             name=name,
             goal=goal,
@@ -171,6 +182,7 @@ def manage_sprints():
             end_date=e_date,
             project_id=project_id,
             team_id=team_id,
+            velocity=velocity_val,
             created_by_id=user.id if user else None
         )
         db.session.add(sprint)
@@ -230,6 +242,17 @@ def sprint_detail(sprint_id):
                 sprint.end_date = new_e_date
             except ValueError:
                 pass
+
+        if 'capacity' in data or 'velocity' in data or 'capacityStoryPoints' in data:
+            cap_raw = data.get('capacity') if 'capacity' in data else (data.get('velocity') if 'velocity' in data else data.get('capacityStoryPoints'))
+            if cap_raw is None or str(cap_raw).strip() == '' or str(cap_raw).lower() == 'null':
+                sprint.velocity = None
+            else:
+                try:
+                    v = int(float(str(cap_raw).strip()))
+                    sprint.velocity = v if v > 0 else None
+                except (ValueError, TypeError):
+                    pass
 
         db.session.commit()
         return jsonify({'success': True, 'message': 'Sprint updated.', 'sprint': sprint.to_dict()}), 200
@@ -511,6 +534,11 @@ def sprint_review(sprint_id):
             'incomplete_tasks_count': len(incomplete),
             'overdue_tasks_count': len(overdue),
             'completion_percentage': comp_pct,
+            'planned_story_points': sprint.to_dict()['planned_story_points'],
+            'completed_story_points': sprint.to_dict()['completed_story_points'],
+            'remaining_story_points': sprint.to_dict()['remaining_story_points'],
+            'capacity': sprint.to_dict()['capacity'],
+            'capacity_display': sprint.to_dict()['capacity_display'],
             'completed_tasks': [t.to_dict() for t in completed],
             'incomplete_tasks': [t.to_dict() for t in incomplete],
             'overdue_tasks': [t.to_dict() for t in overdue],

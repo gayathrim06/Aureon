@@ -407,6 +407,7 @@ class Sprint(db.Model):
     completion_date = db.Column(db.Date, nullable=True)
     completion_notes = db.Column(db.Text, nullable=True)
     carry_forward_tasks_count = db.Column(db.Integer, default=0)
+    velocity = db.Column(db.Integer, nullable=True)
 
     project = db.relationship('Project', foreign_keys=[project_id])
     team = db.relationship('Team', foreign_keys=[team_id])
@@ -439,6 +440,17 @@ class Sprint(db.Model):
             sprint_score = max(0, min(100, calculated_score))
         else:
             sprint_score = 100
+
+        # Planned, Completed, and Remaining Story Points strictly from actual sprint tasks
+        planned_pts = round(sum(t.story_points for t in sprint_tasks), 1)
+        completed_pts = round(sum(t.story_points for t in sprint_tasks if t.status in ('COMPLETED', 'DONE')), 1)
+        remaining_pts = round(max(0.0, planned_pts - completed_pts), 1)
+
+        planned_pts = int(planned_pts) if planned_pts.is_integer() else planned_pts
+        completed_pts = int(completed_pts) if completed_pts.is_integer() else completed_pts
+        remaining_pts = int(remaining_pts) if remaining_pts.is_integer() else remaining_pts
+
+        capacity_val = self.velocity if (self.velocity is not None and self.velocity > 0) else None
 
         # Developer task distribution
         dev_dist = {}
@@ -502,7 +514,17 @@ class Sprint(db.Model):
             'sprintScore': sprint_score,
             'score': sprint_score,
             'developer_distribution': list(dev_dist.values()),
-            'story_points': 40
+            'capacity': capacity_val,
+            'velocity': capacity_val,
+            'capacity_display': f"{capacity_val} SP" if capacity_val else 'Not configured',
+            'planned_story_points': planned_pts,
+            'planned_points': planned_pts,
+            'completed_story_points': completed_pts,
+            'completed_points': completed_pts,
+            'remaining_story_points': remaining_pts,
+            'remaining_points': remaining_pts,
+            'story_points': planned_pts,
+            'storyPoints': planned_pts
         }
 
 class Task(db.Model):
@@ -548,6 +570,14 @@ class Task(db.Model):
     assigned_user = db.relationship('User', foreign_keys=[assigned_to_id])
     due_date_changer = db.relationship('User', foreign_keys=[due_date_changed_by_id])
     tl_reviewer = db.relationship('User', foreign_keys=[team_leader_reviewed_by_id])
+
+    @property
+    def story_points(self):
+        if self.estimated_hours is not None and self.estimated_hours > 0:
+            pts = round(self.estimated_hours / 4.0, 1)
+            return int(pts) if pts.is_integer() else pts
+        prio_map = {'CRITICAL': 8, 'HIGH': 5, 'MEDIUM': 3, 'LOW': 1}
+        return prio_map.get((self.priority or 'MEDIUM').upper(), 3)
 
     @property
     def required_skills_list(self):
@@ -628,6 +658,8 @@ class Task(db.Model):
             'due_date_change_reason': self.due_date_change_reason or '',
             'estimated_hours': self.estimated_hours or 0.0,
             'actual_hours': self.actual_hours or 0.0,
+            'story_points': self.story_points,
+            'storyPoints': self.story_points,
             'progress': self.progress if self.progress is not None else (100 if self.display_status in ('DONE', 'COMPLETED') else 0),
             'assigned_to_id': str(self.assigned_to_id) if self.assigned_to_id else None,
             'assignee_name': u.display_name if u else 'Unassigned (Needs Assignment)',

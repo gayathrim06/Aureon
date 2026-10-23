@@ -566,8 +566,16 @@ export const LeadSprintBoard = ({ onShowToast, initialView = 'kanban' }) => {
               <span className="font-extrabold text-indigo-600 dark:text-indigo-400">{selectedSprint.project_name || 'General Project'}</span>
             </div>
             <div className="border-l border-slate-200 dark:border-slate-800 pl-4">
-              <span className="text-[10px] text-slate-400 uppercase font-bold block">Capacity</span>
-              <span className="font-extrabold text-emerald-600 dark:text-emerald-400">{selectedSprint.story_points || 40} Story Points</span>
+              <span className="text-[10px] text-slate-400 uppercase font-bold block">Sprint Capacity</span>
+              <span className="font-extrabold text-slate-700 dark:text-slate-300">
+                {selectedSprint.capacity ? `${selectedSprint.capacity} SP` : 'Not configured'}
+              </span>
+            </div>
+            <div className="border-l border-slate-200 dark:border-slate-800 pl-4">
+              <span className="text-[10px] text-slate-400 uppercase font-bold block">Planned Points</span>
+              <span className="font-extrabold text-indigo-600 dark:text-indigo-400">
+                {selectedSprint.planned_story_points ?? selectedSprint.story_points ?? 0} SP
+              </span>
             </div>
             <div className="border-l border-slate-200 dark:border-slate-800 pl-4">
               <span className="text-[10px] text-slate-400 uppercase font-bold block">Sprint Deliverables</span>

@@ -197,7 +197,8 @@ export const DeveloperRoster = ({ onShowToast }) => {
     const newSprint = {
       name: sprintFormData.name,
       goal: sprintFormData.goal,
-      story_points: Number(sprintFormData.storyPoints) || 40,
+      capacity: sprintFormData.storyPoints ? Number(sprintFormData.storyPoints) : null,
+      velocity: sprintFormData.storyPoints ? Number(sprintFormData.storyPoints) : null,
       project_id: sprintFormData.projectId,
       project_name: foundProj ? foundProj.name : 'Engineering Project',
       scrum_master: sprintModalDev.full_name || sprintModalDev.name,
