@@ -660,7 +660,7 @@ class Task(db.Model):
             'actual_hours': self.actual_hours or 0.0,
             'story_points': self.story_points,
             'storyPoints': self.story_points,
-            'progress': self.progress if self.progress is not None else (100 if self.display_status in ('DONE', 'COMPLETED') else 0),
+            'progress': 100 if self.display_status in ('DONE', 'COMPLETED') else (self.progress if self.progress is not None else 0),
             'assigned_to_id': str(self.assigned_to_id) if self.assigned_to_id else None,
             'assignee_name': u.display_name if u else 'Unassigned (Needs Assignment)',
             'assignee': u.display_name if u else 'Unassigned (Needs Assignment)',

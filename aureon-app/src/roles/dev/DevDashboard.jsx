@@ -91,30 +91,30 @@ export const DevDashboard = ({ onNavigate }) => {
       value: userName, 
       sub: user?.email || 'Active Session', 
       icon: Code2, 
-      color: 'border-l-emerald-500',
+      color: 'border-l-indigo-500',
       actionTab: 'Profile',
       clickable: true,
       hint: 'View profile →'
     },
     { 
-      label: 'Assigned Work', 
-      value: `${taskStats.active} Active`, 
+      label: 'Delivered Tasks', 
+      value: `${taskStats.completed} Delivered`, 
+      sub: taskStats.completed > 0 ? `${taskStats.completed} of ${taskStats.total} completed (100%)` : 'No deliverables finished yet', 
+      icon: CheckCircle2, 
+      color: 'border-l-emerald-500',
+      actionTab: 'SprintTasks',
+      clickable: true,
+      hint: 'View completed →'
+    },
+    { 
+      label: 'Active Work', 
+      value: `${taskStats.active} In-Flight`, 
       sub: `${taskStats.total} Total Assigned`, 
       icon: CheckSquare, 
       color: 'border-l-blue-500',
       actionTab: 'SprintTasks',
       clickable: true,
       hint: 'Open sprint board →'
-    },
-    { 
-      label: 'Availability', 
-      value: isAvailable ? 'Available' : `Busy (${taskStats.active})`, 
-      sub: isAvailable ? 'Ready for next task: YES' : 'Ready for next task: NO', 
-      icon: isAvailable ? CheckCircle2 : Clock, 
-      color: isAvailable ? 'border-l-emerald-600' : 'border-l-amber-500',
-      actionTab: 'SprintTasks',
-      clickable: true,
-      hint: 'View workload →'
     },
     { 
       label: 'In TL Review', 
@@ -127,14 +127,14 @@ export const DevDashboard = ({ onNavigate }) => {
       hint: 'Check review queue →'
     },
     { 
-      label: 'Overdue Tickets', 
-      value: `${taskStats.overdue} Overdue`, 
-      sub: taskStats.overdue === 0 ? '100% on schedule' : 'Needs immediate attention', 
-      icon: AlertTriangle, 
-      color: taskStats.overdue === 0 ? 'border-l-emerald-600' : 'border-l-rose-500',
+      label: 'Availability', 
+      value: isAvailable ? 'Available' : `Busy (${taskStats.active})`, 
+      sub: isAvailable ? 'Ready for next task: YES' : 'Ready for next task: NO', 
+      icon: isAvailable ? CheckCircle2 : Clock, 
+      color: isAvailable ? 'border-l-emerald-600' : 'border-l-amber-500',
       actionTab: 'SprintTasks',
       clickable: true,
-      hint: 'Inspect overdue →'
+      hint: 'View workload →'
     },
   ];
 
@@ -336,12 +336,12 @@ export const DevDashboard = ({ onNavigate }) => {
                   {/* Progress bar */}
                   <div className="w-28 space-y-1 text-right">
                     <div className="text-[11px] font-semibold text-slate-600 dark:text-slate-400 font-mono">
-                      {t.progress || 0}%
+                      {(t.status === 'DONE' || t.status === 'COMPLETED') ? 100 : (t.progress || 0)}%
                     </div>
                     <div className="w-full h-1.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
                       <div 
-                        className="h-full bg-indigo-600 rounded-full transition-all" 
-                        style={{ width: `${t.progress || 0}%` }}
+                        className={`h-full rounded-full transition-all ${(t.status === 'DONE' || t.status === 'COMPLETED') ? 'bg-emerald-500' : 'bg-indigo-600'}`} 
+                        style={{ width: `${(t.status === 'DONE' || t.status === 'COMPLETED') ? 100 : (t.progress || 0)}%` }}
                       />
                     </div>
                   </div>

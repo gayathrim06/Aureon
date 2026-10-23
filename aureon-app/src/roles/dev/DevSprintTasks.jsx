@@ -469,14 +469,12 @@ export const DevSprintTasks = ({ onShowToast }) => {
                           </div>
 
                           {/* Progress bar */}
-                          {task.progress !== undefined && (
-                            <div className="w-full bg-slate-100 dark:bg-slate-700 h-1 rounded-full overflow-hidden">
-                              <div
-                                className="bg-indigo-600 dark:bg-indigo-400 h-1 rounded-full"
-                                style={{ width: `${task.progress}%` }}
-                              />
-                            </div>
-                          )}
+                          <div className="w-full bg-slate-100 dark:bg-slate-700 h-1 rounded-full overflow-hidden">
+                            <div
+                              className={`h-1 rounded-full transition-all ${(task.status === 'DONE' || task.status === 'COMPLETED') ? 'bg-emerald-500' : 'bg-indigo-600 dark:bg-indigo-400'}`}
+                              style={{ width: `${(task.status === 'DONE' || task.status === 'COMPLETED') ? 100 : (task.progress || 0)}%` }}
+                            />
+                          </div>
 
                           {/* Action Buttons */}
                           <div className="pt-2 border-t border-slate-100 dark:border-slate-700/60 flex items-center justify-between gap-1 text-[11px]">
