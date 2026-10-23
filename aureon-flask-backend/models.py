@@ -502,14 +502,7 @@ class Sprint(db.Model):
             'sprintScore': sprint_score,
             'score': sprint_score,
             'developer_distribution': list(dev_dist.values()),
-            'story_points': 40,
-            'burnDownData': [
-                {'day': 'Day 1', 'remaining': 40, 'target': 40},
-                {'day': 'Day 4', 'remaining': 30, 'target': 30},
-                {'day': 'Day 8', 'remaining': 20, 'target': 20},
-                {'day': 'Day 12', 'remaining': 8, 'target': 10},
-                {'day': 'Day 14', 'remaining': max(0, round(40 * (1.0 - (completion_pct / 100.0)))), 'target': 0}
-            ]
+            'story_points': 40
         }
 
 class Task(db.Model):

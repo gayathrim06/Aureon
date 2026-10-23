@@ -4,7 +4,6 @@ import { Modal } from '../../components/common/Modal';
 import { useAuth } from '../../context/AuthContext';
 import { logAuditEvent } from '../../services/auditLogger';
 import { Layers, Plus, CheckCircle2, Clock, Activity, FolderKanban, Users, Calendar, ShieldCheck, Filter, Target, Zap, TrendingUp, Flag, CheckSquare, UserPlus, AlertCircle, Sparkles } from 'lucide-react';
-import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 import { getAuthHeaders, API_BASE_URL } from '../../services/apiClient';
 import { TaskSkillRecommendationModal } from '../../components/common/TaskSkillRecommendationModal';
 
@@ -586,13 +585,7 @@ export const SprintPlanner = ({ onShowToast }) => {
       goal: formData.goal || 'Deliver sprint features on schedule.',
       status: 'PLANNING',
       totalTasks: 0,
-      completedTasks: 0,
-      burnDownData: [
-        { day: 'Day 1', remaining: 40, target: 40 },
-        { day: 'Day 5', remaining: 28, target: 28 },
-        { day: 'Day 10', remaining: 12, target: 14 },
-        { day: 'Day 14', remaining: 0, target: 0 }
-      ]
+      completedTasks: 0
     };
 
     setSprints([newSprint, ...sprints]);
@@ -847,28 +840,32 @@ export const SprintPlanner = ({ onShowToast }) => {
             </div>
           </div>
 
-          {/* Velocity Chart */}
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={
-                (selectedSprint.burnDownData && selectedSprint.burnDownData.length > 0)
-                  ? selectedSprint.burnDownData
-                  : [
-                      { day: 'Day 1', remaining: selectedSprint.story_points || 40, target: selectedSprint.story_points || 40 },
-                      { day: 'Day 4', remaining: Math.round((selectedSprint.story_points || 40) * 0.75), target: Math.round((selectedSprint.story_points || 40) * 0.75) },
-                      { day: 'Day 8', remaining: Math.round((selectedSprint.story_points || 40) * 0.5), target: Math.round((selectedSprint.story_points || 40) * 0.5) },
-                      { day: 'Day 12', remaining: Math.round((selectedSprint.story_points || 40) * 0.2), target: Math.round((selectedSprint.story_points || 40) * 0.25) },
-                      { day: 'Day 14', remaining: Math.max(0, Math.round((selectedSprint.story_points || 40) * (1 - (selectedSprint.completion_percentage || selectedSprint.progress || 0) / 100))), target: 0 }
-                    ]
-              }>
-                <CartesianGrid strokeDasharray="3 3" stroke="#cbd5e1" opacity={0.5} />
-                <XAxis dataKey="day" stroke="#64748b" fontSize={11} />
-                <YAxis stroke="#64748b" fontSize={11} />
-                <Tooltip contentStyle={{ backgroundColor: '#ffffff', borderRadius: '12px', border: '1px solid #e2e8f0', color: '#0f172a' }} />
-                <Line type="monotone" dataKey="remaining" stroke="#4f46e5" strokeWidth={3} name="Remaining Story Points" />
-                <Line type="monotone" dataKey="target" stroke="#94a3b8" strokeDasharray="5 5" strokeWidth={2} name="Ideal Velocity Line" />
-              </LineChart>
-            </ResponsiveContainer>
+          {/* Verified Sprint Milestone Metrics from PostgreSQL Database */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1">
+            <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-950 warm:bg-[#e8dbbe] border border-slate-200/80 dark:border-slate-800">
+              <span className="text-[10px] font-bold uppercase text-slate-400 dark:text-slate-500 block">Sprint Timeline</span>
+              <span className="font-mono text-xs font-bold text-slate-800 dark:text-slate-200 mt-0.5 block">
+                {selectedSprint.start_date || selectedSprint.startDate || '—'} → {selectedSprint.end_date || selectedSprint.endDate || '—'}
+              </span>
+            </div>
+            <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-950 warm:bg-[#e8dbbe] border border-slate-200/80 dark:border-slate-800">
+              <span className="text-[10px] font-bold uppercase text-slate-400 dark:text-slate-500 block">Committed Tasks</span>
+              <span className="font-mono text-xs font-extrabold text-indigo-600 dark:text-indigo-400 mt-0.5 block">
+                {selectedSprintTasks.length} Deliverables
+              </span>
+            </div>
+            <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-950 warm:bg-[#e8dbbe] border border-slate-200/80 dark:border-slate-800">
+              <span className="text-[10px] font-bold uppercase text-slate-400 dark:text-slate-500 block">Completed</span>
+              <span className="font-mono text-xs font-extrabold text-emerald-600 dark:text-emerald-400 mt-0.5 block">
+                {selectedSprintTasks.filter(t => t.status === 'DONE' || t.status === 'COMPLETED').length} Finished
+              </span>
+            </div>
+            <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-950 warm:bg-[#e8dbbe] border border-slate-200/80 dark:border-slate-800">
+              <span className="text-[10px] font-bold uppercase text-slate-400 dark:text-slate-500 block">In-Flight / Remaining</span>
+              <span className="font-mono text-xs font-extrabold text-amber-600 dark:text-amber-400 mt-0.5 block">
+                {selectedSprintTasks.filter(t => t.status !== 'DONE' && t.status !== 'COMPLETED').length} Active
+              </span>
+            </div>
           </div>
 
           {/* Sprint Squad Availability & Workload Roster */}
