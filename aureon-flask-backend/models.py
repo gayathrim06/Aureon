@@ -285,8 +285,9 @@ class Team(db.Model):
             all_users.append(self.leader)
 
         # Include Project Manager in team roster if bound to a project
-        if self.project and self.project.manager_id:
-            proj_mgr = User.query.get(self.project.manager_id)
+        proj = self.project or (Project.query.get(self.project_id) if self.project_id else None)
+        if proj and proj.manager_id:
+            proj_mgr = User.query.get(proj.manager_id)
             if proj_mgr and proj_mgr not in all_users:
                 all_users.append(proj_mgr)
 
@@ -331,16 +332,17 @@ class Team(db.Model):
         def _get_role_priority(m):
             role = (m.get('role') or '').upper()
             desig = (m.get('designation') or '').upper()
-            if self.project and str(self.project.manager_id) == str(m.get('id')):
+            proj = self.project or (Project.query.get(self.project_id) if self.project_id else None)
+            if proj and str(proj.manager_id) == str(m.get('id')):
                 return 1
             if 'PM' in role or 'PROJECT MANAGER' in role or 'PROJECT MANAGER' in desig:
                 return 1
+            if 'QA' in role or 'TEST' in role or 'QA' in desig or 'TEST' in desig:
+                return 4
             if (self.team_leader_id and str(self.team_leader_id) == str(m.get('id'))) or (self.lead_id and str(self.lead_id) == str(m.get('id'))):
                 return 2
             if 'LEAD' in role or 'TL' in role or 'LEAD' in desig or 'TECH LEAD' in desig:
                 return 2
-            if 'QA' in role or 'TEST' in role or 'QA' in desig or 'TEST' in desig:
-                return 4
             if 'DEV' in role or 'DEVELOP' in desig or 'ENGINEER' in desig:
                 return 3
             return 5

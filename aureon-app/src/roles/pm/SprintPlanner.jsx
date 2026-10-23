@@ -224,13 +224,14 @@ export const SprintPlanner = ({ onShowToast }) => {
                    role === 'ROLE_PM' || role.includes('PM') || role.includes('MANAGER') || desig.includes('PROJECT MANAGER');
       if (isPM) return 1;
 
+      // Check QA before Lead to prevent Lead QA from becoming TL
+      const isQA = role === 'ROLE_QA' || role.includes('QA') || role.includes('TEST') || desig.includes('QA') || desig.includes('TEST');
+      if (isQA) return 4;
+
       const tLeadId = sprintTeam?.team_leader_id || sprintTeam?.lead_id || currentProject?.lead_id;
       const isLead = (tLeadId && String(dev.id) === String(tLeadId)) ||
                      role === 'ROLE_LEAD' || role.includes('LEAD') || role.includes('TL') || desig.includes('LEAD') || desig.includes('TECH LEAD');
       if (isLead) return 2;
-
-      const isQA = role === 'ROLE_QA' || role.includes('QA') || role.includes('TEST') || desig.includes('QA') || desig.includes('TEST');
-      if (isQA) return 4;
 
       const isDev = role === 'ROLE_DEV' || role.includes('DEV') || desig.includes('DEVELOP') || desig.includes('ENGINEER');
       if (isDev) return 3;
@@ -256,8 +257,8 @@ export const SprintPlanner = ({ onShowToast }) => {
       : `Busy (${active} active, ${completed} done)`;
     
     const roleRank = (dev.role === 'ROLE_PM' || dev.designation?.toLowerCase().includes('project manager')) ? 'PM' :
-                     (dev.role === 'ROLE_LEAD' || dev.role === 'ROLE_TL' || dev.designation?.toLowerCase().includes('lead')) ? 'TL' :
-                     (dev.role === 'ROLE_QA' || dev.designation?.toLowerCase().includes('qa') || dev.designation?.toLowerCase().includes('test')) ? 'QA' : 'DEV';
+                     (dev.role === 'ROLE_QA' || dev.designation?.toLowerCase().includes('qa') || dev.designation?.toLowerCase().includes('test')) ? 'QA' :
+                     (dev.role === 'ROLE_LEAD' || dev.role === 'ROLE_TL' || dev.designation?.toLowerCase().includes('lead')) ? 'TL' : 'DEV';
 
     return `[${roleRank}] ${dev.full_name || dev.name} — ${availText} ${isAvail ? '🟢' : '🔴'}`;
   };
@@ -728,8 +729,8 @@ export const SprintPlanner = ({ onShowToast }) => {
                   const inThisSprintCount = selectedSprintTasks.filter(t => String(t.assigned_to_id) === String(dev.id) || t.assignee === dev.full_name).length;
                   const isFiltered = String(selectedMemberFilter) === String(dev.id);
                   const roleRank = (dev.role === 'ROLE_PM' || dev.designation?.toLowerCase().includes('project manager')) ? 'PM' :
-                                   (dev.role === 'ROLE_LEAD' || dev.role === 'ROLE_TL' || dev.designation?.toLowerCase().includes('lead')) ? 'TL' :
-                                   (dev.role === 'ROLE_QA' || dev.designation?.toLowerCase().includes('qa') || dev.designation?.toLowerCase().includes('test')) ? 'QA' : 'DEV';
+                                   (dev.role === 'ROLE_QA' || dev.designation?.toLowerCase().includes('qa') || dev.designation?.toLowerCase().includes('test')) ? 'QA' :
+                                   (dev.role === 'ROLE_LEAD' || dev.role === 'ROLE_TL' || dev.designation?.toLowerCase().includes('lead')) ? 'TL' : 'DEV';
 
                   return (
                     <button
