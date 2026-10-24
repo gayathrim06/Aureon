@@ -1157,7 +1157,7 @@ export const Projects = () => {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setMemberFilter(memberFilter === 'SELECTED' ? 'ALL' : 'SELECTED')}
+                  onClick={() => setMemberFilter(memberFilter === 'SELECTED' ? 'ALL' : (selectedMemberIds.length > 0 ? 'SELECTED' : 'ALL'))}
                   title="Click to view only selected team members"
                   className={`text-[11px] font-extrabold px-2.5 py-1 rounded-lg border transition-all cursor-pointer flex items-center gap-1.5 shadow-sm ${
                     memberFilter === 'SELECTED'
@@ -1202,15 +1202,27 @@ export const Projects = () => {
 
             {/* Interactive Candidate Member Cards Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-56 overflow-y-auto p-2 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
-              {availableMembers
-                .filter(m => {
+              {(() => {
+                const filtered = availableMembers.filter(m => {
                   if (memberFilter === 'SELECTED') return selectedMemberIds.includes(m.id);
                   if (memberFilter === 'AVAILABLE') return m.status === 'AVAILABLE';
                   if (memberFilter === 'DEV') return m.type === 'DEV';
                   if (memberFilter === 'QA') return m.type === 'QA';
                   return true;
-                })
-                .map(member => {
+                });
+                if (filtered.length === 0) {
+                  return (
+                    <div className="col-span-full py-6 px-4 text-center">
+                      <p className="text-xs font-bold text-slate-700 dark:text-slate-200">
+                        {memberFilter === 'SELECTED' ? 'No members selected yet.' : 'No candidates match this filter.'}
+                      </p>
+                      <p className="text-[11px] text-slate-400 mt-1">
+                        Click <button type="button" onClick={() => setMemberFilter('ALL')} className="text-purple-600 dark:text-purple-400 font-bold underline cursor-pointer">All Candidates ({availableMembers.length})</button> or click <button type="button" onClick={handleAutoRecommendTeam} className="text-indigo-600 dark:text-indigo-400 font-bold underline cursor-pointer">✨ Auto-Select Best Available Team</button>!
+                      </p>
+                    </div>
+                  );
+                }
+                return filtered.map(member => {
                   const isChecked = selectedMemberIds.includes(member.id);
                   return (
                     <div
@@ -1284,7 +1296,8 @@ export const Projects = () => {
                       </div>
                     </div>
                   );
-                })}
+                });
+              })()}
             </div>
           </div>
 
