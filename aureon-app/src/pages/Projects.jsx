@@ -1106,7 +1106,7 @@ export const Projects = () => {
                 </p>
               </div>
 
-              {/* Action Buttons: Auto-Recommend & Selected Summary */}
+              {/* Action Buttons: Auto-Recommend & Clickable Selected Filter */}
               <div className="flex items-center gap-2">
                 <button
                   type="button"
@@ -1116,9 +1116,24 @@ export const Projects = () => {
                   <Sparkles className="w-3 h-3 text-amber-300" />
                   Auto-Select Best Available Team
                 </button>
-                <span className="text-[11px] font-extrabold px-2 py-0.5 rounded-lg bg-purple-100 dark:bg-purple-900/80 text-purple-800 dark:text-purple-200 border border-purple-300 dark:border-purple-700">
-                  {selectedMemberIds.length} Selected ({availableMembers.filter(m => selectedMemberIds.includes(m.id) && m.type === 'DEV').length} Dev, {availableMembers.filter(m => selectedMemberIds.includes(m.id) && m.type === 'QA').length} QA)
-                </span>
+                <button
+                  type="button"
+                  onClick={() => setMemberFilter(memberFilter === 'SELECTED' ? 'ALL' : 'SELECTED')}
+                  title="Click to view only selected team members"
+                  className={`text-[11px] font-extrabold px-2.5 py-1 rounded-lg border transition-all cursor-pointer flex items-center gap-1.5 shadow-sm ${
+                    memberFilter === 'SELECTED'
+                      ? 'bg-purple-600 text-white border-purple-700 ring-2 ring-purple-400'
+                      : 'bg-purple-100 hover:bg-purple-200 dark:bg-purple-900/80 dark:hover:bg-purple-800 text-purple-800 dark:text-purple-200 border-purple-300 dark:border-purple-700'
+                  }`}
+                >
+                  <CheckSquare className="w-3.5 h-3.5 text-purple-600 dark:text-purple-300" />
+                  <span>
+                    {selectedMemberIds.length} Selected ({availableMembers.filter(m => selectedMemberIds.includes(m.id) && m.type === 'DEV').length} Dev, {availableMembers.filter(m => selectedMemberIds.includes(m.id) && m.type === 'QA').length} QA)
+                  </span>
+                  <span className={`text-[9px] px-1.5 py-0.2 rounded font-black ${memberFilter === 'SELECTED' ? 'bg-purple-800 text-white' : 'bg-purple-200/80 dark:bg-purple-800 text-purple-900 dark:text-purple-100'}`}>
+                    {memberFilter === 'SELECTED' ? 'Filtered ✕' : 'Filter'}
+                  </span>
+                </button>
               </div>
             </div>
 
@@ -1126,6 +1141,7 @@ export const Projects = () => {
             <div className="flex items-center gap-1.5 border-b border-purple-200/80 dark:border-purple-800/80 pb-2">
               {[
                 { id: 'ALL', label: `All Candidates (${availableMembers.length})` },
+                { id: 'SELECTED', label: `✓ Selected (${selectedMemberIds.length})` },
                 { id: 'AVAILABLE', label: `🟢 Free Now (${availableMembers.filter(m => m.status === 'AVAILABLE').length})` },
                 { id: 'DEV', label: `💻 Developers (${availableMembers.filter(m => m.type === 'DEV').length})` },
                 { id: 'QA', label: `🧪 QA Engineers (${availableMembers.filter(m => m.type === 'QA').length})` }
@@ -1149,6 +1165,7 @@ export const Projects = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-56 overflow-y-auto p-2 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
               {availableMembers
                 .filter(m => {
+                  if (memberFilter === 'SELECTED') return selectedMemberIds.includes(m.id);
                   if (memberFilter === 'AVAILABLE') return m.status === 'AVAILABLE';
                   if (memberFilter === 'DEV') return m.type === 'DEV';
                   if (memberFilter === 'QA') return m.type === 'QA';
