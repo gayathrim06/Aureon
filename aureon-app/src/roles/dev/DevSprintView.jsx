@@ -3,7 +3,7 @@ import { Breadcrumb } from '../../components/common/Breadcrumb';
 import { useAuth } from '../../context/AuthContext';
 import { getAuthHeaders, API_BASE_URL } from '../../services/apiClient';
 import { Layers, RefreshCw } from 'lucide-react';
-import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 
 export const DevSprintView = () => {
   const { user } = useAuth();
@@ -41,10 +41,11 @@ export const DevSprintView = () => {
   const remaining = tasks.filter(t => t.status !== 'COMPLETED' && t.status !== 'DONE').length;
   const completed = tasks.filter(t => t.status === 'COMPLETED' || t.status === 'DONE').length;
 
-  const burnData = [
-    { day: 'Mon', tasks: tasks.length },
-    { day: 'Wed', tasks: Math.max(tasks.length - Math.floor(completed / 2), 0) },
-    { day: 'Today', tasks: remaining }
+  const taskStatusDistribution = [
+    { status: 'To Do', count: tasks.filter(t => t.status === 'TODO').length },
+    { status: 'In Progress', count: tasks.filter(t => t.status === 'IN_PROGRESS').length },
+    { status: 'In Review', count: tasks.filter(t => t.status === 'IN_REVIEW' || t.status === 'REVIEW').length },
+    { status: 'Completed', count: completed }
   ];
 
   return (
@@ -95,16 +96,16 @@ export const DevSprintView = () => {
 
       {tasks.length > 0 && (
         <div className="p-5 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm">
-          <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100 mb-4">Personal Burndown Trend</h3>
+          <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100 mb-4">Assigned Tasks by Status</h3>
           <div className="h-48">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={burnData}>
+              <BarChart data={taskStatusDistribution}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.2} />
-                <XAxis dataKey="day" stroke="#9ca3af" fontSize={11} />
-                <YAxis stroke="#9ca3af" fontSize={11} />
+                <XAxis dataKey="status" stroke="#9ca3af" fontSize={11} />
+                <YAxis stroke="#9ca3af" fontSize={11} allowDecimals={false} />
                 <Tooltip contentStyle={{ backgroundColor: '#1f2937', borderRadius: '8px', border: 'none', color: '#fff' }} />
-                <Line type="monotone" dataKey="tasks" stroke="#3b82f6" strokeWidth={3} name="Tasks Remaining" />
-              </LineChart>
+                <Bar dataKey="count" fill="#3b82f6" radius={[4, 4, 0, 0]} name="Task Count" />
+              </BarChart>
             </ResponsiveContainer>
           </div>
         </div>

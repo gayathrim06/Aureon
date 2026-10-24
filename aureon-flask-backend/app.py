@@ -157,7 +157,9 @@ def create_app():
 app = create_app()
 
 if __name__ == '__main__':
-    with app.app_context():
-        seed_database()
+    # Only seed when explicitly requested via SEED_ON_STARTUP=true
+    if os.getenv('SEED_ON_STARTUP', 'false').lower() in ('true', '1', 'yes'):
+        with app.app_context():
+            seed_database()
     print("[AUREON BACKEND] Starting Aureon Flask REST API Backend on http://127.0.0.1:8000 ...")
     app.run(host='0.0.0.0', port=8000, debug=True)

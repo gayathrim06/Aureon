@@ -53,7 +53,8 @@ def get_admin_dashboard():
     system_alerts = Risk.query.filter_by(status='OPEN').count()
     recent_logs = AuditLog.query.order_by(AuditLog.timestamp.desc()).limit(8).all()
     projects = Project.query.filter_by(is_active=True).all()
-    avg_health = sum((p.health_score or 90) for p in projects) // len(projects) if projects else 90
+    valid_project_scores = [p.health_score for p in projects if p.health_score is not None]
+    avg_health = sum(valid_project_scores) // len(valid_project_scores) if valid_project_scores else None
 
     return jsonify({
         'success': True,
@@ -110,7 +111,8 @@ def get_pm_dashboard():
     assigned_teams = Team.query.filter(Team.project_id.in_(project_ids)).all() if project_ids else []
     available_teams = Team.query.filter(Team.availability_status == 'AVAILABLE', Team.is_deleted == False).all()
 
-    avg_health = sum((p.health_score or 90) for p in my_projects) // len(my_projects) if my_projects else 85
+    valid_project_scores = [p.health_score for p in my_projects if p.health_score is not None]
+    avg_health = sum(valid_project_scores) // len(valid_project_scores) if valid_project_scores else None
 
     return jsonify({
         'success': True,

@@ -102,7 +102,7 @@ export const Dashboard = () => {
       <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="p-6 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-950 border border-slate-800 rounded-2xl shadow-xl text-white flex flex-col md:flex-row justify-between items-start md:items-center gap-4"
+        className="p-6 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-950 aureon-theme-banner border border-slate-800 rounded-2xl shadow-xl text-white flex flex-col md:flex-row justify-between items-start md:items-center gap-4" data-dark-contrast="true"
       >
         <div>
           <div className="flex items-center gap-2 mb-1">

@@ -78,6 +78,7 @@ export const DevDashboard = ({ onNavigate }) => {
   }, [user]);
 
   const isAvailable = taskStats.active === 0;
+  const completedPct = taskStats.total > 0 ? Math.round((taskStats.completed / taskStats.total) * 100) : 0;
 
   const handleNav = (tab) => {
     if (typeof onNavigate === 'function') {
@@ -317,7 +318,7 @@ export const DevDashboard = ({ onNavigate }) => {
                       </span>
                     )}
                     <span className="text-xs text-slate-400 font-mono">
-                      Est: {t.estimated_hours || 8}h
+                      Est: {t.estimated_hours != null ? `${t.estimated_hours}h` : 'N/A'}
                     </span>
                   </div>
 

@@ -48,9 +48,9 @@ export const TeamsView = ({ onNavigate, onShowToast }) => {
           project_id: t.project_id,
           project_name: t.project_name || 'Project Assigned',
           projectCount: t.projectCount !== undefined ? t.projectCount : (t.project_id ? 1 : 0),
-          capacity: t.capacity || '100%',
-          capacityPct: parseInt(t.capacity) || 100,
-          utilization: t.utilization || '0%',
+          capacity: t.capacity !== undefined && t.capacity !== null ? (typeof t.capacity === 'number' ? `${t.capacity}%` : String(t.capacity)) : (Array.isArray(t.members) && t.members.length > 0 ? `${t.members.length * 40}h/wk` : 'N/A'),
+          capacityPct: t.capacity !== undefined && t.capacity !== null ? (parseInt(t.capacity) || 0) : 0,
+          utilization: t.utilization !== undefined && t.utilization !== null ? (typeof t.utilization === 'number' ? `${t.utilization}%` : String(t.utilization)) : '0%',
           activeTasks: t.active_tasks_count || 0
         }));
         setTeams(formatted);

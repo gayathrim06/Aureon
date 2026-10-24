@@ -6,31 +6,24 @@ import {
   Users, ShieldCheck, Activity, Globe, FileText, Database, ShieldAlert,
   Terminal, Server, Cpu, RefreshCw, AlertTriangle, Layers, CheckSquare, Plus
 } from 'lucide-react';
-import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from 'recharts';
 
 export const AdminDashboard = ({ onNavigate }) => {
   const { user } = useAuth();
   const userName = user?.name || user?.full_name || 'System Administrator';
 
   const [metrics, setMetrics] = useState({
-    total_users: 21,
-    active_users: 21,
-    total_projects: 1,
-    active_projects: 1,
+    total_users: 0,
+    active_users: 0,
+    total_projects: 0,
+    active_projects: 0,
     completed_projects: 0,
-    total_teams: 4,
+    total_teams: 0,
     pending_approvals: 0,
     system_alerts: 0,
-    overall_project_health: 90
+    overall_project_health: null
   });
 
-  const [recentActivities, setRecentActivities] = useState([
-    { id: 1, action: 'USER_REGISTRATION', details: 'User Sainu Anna Sajan (Frontend Developer) provisioned', timestamp: '10 mins ago', type: 'info' },
-    { id: 2, action: 'SECURITY_SCAN', details: 'Radon & Pylint Static Code Analysis completed on aureon-flask-backend', timestamp: '25 mins ago', type: 'success' },
-    { id: 3, action: 'DEPLOYMENT_PIPELINE', details: 'Sprint 4 release candidate deployed to staging server', timestamp: '1 hour ago', type: 'info' },
-    { id: 4, action: 'RBAC_UPDATE', details: 'Role permissions matrix updated for ROLE_DEV', timestamp: '3 hours ago', type: 'warning' },
-  ]);
-
+  const [recentActivities, setRecentActivities] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
 
   const fetchAdminDashboard = async () => {
@@ -44,25 +37,30 @@ export const AdminDashboard = ({ onNavigate }) => {
       if (res.ok) {
         const data = await res.json();
         const metricsData = data.metrics || data.dashboard?.metrics || data;
-        setMetrics(prev => ({
-          ...prev,
-          total_users: metricsData.total_users ?? 21,
-          active_users: metricsData.active_users ?? 21,
-          total_projects: metricsData.total_projects ?? 1,
-          active_projects: metricsData.active_projects ?? 1,
+        setMetrics({
+          total_users: metricsData.total_users ?? 0,
+          active_users: metricsData.active_users ?? 0,
+          total_projects: metricsData.total_projects ?? 0,
+          active_projects: metricsData.active_projects ?? 0,
           completed_projects: metricsData.completed_projects ?? 0,
-          total_teams: metricsData.total_teams ?? 4,
+          total_teams: metricsData.total_teams ?? 0,
           pending_approvals: metricsData.pending_approvals ?? (metricsData.pending_tasks ?? 0),
           system_alerts: metricsData.system_alerts ?? 0,
-          overall_project_health: metricsData.overall_project_health ?? 90
-        }));
+          overall_project_health: metricsData.overall_project_health ?? null
+        });
 
-        if (data.recent_activities && data.recent_activities.length > 0) {
-          setRecentActivities(data.recent_activities);
+        if (Array.isArray(data.recent_activities)) {
+          setRecentActivities(data.recent_activities.map(a => ({
+            id: a.id || a.uuid || Math.random(),
+            action: a.action || 'AUDIT_LOG',
+            details: a.details || a.description || `${a.action || 'Action'} by ${a.user || 'system'}`,
+            timestamp: a.timestamp ? new Date(a.timestamp).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : 'Recent',
+            type: a.type || 'info'
+          })));
         }
       }
     } catch (err) {
-      console.error("Using synchronized admin dashboard metrics telemetry:", err);
+      console.error("Failed to load admin dashboard metrics:", err);
     } finally {
       setIsLoading(false);
     }
@@ -72,17 +70,16 @@ export const AdminDashboard = ({ onNavigate }) => {
     fetchAdminDashboard();
   }, []);
 
-  const healthScore = metrics.overall_project_health;
-
   return (
     <div className="space-y-6 font-sans text-slate-900 dark:text-slate-100 warm:text-[#342314]">
       <div className="flex justify-between items-center">
         <Breadcrumb activeTab="System Admin Overview" />
         <button
           onClick={fetchAdminDashboard}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white dark:bg-slate-900 warm:bg-[#e8dbbe] text-slate-800 dark:text-slate-200 warm:text-[#342314] text-xs font-bold border border-slate-200 dark:border-slate-800 warm:border-[#cbb68e] shadow-sm transition-all hover:scale-105"
+          disabled={isLoading}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white dark:bg-slate-900 warm:bg-[#e8dbbe] text-slate-800 dark:text-slate-200 warm:text-[#342314] text-xs font-bold border border-slate-200 dark:border-slate-800 warm:border-[#cbb68e] shadow-sm transition-all hover:scale-105 cursor-pointer"
         >
-          <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} /> Refresh Analytics
+          <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin text-indigo-500' : ''}`} /> Refresh Analytics
         </button>
       </div>
 
@@ -100,21 +97,21 @@ export const AdminDashboard = ({ onNavigate }) => {
               </span>
             </div>
             <h1 className="text-2xl font-extrabold tracking-tight text-white mt-1.5">{userName}'s Admin Console</h1>
-            <p className="text-xs banner-subtext mt-1 max-w-xl">
-              System Admin Workspace. Overview metrics for user accounts, teams allocation, project states, and system audit logs.
+            <p className="text-xs banner-subtext mt-1 max-w-xl text-white/90">
+              System Admin Workspace. Verified metrics for user accounts, teams allocation, project states, and system audit logs directly from PostgreSQL.
             </p>
           </div>
 
           <div className="flex flex-wrap gap-2.5 shrink-0">
             <button
               onClick={() => onNavigate('Users')}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/20 hover:bg-white/30 text-white text-xs font-bold border border-white/30 shadow-md transition-all hover:scale-105"
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/20 hover:bg-white/30 text-white text-xs font-bold border border-white/30 shadow-md transition-all hover:scale-105 cursor-pointer"
             >
               <Users className="w-4 h-4 text-white" /> Provision Users
             </button>
             <button
               onClick={() => onNavigate('AuditLogs')}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-900/90 hover:bg-slate-900 text-white text-xs font-bold border border-slate-700 shadow-md transition-all hover:scale-105"
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-900/90 hover:bg-slate-900 text-white text-xs font-bold border border-slate-700 shadow-md transition-all hover:scale-105 cursor-pointer"
             >
               <FileText className="w-4 h-4 text-indigo-400" /> System Audit Logs
             </button>
@@ -157,7 +154,7 @@ export const AdminDashboard = ({ onNavigate }) => {
             <div className="text-3xl font-black text-emerald-600 dark:text-emerald-400 mt-3">{metrics.active_users}</div>
           </div>
           <div className="mt-3 pt-2 border-t border-slate-100 dark:border-slate-800 text-[11px] font-bold text-emerald-600 dark:text-emerald-400 flex items-center justify-between">
-            <span>View active sessions</span>
+            <span>Active directory</span>
             <span className="group-hover:translate-x-1 transition-transform">→</span>
           </div>
         </button>
@@ -166,7 +163,7 @@ export const AdminDashboard = ({ onNavigate }) => {
         <button 
           type="button"
           onClick={() => onNavigate && onNavigate('Projects')}
-          className="w-full text-left p-5 rounded-2xl bg-white dark:bg-slate-900 warm:bg-[#e8dbbe] border border-slate-200 dark:border-slate-800 warm:border-[#cbb68e] shadow-sm hover:shadow-md hover:border-indigo-500 hover:-translate-y-0.5 active:scale-95 transition-all cursor-pointer group focus:outline-none focus:ring-2 focus:ring-indigo-500/50 flex flex-col justify-between"
+          className="w-full text-left p-5 rounded-2xl bg-white dark:bg-slate-900 warm:bg-[#e8dbbe] border border-slate-200 dark:border-slate-800 warm:border-[#cbb68e] shadow-sm hover:shadow-md hover:border-blue-500 hover:-translate-y-0.5 active:scale-95 transition-all cursor-pointer group focus:outline-none focus:ring-2 focus:ring-blue-500/50 flex flex-col justify-between"
         >
           <div>
             <div className="flex items-center justify-between">
@@ -238,7 +235,7 @@ export const AdminDashboard = ({ onNavigate }) => {
           </div>
         </button>
 
-        {/* 7. Pending Approvals */}
+        {/* 7. Pending Tasks */}
         <button 
           type="button"
           onClick={() => onNavigate && onNavigate('Tasks')}
@@ -286,22 +283,28 @@ export const AdminDashboard = ({ onNavigate }) => {
           <span className="text-[10px] font-mono text-emerald-500">live_audit_stream</span>
         </div>
 
-        <div className="space-y-3">
-          {recentActivities.map((act) => (
-            <button 
-              key={act.id} 
-              type="button"
-              onClick={() => onNavigate && onNavigate('AuditLogs')}
-              className="w-full text-left p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 warm:bg-[#f3e8d2] border border-slate-200 dark:border-slate-700 warm:border-[#b8a074] hover:border-indigo-400 hover:shadow-xs transition-all cursor-pointer flex items-center justify-between group focus:outline-hidden"
-            >
-              <div>
-                <span className="text-xs font-mono font-bold text-indigo-600 dark:text-indigo-400 warm:text-[#b45309] group-hover:underline">{act.action}</span>
-                <p className="text-xs text-slate-700 dark:text-slate-300 warm:text-[#342314] mt-0.5">{act.details}</p>
-              </div>
-              <span className="text-[10px] font-mono text-slate-400">{act.timestamp}</span>
-            </button>
-          ))}
-        </div>
+        {recentActivities.length === 0 ? (
+          <div className="p-6 text-center text-xs text-slate-400 bg-slate-50 dark:bg-slate-950 rounded-xl">
+            No system audit logs recorded in PostgreSQL yet.
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {recentActivities.map((act) => (
+              <button 
+                key={act.id} 
+                type="button"
+                onClick={() => onNavigate && onNavigate('AuditLogs')}
+                className="w-full text-left p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 warm:bg-[#f3e8d2] border border-slate-200 dark:border-slate-700 warm:border-[#b8a074] hover:border-indigo-400 hover:shadow-xs transition-all cursor-pointer flex items-center justify-between group focus:outline-hidden"
+              >
+                <div>
+                  <span className="text-xs font-mono font-bold text-indigo-600 dark:text-indigo-400 warm:text-[#b45309] group-hover:underline">{act.action}</span>
+                  <p className="text-xs text-slate-700 dark:text-slate-300 warm:text-[#342314] mt-0.5">{act.details}</p>
+                </div>
+                <span className="text-[10px] font-mono text-slate-400">{act.timestamp}</span>
+              </button>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

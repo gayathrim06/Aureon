@@ -38,8 +38,8 @@ export const TestCaseLibrary = ({ onShowToast }) => {
     setIsModalOpen(false); 
   };
 
-  const runTest = (tc) => {
-    const result = Math.random() > 0.3 ? 'PASSED' : 'FAILED';
+  const runTest = (tc, outcome = 'PASSED') => {
+    const result = outcome;
     const updated = testCases.map(t => t.id === tc.id ? { ...t, status: result, lastRun: new Date().toISOString().replace('T',' ').substring(0,16) } : t);
     setTestCases(updated);
     try {
@@ -58,7 +58,12 @@ export const TestCaseLibrary = ({ onShowToast }) => {
     { key: 'status', label: 'Status', render: (val) => <span className={`px-2 py-0.5 rounded text-[10px] font-bold flex items-center gap-1 w-fit ${statusColors[val]}`}>{statusIcons[val]}{val}</span> },
     { key: 'automated', label: 'Mode', render: (val) => <span className="text-[10px]">{val ? '🤖 Auto' : '👤 Manual'}</span> },
     { key: 'lastRun', label: 'Last Run' },
-    { key: 'actions', label: 'Run', sortable: false, render: (_, row) => row.status !== 'PASSED' ? <button onClick={() => runTest(row)} className="px-2 py-1 rounded bg-blue-600 text-white text-[10px] font-semibold hover:bg-blue-700 flex items-center gap-1"><Play className="w-3 h-3" />Execute</button> : <span className="text-emerald-500 text-[10px]">✓ Done</span> }
+    { key: 'actions', label: 'Record Execution', sortable: false, render: (_, row) => (
+      <div className="flex items-center gap-1">
+        <button onClick={() => runTest(row, 'PASSED')} className="px-2 py-0.5 rounded bg-emerald-600 text-white text-[10px] font-semibold hover:bg-emerald-700">✓ Pass</button>
+        <button onClick={() => runTest(row, 'FAILED')} className="px-2 py-0.5 rounded bg-rose-600 text-white text-[10px] font-semibold hover:bg-rose-700">✕ Fail</button>
+      </div>
+    ) }
   ];
 
   return (

@@ -163,8 +163,8 @@ export const LeadAssignedProjects = ({ onNavigate }) => {
                   </span>
                   <div className="text-right">
                     <span className="text-[10px] text-slate-400 uppercase font-bold block">Health Score</span>
-                    <span className={`text-xl font-black ${p.health_score >= 90 ? 'text-emerald-600' : 'text-amber-600'}`}>
-                      {p.health_score || 90} / 100
+                    <span className={`text-xl font-black ${p.health_score !== null && p.health_score !== undefined ? (p.health_score >= 90 ? 'text-emerald-600' : 'text-amber-600') : 'text-slate-400'}`}>
+                      {p.health_score !== null && p.health_score !== undefined ? `${p.health_score} / 100` : 'N/A'}
                     </span>
                   </div>
                 </div>
@@ -233,3 +233,4 @@ export const LeadAssignedProjects = ({ onNavigate }) => {
     </div>
   );
 };
+

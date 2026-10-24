@@ -25,9 +25,9 @@ export const DevPullRequests = () => {
             status: (p.status || 'OPEN').toUpperCase(),
             branch: p.source_branch || 'feature',
             author: p.author || 'Engineer',
-            additions: p.additions || 24,
-            deletions: p.deletions || 6,
-            comments: p.comments_count || 1,
+            additions: p.additions ?? 0,
+            deletions: p.deletions ?? 0,
+            comments: p.comments_count ?? 0,
             checks: p.review_status === 'APPROVED' ? 'PASSING' : 'PENDING'
           }));
           setPrs(formatted);

@@ -11,14 +11,15 @@ export const ProjectManagement = ({ onShowToast }) => {
   const { user } = useAuth();
   const [projects, setProjects] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const userName = user?.name || user?.full_name || user?.email?.split('@')[0] || '';
   const [formData, setFormData] = useState({
     name: '',
-    key: 'PROJ',
-    manager: 'Gopika Manoj (PM)',
-    lead: 'David Chen',
+    key: '',
+    manager: userName,
+    lead: '',
     status: 'IN_PROGRESS',
-    healthScore: 100,
-    deadline: '2026-11-30'
+    healthScore: null,
+    deadline: ''
   });
 
   const fetchProjects = async () => {
@@ -45,13 +46,13 @@ export const ProjectManagement = ({ onShowToast }) => {
 
     const newProj = {
       id: `PROJ-${Math.floor(1000 + Math.random() * 9000)}`,
-      name: formData.name,
-      key: formData.key || 'PROJ',
-      lead_name: formData.lead,
+      name: formData.name.trim(),
+      key: formData.key.trim() || formData.name.trim().substring(0, 4).toUpperCase(),
+      lead_name: formData.lead.trim() || undefined,
       status: formData.status,
-      health_score: 100,
+      health_score: null,
       progress: 0,
-      target_deadline: formData.deadline
+      target_deadline: formData.deadline || null
     };
 
     setProjects([newProj, ...projects]);
@@ -78,7 +79,7 @@ export const ProjectManagement = ({ onShowToast }) => {
 
     if (onShowToast) onShowToast({ type: 'success', title: 'Project Created', message: `${newProj.name} initialized successfully.` });
     setIsModalOpen(false);
-    setFormData({ name: '', key: 'PROJ', manager: 'Gopika Manoj (PM)', lead: 'David Chen', status: 'IN_PROGRESS', healthScore: 100, deadline: '2026-11-30' });
+    setFormData({ name: '', key: '', manager: userName, lead: '', status: 'IN_PROGRESS', healthScore: null, deadline: '' });
   };
 
   const handleArchive = (proj) => {
@@ -136,7 +137,10 @@ export const ProjectManagement = ({ onShowToast }) => {
       key: 'healthScore',
       label: 'Health Score',
       render: (val, row) => {
-        const score = row?.health_score ?? row?.healthScore ?? val ?? 100;
+        const score = row?.health_score ?? row?.healthScore ?? val;
+        if (score === null || score === undefined) {
+          return <span className="px-2 py-0.5 rounded text-[10px] text-slate-400 font-mono">N/A</span>;
+        }
         return (
           <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
             score >= 90 ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400' : 'bg-amber-50 text-amber-600 dark:bg-amber-950/60 dark:text-amber-400'

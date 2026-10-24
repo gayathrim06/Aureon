@@ -43,10 +43,10 @@ export const QaDashboard = ({ onNavigate }) => {
           const parsed = JSON.parse(saved);
           setTestCasesCount(Array.isArray(parsed) ? parsed.length : 0);
         } else {
-          setTestCasesCount(6);
+          setTestCasesCount(0);
         }
       } catch (e) {
-        setTestCasesCount(6);
+        setTestCasesCount(0);
       }
     } catch (err) {
       console.warn('Failed to load QA metrics:', err);
@@ -67,9 +67,10 @@ export const QaDashboard = ({ onNavigate }) => {
 
   const openBugs = bugs.filter(b => b.status === 'OPEN' || b.status === 'IN_PROGRESS');
   const criticalBugs = bugs.filter(b => b.severity === 'CRITICAL' || b.severity === 'HIGH');
-  const avgHealth = projects.length > 0
-    ? Math.round(projects.reduce((acc, p) => acc + (p.health_score || 90), 0) / projects.length)
-    : 92;
+  const projectsWithScore = projects.filter(p => p.health_score !== null && p.health_score !== undefined);
+  const avgHealth = projectsWithScore.length > 0
+    ? Math.round(projectsWithScore.reduce((acc, p) => acc + Number(p.health_score), 0) / projectsWithScore.length)
+    : null;
 
   const widgets = [
     { 
@@ -110,7 +111,7 @@ export const QaDashboard = ({ onNavigate }) => {
     },
     { 
       label: 'Quality Health Score', 
-      value: `${avgHealth}/100`, 
+      value: avgHealth !== null ? `${avgHealth}/100` : 'N/A', 
       sub: 'Test Coverage & Code Health', 
       icon: Activity, 
       color: 'border-l-emerald-500 hover:border-l-emerald-600',

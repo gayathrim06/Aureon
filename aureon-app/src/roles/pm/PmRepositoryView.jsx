@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Breadcrumb } from '../../components/common/Breadcrumb';
 import { DataTable } from '../../components/common/DataTable';
+import { useAuth } from '../../context/AuthContext';
 import { getAuthHeaders, API_BASE_URL } from '../../services/apiClient';
 import { 
   GitBranch, GitCommit, CheckCircle2, Clock, RefreshCw, 
@@ -8,6 +9,8 @@ import {
 } from 'lucide-react';
 
 export const PmRepositoryView = () => {
+  const { user } = useAuth();
+  const defaultAuthor = user?.name || user?.full_name || 'Engineer';
   const [repositories, setRepositories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedRepo, setSelectedRepo] = useState(null);
@@ -18,7 +21,7 @@ export const PmRepositoryView = () => {
   // New developer commit modal state
   const [showPushModal, setShowPushModal] = useState(false);
   const [newCommitMessage, setNewCommitMessage] = useState('');
-  const [newCommitAuthor, setNewCommitAuthor] = useState('Ram Kumar');
+  const [newCommitAuthor, setNewCommitAuthor] = useState(defaultAuthor);
   const [newCommitBranch, setNewCommitBranch] = useState('main');
   const [pushingCommit, setPushingCommit] = useState(false);
   const [actionNotice, setActionNotice] = useState(null);
@@ -38,7 +41,7 @@ export const PmRepositoryView = () => {
             name: r.name || r.repository_name || 'Repository',
             fullName: r.full_name || `${r.owner}/${r.repository_name}`,
             url: r.url || r.repository_url,
-            language: r.language || 'TypeScript',
+            language: r.language || 'Other',
             platform: 'GitHub',
             defaultBranch: r.default_branch || 'main',
             branches: r.branches_count != null ? r.branches_count : (r.default_branch ? 1 : 0),

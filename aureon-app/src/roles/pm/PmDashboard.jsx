@@ -58,7 +58,7 @@ export const PmDashboard = ({ onNavigate }) => {
       });
       if (res.ok) {
         const data = await res.json();
-        if (data.projects && data.projects.length > 0) {
+        if (data.projects) {
           setProjectsList(data.projects);
         }
       }
@@ -230,6 +230,12 @@ export const PmDashboard = ({ onNavigate }) => {
     return matchesSearch && matchesStatus;
   });
 
+    // Calculate verified average project health from database
+  const projectsWithScore = projectsList.filter(p => p.health_score !== null && p.health_score !== undefined);
+  const pmAvgHealth = projectsWithScore.length > 0 
+    ? Math.round(projectsWithScore.reduce((acc, p) => acc + Number(p.health_score), 0) / projectsWithScore.length) 
+    : null;
+
   return (
     <div className="space-y-6 font-sans text-slate-900 dark:text-slate-100 warm:text-[#342314]">
       <Breadcrumb activeTab="Dashboard" title="Project Manager Workspace" />
@@ -387,13 +393,15 @@ export const PmDashboard = ({ onNavigate }) => {
               <span className="text-[11px] font-bold uppercase tracking-wider">Overall Health</span>
               <Activity className="w-4 h-4 text-emerald-500 group-hover:scale-110 transition-transform" />
             </div>
-            <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400 warm:text-[#b45309] mt-2">100%</div>
+            <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400 warm:text-[#b45309] mt-2">
+              {pmAvgHealth !== null ? `${pmAvgHealth}%` : 'N/A'}
+            </div>
             <div className="text-[10px] text-slate-500 dark:text-slate-400 warm:text-[#69523c] mt-1 font-semibold">
-              BCNF Governance Normal
+              {pmAvgHealth !== null ? 'Database Verified Health' : 'No telemetry recorded'}
             </div>
           </div>
           <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-800 text-[10px] text-emerald-600 dark:text-emerald-400 font-bold flex items-center justify-between">
-            <span>AI health insights</span>
+            <span>Project health insights</span>
             <span className="group-hover:translate-x-1 transition-transform">→</span>
           </div>
         </button>
@@ -599,7 +607,7 @@ export const PmDashboard = ({ onNavigate }) => {
                       onClick={() => onNavigate && onNavigate('ProjectHealth')}
                       className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs transition-all cursor-pointer"
                     >
-                      <Activity className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" /> AI Health
+                      <Activity className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" /> Project Health
                     </button>
                   </div>
                   <span className="text-[11px] text-slate-500 font-mono">

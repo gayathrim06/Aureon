@@ -47,7 +47,7 @@ export const LeadProjectHealth = ({ onNavigate }) => {
   // Real sprint health & progress trend derived directly from database records
   const sprintTrend = sprints.map(s => ({
     sprint: (s.name || s.sprint_name || 'Sprint').substring(0, 16),
-    score: s.sprint_score !== undefined && s.sprint_score !== null ? Number(s.sprint_score) : 100,
+    score: s.sprint_score !== undefined && s.sprint_score !== null ? Number(s.sprint_score) : 0,
     progress: s.completion_percentage !== undefined ? Math.round(Number(s.completion_percentage)) : 0
   }));
 

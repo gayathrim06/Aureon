@@ -153,43 +153,12 @@ export const UserProfile = () => {
   };
 
   const getRoleMetrics = () => {
-    switch (role) {
-      case 'ROLE_ADMIN':
-        return [
-          { label: 'System Health', value: '100%', icon: Server, color: 'border-l-emerald-500' },
-          { label: 'Registered Users', value: '20', icon: User, color: 'border-l-blue-500' },
-          { label: 'Audit Telemetry', value: 'ACTIVE', icon: Activity, color: 'border-l-indigo-500' },
-          { label: 'Security Standard', value: 'BCNF + JWT', icon: Shield, color: 'border-l-amber-500' }
-        ];
-      case 'ROLE_PM':
-        return [
-          { label: 'Active Projects', value: '0', icon: Layers, color: 'border-l-indigo-500' },
-          { label: 'Sprint Velocity', value: '0%', icon: Activity, color: 'border-l-emerald-500' },
-          { label: 'Milestones', value: '0', icon: Award, color: 'border-l-blue-500' },
-          { label: 'Team Allocation', value: 'Unassigned', icon: User, color: 'border-l-purple-500' }
-        ];
-      case 'ROLE_LEAD':
-        return [
-          { label: 'Team Velocity', value: '0 pts', icon: Activity, color: 'border-l-emerald-500' },
-          { label: 'Code Quality', value: '100%', icon: Code2, color: 'border-l-blue-500' },
-          { label: 'Code Reviews', value: '0', icon: CheckSquare, color: 'border-l-purple-500' },
-          { label: 'Active Sprints', value: '0', icon: Layers, color: 'border-l-amber-500' }
-        ];
-      case 'ROLE_QA':
-        return [
-          { label: 'Test Cases', value: '0', icon: CheckSquare, color: 'border-l-emerald-500' },
-          { label: 'Bugs Logged', value: '0', icon: Bug, color: 'border-l-rose-500' },
-          { label: 'Test Suites', value: '0', icon: TestTube2, color: 'border-l-blue-500' },
-          { label: 'Pass Rate', value: '100%', icon: Activity, color: 'border-l-purple-500' }
-        ];
-      default:
-        return [
-          { label: 'Commits', value: String(stats.commits || 0), icon: GitCommit, color: 'border-l-blue-500' },
-          { label: 'Tasks Completed', value: String(stats.tasks_done || 0), icon: CheckSquare, color: 'border-l-emerald-500' },
-          { label: 'Pull Requests', value: String(stats.pull_requests || 0), icon: Code2, color: 'border-l-purple-500' },
-          { label: 'Code Reviews', value: String(stats.code_reviews || 0), icon: User, color: 'border-l-amber-500' }
-        ];
-    }
+    return [
+      { label: 'Commits', value: String(stats.commits || 0), icon: GitCommit, color: 'border-l-blue-500' },
+      { label: 'Tasks Completed', value: String(stats.tasks_done || 0), icon: CheckSquare, color: 'border-l-emerald-500' },
+      { label: 'Audit Events', value: String(stats.audit_logs || 0), icon: Activity, color: 'border-l-indigo-500' },
+      { label: 'Access Tier', value: role.replace('ROLE_', ''), icon: Shield, color: 'border-l-amber-500' }
+    ];
   };
 
   const roleMetrics = getRoleMetrics();

@@ -370,3 +370,85 @@ def get_project_risks(project_id):
     eng = HealthCalculator._calculate_engineering_risk_score(project_id)
     combined = github.get('risks', []) + eng.get('risks', [])
     return jsonify(combined)
+
+
+@project_bp.route('/health-summary', methods=['GET'])
+@project_bp.route('/health-summary/', methods=['GET'])
+@jwt_required(optional=True)
+def get_all_projects_health_summary():
+    """
+    Returns verified health scores, multi-pillar breakdown, risk diagnostics, and task progress
+    across accessible active projects directly from PostgreSQL.
+    """
+    from services.project_health_service import HealthCalculator
+    from models import Project, Task, Sprint, User
+    user = _get_auth_user()
+    if not user:
+        return jsonify({'success': False, 'message': '401 Unauthorized: Authentication required.'}), 401
+
+    scope = get_user_scope(user)
+    if scope.is_admin:
+        query = Project.query.filter_by(is_active=True, is_deleted=False)
+    else:
+        query = Project.query.filter_by(is_active=True, is_deleted=False).filter(Project.id.in_(scope.project_ids))
+
+    projects = query.all()
+    project_summaries = []
+    total_risks_count = 0
+    total_overdue_tasks = 0
+
+    for p in projects:
+        health_data = HealthCalculator.calculate_health_score(p.id, explicit_request=False)
+        tasks = Task.query.filter_by(project_id=p.id).all()
+        sprints = Sprint.query.filter_by(project_id=p.id).all()
+        completed = [t for t in tasks if (t.status or '').upper() in ['DONE', 'COMPLETED', 'CLOSED']]
+        in_prog = [t for t in tasks if (t.status or '').upper() in ['IN_PROGRESS', 'IN PROGRESS']]
+        in_rev = [t for t in tasks if (t.status or '').upper() in ['IN_REVIEW', 'IN REVIEW', 'REVIEW']]
+        overdue = [t for t in tasks if getattr(t, 'is_overdue', False)]
+        total_overdue_tasks += len(overdue)
+
+        score = health_data.get('overall_score')
+        status = health_data.get('overall_status') or ('HEALTHY' if (score and score >= 80) else 'WARNING' if score else 'NO_DATA')
+        risks = health_data.get('risks', [])
+        total_risks_count += len(risks)
+
+        clean_risks = []
+        for r in risks:
+            if isinstance(r, dict):
+                clean_risks.append(r)
+            else:
+                clean_risks.append({'title': str(r), 'severity': 'MEDIUM'})
+
+        mgr = User.query.get(p.manager_id) if p.manager_id else None
+        lead = User.query.get(p.lead_id) if p.lead_id else None
+        project_summaries.append({
+            'id': str(p.id),
+            'name': p.name,
+            'description': p.description,
+            'status': p.status or 'ACTIVE',
+            'priority': p.priority or 'HIGH',
+            'health_score': score,
+            'health_status': status,
+            'manager_name': mgr.display_name if mgr else 'Unassigned',
+            'lead_name': lead.display_name if lead else 'Unassigned',
+            'total_tasks': len(tasks),
+            'completed_tasks': len(completed),
+            'in_progress_tasks': len(in_prog),
+            'in_review_tasks': len(in_rev),
+            'overdue_tasks': len(overdue),
+            'sprints_count': len(sprints),
+            'components': health_data.get('components', {}),
+            'risks': clean_risks
+        })
+
+    valid_scores = [p['health_score'] for p in project_summaries if p['health_score'] is not None]
+    avg_score = round(sum(valid_scores) / len(valid_scores)) if valid_scores else None
+
+    return jsonify({
+        'success': True,
+        'portfolio_avg_score': avg_score,
+        'total_projects': len(project_summaries),
+        'total_risks_count': total_risks_count,
+        'total_overdue_tasks': total_overdue_tasks,
+        'projects': project_summaries
+    }), 200

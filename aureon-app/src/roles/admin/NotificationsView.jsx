@@ -7,80 +7,7 @@ import {
   Check, Filter, Search, ArrowRight, ShieldCheck, Clock, AlertTriangle, Eye
 } from 'lucide-react';
 
-const FALLBACK_ENTERPRISE_NOTIFS = [
-  {
-    id: 'f-1',
-    title: 'Radon & Pylint Static Code Analysis Completed',
-    message: 'Automated code quality scan finished on aureon-flask-backend. Health score: 94.2/100 (Maintainability Grade: A). Zero critical security vulnerabilities.',
-    notification_type: 'SECURITY',
-    read: false,
-    priority: 'HIGH',
-    created_at: new Date(Date.now() - 15 * 60 * 1000).toISOString()
-  },
-  {
-    id: 'f-2',
-    title: 'Production Release Candidate Deployed',
-    message: 'Sprint 4 release candidate deployed to staging server. PostgreSQL migrations and schema tables synchronized.',
-    notification_type: 'DEPLOYMENT',
-    read: false,
-    priority: 'HIGH',
-    created_at: new Date(Date.now() - 45 * 60 * 1000).toISOString()
-  },
-  {
-    id: 'f-3',
-    title: 'RBAC Security Matrix Policy Enforced',
-    message: 'Role permissions matrix synchronized across all 5 workspace tiers (ADMIN, PM, LEAD, DEV, QA).',
-    notification_type: 'SECURITY',
-    read: false,
-    priority: 'MEDIUM',
-    created_at: new Date(Date.now() - 2 * 3600 * 1000).toISOString()
-  },
-  {
-    id: 'f-4',
-    title: 'New Enterprise Project Initialized',
-    message: 'Project "Healthcare & Patient Management Portal" created with High priority and assigned to Team Lead Krishna Deepesh.',
-    notification_type: 'PROJECT',
-    read: false,
-    priority: 'MEDIUM',
-    created_at: new Date(Date.now() - 3 * 3600 * 1000).toISOString()
-  },
-  {
-    id: 'f-5',
-    title: 'QA Test Suite Automated Execution Passed',
-    message: 'Regression test suite (48 test cases) completed with 100% pass rate. 0 blocking defects detected.',
-    notification_type: 'BUG',
-    read: false,
-    priority: 'LOW',
-    created_at: new Date(Date.now() - 5 * 3600 * 1000).toISOString()
-  },
-  {
-    id: 'f-6',
-    title: 'Sprint 4 Deliverables Velocity On Track',
-    message: 'Team velocity reached 42 story points. 14 of 16 planned deliverables completed on schedule.',
-    notification_type: 'TASK',
-    read: true,
-    priority: 'LOW',
-    created_at: new Date(Date.now() - 24 * 3600 * 1000).toISOString()
-  },
-  {
-    id: 'f-7',
-    title: 'Aureon Git Lite Repository Synced',
-    message: 'Commit histories, branch metadata, and push events successfully synchronized with GitHub origin main.',
-    notification_type: 'SYSTEM',
-    read: true,
-    priority: 'LOW',
-    created_at: new Date(Date.now() - 28 * 3600 * 1000).toISOString()
-  },
-  {
-    id: 'f-8',
-    title: 'Database Backup & Audit Trail Integrity Verified',
-    message: 'PostgreSQL transaction ledger and immutable audit logs verified. 0 tampering detected.',
-    notification_type: 'SECURITY',
-    read: true,
-    priority: 'MEDIUM',
-    created_at: new Date(Date.now() - 48 * 3600 * 1000).toISOString()
-  }
-];
+// Pure PostgreSQL notifications telemetry - no hardcoded fallbacks
 
 export const NotificationsView = ({ roleFilter }) => {
   const [notifications, setNotifications] = useState([]);
@@ -115,14 +42,14 @@ export const NotificationsView = ({ roleFilter }) => {
         if (data.success && Array.isArray(data.notifications) && data.notifications.length > 0) {
           setNotifications(data.notifications);
         } else {
-          setNotifications(FALLBACK_ENTERPRISE_NOTIFS);
+          setNotifications([]);
         }
       } else {
-        setNotifications(FALLBACK_ENTERPRISE_NOTIFS);
+        setNotifications([]);
       }
     } catch (err) {
       console.warn('Using enterprise synchronized notifications telemetry:', err);
-      setNotifications(FALLBACK_ENTERPRISE_NOTIFS);
+      setNotifications([]);
     } finally {
       setLoading(false);
     }

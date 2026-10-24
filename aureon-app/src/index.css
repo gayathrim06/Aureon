@@ -290,3 +290,81 @@ html[data-theme='warm'] .text-indigo-600,
 html[data-theme='warm'] .text-indigo-500 {
   color: #b45309 !important;
 }
+
+
+/* ━━━ HIGH-CONTRAST BANNER & DARK OVERLAY PROTECTION ━━━ */
+/* Protects header banners and dark cards across Light, Dark, and Warm themes */
+.aureon-theme-banner,
+.aureon-dark-card,
+[data-dark-contrast="true"],
+html.light .aureon-theme-banner,
+html.light .aureon-dark-card,
+html.light [data-dark-contrast="true"],
+html.warm .aureon-theme-banner,
+html.warm .aureon-dark-card,
+html.warm [data-dark-contrast="true"],
+html:not(.dark):not(.warm) .aureon-theme-banner,
+html:not(.dark):not(.warm) .aureon-dark-card,
+html:not(.dark):not(.warm) [data-dark-contrast="true"] {
+  color: #ffffff !important;
+}
+
+.aureon-theme-banner h1,
+.aureon-theme-banner h2,
+.aureon-theme-banner h3,
+.aureon-theme-banner h4,
+.aureon-dark-card h1,
+.aureon-dark-card h2,
+.aureon-dark-card h3,
+.aureon-dark-card h4,
+[data-dark-contrast="true"] h1,
+[data-dark-contrast="true"] h2,
+[data-dark-contrast="true"] h3,
+[data-dark-contrast="true"] h4,
+html.light .aureon-theme-banner h1,
+html.light .aureon-dark-card h1,
+html.light [data-dark-contrast="true"] h1,
+html.warm .aureon-theme-banner h1,
+html.warm .aureon-dark-card h1,
+html.warm [data-dark-contrast="true"] h1 {
+  color: #ffffff !important;
+}
+
+.aureon-theme-banner p,
+.aureon-dark-card p,
+[data-dark-contrast="true"] p,
+.aureon-theme-banner .banner-subtext,
+.banner-subtext,
+html.light .aureon-theme-banner p,
+html.light .aureon-dark-card p,
+html.light [data-dark-contrast="true"] p,
+html.light .banner-subtext,
+html.warm .aureon-theme-banner p,
+html.warm .aureon-dark-card p,
+html.warm [data-dark-contrast="true"] p,
+html.warm .banner-subtext {
+  color: #e0e7ff !important;
+}
+
+.aureon-theme-banner span:not([class*="bg-white"]):not(.banner-badge),
+.aureon-dark-card span:not([class*="bg-white"]):not(.banner-badge),
+[data-dark-contrast="true"] span:not([class*="bg-white"]):not(.banner-badge),
+html.light .aureon-theme-banner span:not([class*="bg-white"]):not(.banner-badge),
+html.light .aureon-dark-card span:not([class*="bg-white"]):not(.banner-badge),
+html.light [data-dark-contrast="true"] span:not([class*="bg-white"]):not(.banner-badge),
+html.warm .aureon-theme-banner span:not([class*="bg-white"]):not(.banner-badge),
+html.warm .aureon-dark-card span:not([class*="bg-white"]):not(.banner-badge),
+html.warm [data-dark-contrast="true"] span:not([class*="bg-white"]):not(.banner-badge) {
+  color: #c7d2fe !important;
+}
+
+.banner-badge,
+.aureon-theme-banner .banner-badge,
+.aureon-dark-card .banner-badge,
+[data-dark-contrast="true"] .banner-badge,
+html.light .banner-badge,
+html.warm .banner-badge {
+  color: #e0e7ff !important;
+  background-color: rgba(99, 102, 241, 0.35) !important;
+  border-color: rgba(165, 180, 252, 0.5) !important;
+}

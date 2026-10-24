@@ -8,7 +8,7 @@ import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGri
 export const SonarQubeAdmin = ({ onNavigate }) => {
   const [projects, setProjects] = useState([]);
   const [summary, setSummary] = useState({
-    overallQualityGate: 'PASSED',
+    overallQualityGate: 'NOT_CONNECTED',
     bugs: 0,
     vulnerabilities: 0,
     codeSmells: 0,

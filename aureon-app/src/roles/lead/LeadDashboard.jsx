@@ -23,7 +23,7 @@ export const LeadDashboard = ({ onNavigate }) => {
     inReviewCount: 0,
     activeProjects: 0,
     activeSprintsCount: 0,
-    avgSprintScore: 100,
+    avgSprintScore: null,
     teamDevsCount: 0,
     availableDevsCount: 0
   });
@@ -118,7 +118,7 @@ export const LeadDashboard = ({ onNavigate }) => {
       
       const avgScore = sprintScores.length > 0 
         ? Math.round(sprintScores.reduce((a, b) => a + b, 0) / sprintScores.length) 
-        : 100;
+        : null;
       
       const availableDevs = devs.filter(d => d.is_available).length;
 
@@ -372,7 +372,7 @@ export const LeadDashboard = ({ onNavigate }) => {
                     <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
                       <div className="flex justify-between text-[11px] text-slate-500">
                         <span>Health Score:</span>
-                        <strong className="text-emerald-600 font-bold">{p.health_score || 90}/100</strong>
+                        <strong className="text-emerald-600 font-bold">{p.health_score !== null && p.health_score !== undefined ? `${p.health_score}/100` : 'N/A'}</strong>
                       </div>
                       <div className="flex justify-between text-[11px] text-slate-500">
                         <span>Task Completion:</span>

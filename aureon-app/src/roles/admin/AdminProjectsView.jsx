@@ -32,11 +32,11 @@ export const AdminProjectsView = ({ onNavigate }) => {
           manager: p.manager_name || 'Unassigned PM',
           lead: p.lead_name || 'Unassigned Lead',
           status: p.status || 'IN_PROGRESS',
-          progress: p.progress || (p.status === 'COMPLETED' ? 100 : (p.status === 'PLANNING' ? 15 : 65)),
-          healthScore: p.health_score !== undefined && p.health_score !== null ? p.health_score : 90,
+          progress: p.progress !== undefined && p.progress !== null ? p.progress : (p.status === 'COMPLETED' ? 100 : 0),
+          healthScore: p.health_score !== undefined && p.health_score !== null ? p.health_score : null,
           deadline: p.target_deadline || p.deadline || 'Ongoing',
-          startDate: p.start_date || '2026-09-01',
-          repoName: p.github_repo_name || (p.repository && p.repository.name) || 'aureon-maker/repository',
+          startDate: p.start_date || 'N/A',
+          repoName: p.github_repo_name || (p.repository && p.repository.name) || 'None linked',
           repoUrl: p.github_repo_url || (p.repository && p.repository.url) || null,
           memberCount: Array.isArray(p.team_members) ? p.team_members.length : (Array.isArray(p.members) ? p.members.length : 0)
         }));
@@ -62,9 +62,10 @@ export const AdminProjectsView = ({ onNavigate }) => {
   const totalCount = projects.length;
   const inProgressCount = projects.filter(p => p.status === 'IN_PROGRESS' || p.status === 'ACTIVE').length;
   const completedCount = projects.filter(p => p.status === 'COMPLETED' || p.status === 'DONE').length;
-  const avgHealth = projects.length > 0 
-    ? Math.round(projects.reduce((acc, p) => acc + p.healthScore, 0) / projects.length) 
-    : 90;
+  const scoredProjects = projects.filter(p => p.healthScore !== null && p.healthScore !== undefined);
+  const avgHealth = scoredProjects.length > 0 
+    ? Math.round(scoredProjects.reduce((acc, p) => acc + p.healthScore, 0) / scoredProjects.length) 
+    : null;
 
   const filteredProjects = React.useMemo(() => {
     let list = [...projects];
@@ -104,7 +105,7 @@ export const AdminProjectsView = ({ onNavigate }) => {
     {
       id: 'health',
       label: 'Avg Health Score',
-      value: `${avgHealth}/100`,
+      value: avgHealth !== null ? `${avgHealth}/100` : 'N/A',
       sub: sortByHealth ? 'Sorted by Highest Health' : 'Quality & Test Metrics',
       hint: 'Click to toggle sort →',
       icon: ShieldCheck,
@@ -202,7 +203,7 @@ export const AdminProjectsView = ({ onNavigate }) => {
     { 
       key: 'healthScore', 
       label: 'Health', 
-      render: (val) => (
+      render: (val) => val !== null && val !== undefined ? (
         <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
           val >= 90 
             ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400 border-emerald-200' 
@@ -210,7 +211,9 @@ export const AdminProjectsView = ({ onNavigate }) => {
         }`}>
           {val}/100
         </span>
-      ) 
+      ) : (
+        <span className="px-2 py-0.5 rounded text-[10px] text-slate-400 font-mono">N/A</span>
+      )
     },
     { 
       key: 'deadline', 

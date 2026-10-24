@@ -37,17 +37,17 @@ def list_users():
             query = query.join(Role).filter(Role.code.ilike(f"%{role_param}%"))
         users = query.all()
     elif scope.is_pm:
-        # PM sees users within scoped teams/projects + Team Leads for project assignment
-        if role_param and 'lead' in role_param.lower():
-            users = User.query.join(Role).filter(Role.code == 'ROLE_LEAD').all()
-        else:
-            scoped_users = User.query.filter(User.id.in_(scope.user_ids)).all() if scope.user_ids else []
-            lead_users = User.query.join(Role).filter(Role.code == 'ROLE_LEAD').all()
-            user_map = {u.id: u for u in scoped_users + lead_users}
-            users = list(user_map.values())
+        # PM sees all candidate Team Leads, Developers, and QA engineers for staffing, project creation, and team allocation
+        query = User.query.join(Role).filter(Role.code.in_(['ROLE_LEAD', 'ROLE_DEV', 'ROLE_QA', 'ROLE_PM']))
+        if role_param:
+            query = query.filter(Role.code.ilike(f"%{role_param}%"))
+        users = query.all()
     elif scope.is_lead:
-        # TL sees users within their scoped team
-        users = User.query.filter(User.id.in_(scope.user_ids)).all() if scope.user_ids else []
+        # TL sees all candidate developers and QA engineers for task delegation and sprint allocation
+        query = User.query.join(Role).filter(Role.code.in_(['ROLE_DEV', 'ROLE_QA', 'ROLE_LEAD']))
+        if role_param:
+            query = query.filter(Role.code.ilike(f"%{role_param}%"))
+        users = query.all()
     else:
         # Developer user scoping: strictly restricted to own profile (/users/me or User.id == user.id)
         users = [user] if user else []
