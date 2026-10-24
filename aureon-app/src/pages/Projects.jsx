@@ -256,7 +256,7 @@ export const Projects = () => {
   const [projectPriority, setProjectPriority] = useState('HIGH');
   const [projectStatus, setProjectStatus] = useState('PLANNING');
   const [selectedLeadId, setSelectedLeadId] = useState(DEFAULT_AUREON_LEADS[0].id);
-  const [selectedMemberIds, setSelectedMemberIds] = useState(['dev-sainu-003', 'dev-rinta-006', 'dev-priya-015', 'qa-venu-013']);
+  const [selectedMemberIds, setSelectedMemberIds] = useState([]);
   const [memberFilter, setMemberFilter] = useState('ALL'); // 'ALL', 'AVAILABLE', 'DEV', 'QA'
   const [startDate, setStartDate] = useState('2026-09-01');
   const [deadline, setDeadline] = useState('2026-11-30');
