@@ -346,16 +346,42 @@ html.warm .banner-subtext {
   color: #e0e7ff !important;
 }
 
-.aureon-theme-banner span:not([class*="bg-white"]):not(.banner-badge),
-.aureon-dark-card span:not([class*="bg-white"]):not(.banner-badge),
-[data-dark-contrast="true"] span:not([class*="bg-white"]):not(.banner-badge),
-html.light .aureon-theme-banner span:not([class*="bg-white"]):not(.banner-badge),
-html.light .aureon-dark-card span:not([class*="bg-white"]):not(.banner-badge),
-html.light [data-dark-contrast="true"] span:not([class*="bg-white"]):not(.banner-badge),
-html.warm .aureon-theme-banner span:not([class*="bg-white"]):not(.banner-badge),
-html.warm .aureon-dark-card span:not([class*="bg-white"]):not(.banner-badge),
-html.warm [data-dark-contrast="true"] span:not([class*="bg-white"]):not(.banner-badge) {
+.aureon-theme-banner span:not(button *):not(button):not([class*="bg-white"]):not(.banner-badge),
+.aureon-dark-card span:not(button *):not(button):not([class*="bg-white"]):not(.banner-badge),
+[data-dark-contrast="true"] span:not(button *):not(button):not([class*="bg-white"]):not(.banner-badge),
+html.light .aureon-theme-banner span:not(button *):not(button):not([class*="bg-white"]):not(.banner-badge),
+html.light .aureon-dark-card span:not(button *):not(button):not([class*="bg-white"]):not(.banner-badge),
+html.light [data-dark-contrast="true"] span:not(button *):not(button):not([class*="bg-white"]):not(.banner-badge),
+html.warm .aureon-theme-banner span:not(button *):not(button):not([class*="bg-white"]):not(.banner-badge),
+html.warm .aureon-dark-card span:not(button *):not(button):not([class*="bg-white"]):not(.banner-badge),
+html.warm [data-dark-contrast="true"] span:not(button *):not(button):not([class*="bg-white"]):not(.banner-badge) {
   color: #c7d2fe !important;
+}
+
+/* Explicit High-Contrast PM Create Project Button & Banner White Buttons */
+.aureon-theme-banner button.pm-create-btn,
+.aureon-theme-banner button.pm-create-btn span,
+.aureon-theme-banner button.bg-white,
+.aureon-theme-banner button.bg-white span,
+html.warm .aureon-theme-banner button.pm-create-btn,
+html.warm .aureon-theme-banner button.pm-create-btn span,
+html.warm .aureon-theme-banner button.bg-white,
+html.warm .aureon-theme-banner button.bg-white span,
+html.light .aureon-theme-banner button.pm-create-btn,
+html.light .aureon-theme-banner button.pm-create-btn span,
+html.light .aureon-theme-banner button.bg-white,
+html.light .aureon-theme-banner button.bg-white span {
+  color: #0f172a !important;
+  font-weight: 800 !important;
+}
+
+.aureon-theme-banner button.pm-create-btn svg,
+.aureon-theme-banner button.bg-white svg,
+html.warm .aureon-theme-banner button.pm-create-btn svg,
+html.warm .aureon-theme-banner button.bg-white svg,
+html.light .aureon-theme-banner button.pm-create-btn svg,
+html.light .aureon-theme-banner button.bg-white svg {
+  color: #2563eb !important;
 }
 
 .banner-badge,
