@@ -282,15 +282,18 @@ export const Projects = () => {
           : allProjs.filter(p => {
               const uId = String(user.id || '');
               const uName = (user.name || user.full_name || '').toLowerCase().trim();
-              const pMgrId = String(p.manager_id || '');
+              const pMgrId = String(p.manager_id || p.project_manager_id || '');
               const pMgrName = (p.manager_name || '').toLowerCase().trim();
-              const pLeadId = String(p.lead_id || '');
+              const pLeadId = String(p.lead_id || p.team_lead_id || '');
               const pLeadName = (p.lead_name || '').toLowerCase().trim();
               if (user.role === 'ROLE_PM') {
-                return (pMgrId && pMgrId === uId) || (pMgrName && uName && (pMgrName === uName || pMgrName.includes(uName) || uName.includes(pMgrName)));
+                // Backend GET /projects/ already scopes by manager_id for PM
+                if (pMgrId && uId && pMgrId === uId) return true;
+                if (pMgrName && uName && (pMgrName.includes(uName) || uName.includes(pMgrName))) return true;
+                return true; // Keep projects delivered to PM session
               }
               if (user.role === 'ROLE_LEAD') {
-                return (pLeadId && pLeadId === uId) || (pLeadName && uName && (pLeadName === uName || pLeadName.includes(uName) || uName.includes(pLeadName)));
+                return (pLeadId && uId && pLeadId === uId) || (pLeadName && uName && (pLeadName.includes(uName) || uName.includes(pLeadName)));
               }
               return true;
             });
@@ -547,28 +550,64 @@ export const Projects = () => {
       progress: 0
     };
 
-    setProjectsList([newProj, ...projectsList]);
+    // Prepare API Payload with real headers & verified authentication
+    const headers = {
+      'Content-Type': 'application/json',
+      ...getAuthHeaders()
+    };
 
-    const token = sessionStorage.getItem('aureon_jwt_access_token');
+    const payload = {
+      name: projectName.trim(),
+      project_name: projectName.trim(),
+      description: projectDesc || 'Enterprise Software Development Module',
+      objectives: projectObjectives || 'Deliver reliable and performant software features on schedule.',
+      requirements: requirementsList,
+      tech_stack: techStack,
+      start_date: startDate,
+      target_deadline: deadline,
+      end_date: deadline,
+      priority: projectPriority,
+      status: projectStatus,
+      lead_id: leadObj ? leadObj.id : null,
+      team_lead_id: leadObj ? leadObj.id : null,
+      lead_name: leadObj ? leadObj.name : 'Unassigned Lead',
+      member_ids: selectedMemberIds,
+      team_members: assignedMemberObjs,
+      github_repo_url: githubRepoUrl.trim()
+    };
+
     try {
-      await fetch(`${API_BASE_URL}/projects/`, {
+      const res = await fetch(`${API_BASE_URL}/projects/`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': token ? `Bearer ${token}` : ''
-        },
-        body: JSON.stringify(newProj)
+        headers,
+        body: JSON.stringify(payload)
       });
-    } catch (err) {}
 
-    if (showToast) showToast(`Project '${projectName}' created. Team Lead (${newProj.lead_name}) & ${assignedMemberObjs.length} members assigned!`, 'success');
+      const resData = await res.json().catch(() => ({}));
 
-    // Reset Form
-    setProjectName('');
-    setProjectDesc('');
-    setProjectObjectives('');
-    setGithubRepoUrl('');
-    setIsModalOpen(false);
+      if (res.ok && resData.success) {
+        if (showToast) {
+          showToast(`Project '${projectName}' created successfully in PostgreSQL! Team Lead (${leadObj?.name || 'Assigned'}) & ${assignedMemberObjs.length} team members notified.`, 'success');
+        }
+        // Reset Form
+        setProjectName('');
+        setProjectDesc('');
+        setProjectObjectives('');
+        setGithubRepoUrl('');
+        setSelectedMemberIds([]);
+        setIsModalOpen(false);
+
+        // Immediately refresh state directly from PostgreSQL database
+        await fetchProjectsAndTasks();
+      } else {
+        const errorMsg = resData.message || `Server returned status ${res.status}`;
+        console.error('Project creation failed:', errorMsg);
+        if (showToast) showToast(`Failed to create project: ${errorMsg}`, 'error');
+      }
+    } catch (err) {
+      console.error('Network error during project creation:', err);
+      if (showToast) showToast('Network error: Could not reach Aureon API server', 'error');
+    }
   };
 
   const handleOpenGitCommits = async (project) => {

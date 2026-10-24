@@ -93,25 +93,33 @@ def manage_projects():
             db.session.add(project)
             db.session.flush()
 
-            # Allocate Team Members to Project
-            allocated_count = 0
+            # Allocate Team Members to Project with Foreign Key Safety & User Resolution
+            allocated_user_ids = set()
             if isinstance(member_ids, list) and len(member_ids) > 0:
                 for m_item in member_ids:
                     m_val = m_item.get('id') if isinstance(m_item, dict) else m_item
                     m_uuid = _parse_uuid(m_val)
-                    if not m_uuid and isinstance(m_item, dict):
-                        m_name = (m_item.get('name') or m_item.get('email') or '').strip().lower()
-                        for u in User.query.all():
-                            if (u.display_name and m_name in u.display_name.lower()) or (u.email and m_name in u.email.lower()):
-                                m_uuid = u.id
-                                break
+                    target_user = None
                     if m_uuid:
-                        pm_rec = ProjectMember(project_id=project.id, user_id=m_uuid)
+                        target_user = User.query.get(m_uuid)
+
+                    if not target_user and isinstance(m_item, dict):
+                        m_name = (m_item.get('name') or m_item.get('display_name') or m_item.get('username') or '').strip().lower()
+                        m_email = (m_item.get('email') or '').strip().lower()
+                        for u in User.query.all():
+                            u_disp = (u.display_name or '').strip().lower()
+                            u_mail = (u.email or '').strip().lower()
+                            if (m_email and u_mail == m_email) or (m_name and (m_name == u_disp or m_name in u_disp or u_disp in m_name)):
+                                target_user = u
+                                break
+
+                    if target_user and target_user.id not in allocated_user_ids:
+                        pm_rec = ProjectMember(project_id=project.id, user_id=target_user.id)
                         db.session.add(pm_rec)
-                        allocated_count += 1
+                        allocated_user_ids.add(target_user.id)
 
             # If no explicit members provided, auto-allocate the assigned Team Lead's squad developers
-            if allocated_count == 0 and team_lead:
+            if len(allocated_user_ids) == 0 and team_lead:
                 target_team = Team.query.filter(
                     (Team.team_leader_id == team_lead.id) | 
                     (Team.lead_id == team_lead.id)
@@ -119,16 +127,21 @@ def manage_projects():
                 
                 if target_team:
                     for tm in TeamMember.query.filter_by(team_id=target_team.id).all():
-                        pm_rec = ProjectMember(project_id=project.id, user_id=tm.user_id)
-                        db.session.add(pm_rec)
-                        allocated_count += 1
+                        if tm.user_id and tm.user_id not in allocated_user_ids:
+                            u_rec = User.query.get(tm.user_id)
+                            if u_rec:
+                                pm_rec = ProjectMember(project_id=project.id, user_id=u_rec.id)
+                                db.session.add(pm_rec)
+                                allocated_user_ids.add(u_rec.id)
                 
                 # Fallback to developers in engineering pool if team query was empty
-                if allocated_count == 0:
+                if len(allocated_user_ids) == 0:
                     dev_users = User.query.filter(User.role_name.in_(['ROLE_DEV', 'ROLE_QA'])).limit(3).all()
                     for du in dev_users:
-                        pm_rec = ProjectMember(project_id=project.id, user_id=du.id)
-                        db.session.add(pm_rec)
+                        if du.id not in allocated_user_ids:
+                            pm_rec = ProjectMember(project_id=project.id, user_id=du.id)
+                            db.session.add(pm_rec)
+                            allocated_user_ids.add(du.id)
 
             # Auto-connect GitHub repository if URL provided
             repo_url = data.get('github_repo_url') or data.get('repository_url')
@@ -188,8 +201,34 @@ def manage_projects():
                 )
                 db.session.add(notif)
 
+            # Create Notification for each allocated Team Member
+            for uid in allocated_user_ids:
+                if team_lead and uid == team_lead.id:
+                    continue
+                m_user = User.query.get(uid)
+                if m_user:
+                    role_label = 'Quality Assurance' if m_user.role_name == 'ROLE_QA' else 'Developer'
+                    m_notif = Notification(
+                        recipient_id=m_user.id,
+                        title='New Project Team Allocation',
+                        message=f"You have been assigned as a team member ({role_label}) to project '{project_name}' by Project Manager.",
+                        notification_type='ASSIGNMENT'
+                    )
+                    db.session.add(m_notif)
+
+            # Create Confirmation Notification for Project Manager
+            if user:
+                lead_disp = team_lead.display_name if team_lead else 'Unassigned'
+                pm_notif = Notification(
+                    recipient_id=user.id,
+                    title='Project Created Successfully',
+                    message=f"Project '{project_name}' created successfully with Team Lead '{lead_disp}' and {len(allocated_user_ids)} team members allocated.",
+                    notification_type='SYSTEM'
+                )
+                db.session.add(pm_notif)
+
             db.session.commit()
-            return jsonify({'success': True, 'message': 'Project created and Team Lead assigned successfully.', 'project': project.to_dict()}), 201
+            return jsonify({'success': True, 'message': 'Project created and team notified successfully.', 'project': project.to_dict()}), 201
 
         except Exception as err:
             db.session.rollback()
