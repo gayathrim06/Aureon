@@ -195,9 +195,10 @@ def manage_projects():
             if team_lead:
                 notif = Notification(
                     recipient_id=team_lead.id,
-                    title='New Project Lead Assignment',
+                    title='⚡ New Project Lead Assignment',
                     message=f"You have been assigned as Team Lead for project '{project_name}' by Project Manager.",
-                    notification_type='ASSIGNMENT'
+                    notification_type='ASSIGNMENT',
+                    read=False
                 )
                 db.session.add(notif)
 
@@ -210,9 +211,10 @@ def manage_projects():
                     role_label = 'Quality Assurance' if m_user.role_name == 'ROLE_QA' else 'Developer'
                     m_notif = Notification(
                         recipient_id=m_user.id,
-                        title='New Project Team Allocation',
+                        title='⚡ New Project Team Allocation',
                         message=f"You have been assigned as a team member ({role_label}) to project '{project_name}' by Project Manager.",
-                        notification_type='ASSIGNMENT'
+                        notification_type='ASSIGNMENT',
+                        read=False
                     )
                     db.session.add(m_notif)
 

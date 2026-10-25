@@ -3,7 +3,8 @@ import { Breadcrumb } from '../../components/common/Breadcrumb';
 import { useAuth } from '../../context/AuthContext';
 import { 
   CheckSquare, Clock, AlertTriangle, CheckCircle2, GitPullRequest, 
-  GitBranch, Layers, ArrowRight, Code2, AlertCircle, RefreshCw, Sparkles
+  GitBranch, Layers, ArrowRight, Code2, AlertCircle, RefreshCw, Sparkles,
+  FolderKanban, Users
 } from 'lucide-react';
 import { getAuthHeaders, API_BASE_URL } from '../../services/apiClient';
 
@@ -12,6 +13,7 @@ export const DevDashboard = ({ onNavigate }) => {
   const userName = user?.name || user?.full_name || user?.email?.split('@')[0] || 'Developer';
 
   const [assignedTasks, setAssignedTasks] = useState([]);
+  const [assignedProjects, setAssignedProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [taskStats, setTaskStats] = useState({
     total: 0,
@@ -73,8 +75,25 @@ export const DevDashboard = ({ onNavigate }) => {
     }
   };
 
+  const fetchDevProjects = async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/projects/`, {
+        headers: getAuthHeaders()
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && Array.isArray(data.projects)) {
+          setAssignedProjects(data.projects);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to load assigned projects:', err);
+    }
+  };
+
   useEffect(() => {
     fetchDevTasks();
+    fetchDevProjects();
   }, [user]);
 
   const isAvailable = taskStats.active === 0;
@@ -96,6 +115,16 @@ export const DevDashboard = ({ onNavigate }) => {
       actionTab: 'Profile',
       clickable: true,
       hint: 'View profile →'
+    },
+    { 
+      label: 'Assigned Projects', 
+      value: `${assignedProjects.length} Projects`, 
+      sub: assignedProjects.length > 0 ? 'Allocated by PM' : 'No active projects', 
+      icon: FolderKanban, 
+      color: 'border-l-violet-600',
+      actionTab: 'SprintTasks',
+      clickable: true,
+      hint: 'View allocations →'
     },
     { 
       label: 'Delivered Tasks', 
@@ -218,7 +247,7 @@ export const DevDashboard = ({ onNavigate }) => {
       </div>
 
       {/* Summary Widgets Grid - All Clickable */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
         {widgets.map((w, i) => {
           const Icon = w.icon;
           return (
@@ -246,6 +275,98 @@ export const DevDashboard = ({ onNavigate }) => {
         })}
       </div>
 
+      {/* Assigned Projects & Squad Allocations Section */}
+      <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm overflow-hidden">
+        <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <FolderKanban className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+              My Assigned Projects & Squad Allocations ({assignedProjects.length})
+            </h2>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Software engineering initiatives and agile squads where you have been allocated by Project Managers.
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
+              <CheckCircle2 className="w-3 h-3" /> Staffed & Active
+            </span>
+          </div>
+        </div>
+
+        <div className="p-5">
+          {assignedProjects.length === 0 ? (
+            <div className="text-center py-6 text-slate-400 text-xs">
+              No project allocations yet. When a Project Manager assigns you to a project team, it will appear here immediately.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {assignedProjects.map((p) => (
+                <div
+                  key={p.id}
+                  className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 hover:border-indigo-300 dark:hover:border-indigo-700 transition flex flex-col justify-between"
+                >
+                  <div>
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <h3 className="text-sm font-bold text-slate-900 dark:text-white truncate">
+                          {p.name || p.project_name}
+                        </h3>
+                        {p.key && (
+                          <span className="font-mono text-[10px] text-indigo-600 dark:text-indigo-400 font-bold">
+                            {p.key}
+                          </span>
+                        )}
+                      </div>
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold shrink-0 ${
+                        p.priority === 'HIGH' || p.priority === 'CRITICAL'
+                          ? 'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300'
+                          : 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300'
+                      }`}>
+                        {p.priority || 'NORMAL'}
+                      </span>
+                    </div>
+
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 line-clamp-2">
+                      {p.description || 'Enterprise software development module.'}
+                    </p>
+
+                    <div className="mt-3 pt-3 border-t border-slate-200/60 dark:border-slate-700/60 space-y-1.5 text-[11px] text-slate-600 dark:text-slate-300">
+                      <div className="flex items-center justify-between">
+                        <span className="text-slate-400">Team Lead:</span>
+                        <span className="font-semibold text-slate-800 dark:text-slate-200">{p.lead_name || 'Assigned Lead'}</span>
+                      </div>
+                      {p.manager_name && (
+                        <div className="flex items-center justify-between">
+                          <span className="text-slate-400">Project Manager:</span>
+                          <span className="font-semibold text-slate-800 dark:text-slate-200">{p.manager_name}</span>
+                        </div>
+                      )}
+                      {p.target_deadline && (
+                        <div className="flex items-center justify-between">
+                          <span className="text-slate-400">Target Deadline:</span>
+                          <span className="font-mono text-slate-700 dark:text-slate-300">{p.target_deadline}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="mt-4 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => handleNav('SprintTasks')}
+                      className="w-full py-1.5 px-3 rounded-lg bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/50 dark:hover:bg-indigo-900/60 text-indigo-600 dark:text-indigo-400 text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      Open Sprint Deliverables <ArrowRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
       {/* My Current Assigned Tasks Section */}
       <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm overflow-hidden">
         <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -261,7 +382,7 @@ export const DevDashboard = ({ onNavigate }) => {
 
           <div className="flex items-center gap-2">
             <button
-              onClick={fetchDevTasks}
+              onClick={() => { fetchDevTasks(); fetchDevProjects(); }}
               disabled={loading}
               className="cursor-pointer flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition"
             >

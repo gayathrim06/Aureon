@@ -195,14 +195,24 @@ class UserScope:
                 self.user_ids = list(set([m.user_id for m in memberships]))
 
         elif self.is_dev:
-            # Developer: Most restricted visibility
+            # Developer: Visibility scoped to assigned tasks, projects, and squad memberships
             dev_tasks = Task.query.filter_by(assigned_to_id=u_id).all()
             self.sprint_ids = list(set([t.sprint_id for t in dev_tasks if t.sprint_id]))
-            self.project_ids = list(set([t.project_id for t in dev_tasks if t.project_id]))
             
             # Developer team membership
             my_tm = TeamMember.query.filter_by(user_id=u_id).all()
             self.team_ids = [tm.team_id for tm in my_tm]
+
+            # Developer projects: ProjectMember allocations, team projects, and task projects
+            try:
+                my_pm = ProjectMember.query.filter_by(user_id=u_id, is_active=True).all()
+                proj_from_memberships = [pm.project_id for pm in my_pm]
+            except Exception:
+                proj_from_memberships = []
+
+            proj_from_tasks = [t.project_id for t in dev_tasks if t.project_id]
+            proj_from_teams = [t.project_id for t in Team.query.filter(Team.id.in_(self.team_ids)).all() if t.project_id] if self.team_ids else []
+            self.project_ids = list(set(proj_from_memberships + proj_from_tasks + proj_from_teams))
 
             # Strictly user requirement 4: Developer only sees self
             self.user_ids = [u_id]
