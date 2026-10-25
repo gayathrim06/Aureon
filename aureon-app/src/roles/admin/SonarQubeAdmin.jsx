@@ -3,7 +3,6 @@ import { Breadcrumb } from '../../components/common/Breadcrumb';
 import { DataTable } from '../../components/common/DataTable';
 import { getAuthHeaders, API_BASE_URL } from '../../services/apiClient';
 import { Cpu, Bug, ShieldAlert, Code2, CheckCircle2, RefreshCw } from 'lucide-react';
-import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 
 export const SonarQubeAdmin = ({ onNavigate }) => {
   const [projects, setProjects] = useState([]);
@@ -47,12 +46,6 @@ export const SonarQubeAdmin = ({ onNavigate }) => {
   };
 
   const safeProjects = Array.isArray(projects) ? projects : [];
-  const chartData = safeProjects.slice(0, 10).map(p => ({
-    name: p.projectKey || p.projectName?.substring(0, 10),
-    bugs: p.bugs || 0,
-    smells: parseInt(p.codeSmells) || 0,
-    coverage: parseFloat(p.coverage) || 0
-  }));
 
   const columns = [
     { key: 'projectName', label: 'Project', render: (val, row) => (<div><div className="font-bold text-gray-900 dark:text-gray-100">{val}</div><div className="font-mono text-[10px] text-blue-600 dark:text-blue-400">{row.projectKey}</div></div>) },
@@ -153,25 +146,6 @@ export const SonarQubeAdmin = ({ onNavigate }) => {
           ); 
         })}
       </div>
-
-      {safeProjects.length > 0 && (
-        <div className="p-5 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm">
-          <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100 mb-4">Bugs & Code Smells Per Project</h3>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.2} />
-                <XAxis dataKey="name" stroke="#9ca3af" fontSize={11} />
-                <YAxis stroke="#9ca3af" fontSize={11} />
-                <Tooltip contentStyle={{ backgroundColor: '#1f2937', borderRadius: '8px', border: 'none', color: '#fff' }} />
-                <Bar dataKey="bugs" fill="#ef4444" radius={[4, 4, 0, 0]} name="Bugs" />
-                <Bar dataKey="smells" fill="#f59e0b" radius={[4, 4, 0, 0]} name="Code Smells" />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-      )}
-
       <DataTable columns={columns} data={safeProjects} searchPlaceholder="Search projects by key, name..." />
     </div>
   );
