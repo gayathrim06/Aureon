@@ -163,8 +163,8 @@ export const LeadAssignedProjects = ({ onNavigate }) => {
                   </span>
                   <div className="text-right">
                     <span className="text-[10px] text-slate-400 uppercase font-bold block">Health Score</span>
-                    <span className={`text-xl font-black ${p.health_score >= 90 ? 'text-emerald-600' : 'text-amber-600'}`}>
-                      {p.health_score || 90} / 100
+                    <span className={`text-xl font-black ${p.health_score !== null && p.health_score !== undefined ? (p.health_score >= 90 ? 'text-emerald-600' : 'text-amber-600') : 'text-slate-400'}`}>
+                      {p.health_score !== null && p.health_score !== undefined ? `${p.health_score} / 100` : 'N/A'}
                     </span>
                   </div>
                 </div>
@@ -214,7 +214,10 @@ export const LeadAssignedProjects = ({ onNavigate }) => {
               {/* Interactive Action Buttons with Hover State */}
               <div className="pt-3 border-t border-slate-100 dark:border-slate-800 grid grid-cols-2 gap-2">
                 <button
-                  onClick={() => handleNav('SprintBoard')}
+                  onClick={() => {
+                    sessionStorage.setItem('aureon_active_project_id', String(p.id));
+                    handleNav('SprintBoard');
+                  }}
                   className="py-2 px-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white text-xs font-bold shadow-xs hover:shadow-md transition-all duration-150 flex items-center justify-center gap-1.5 cursor-pointer"
                 >
                   <Layers className="w-3.5 h-3.5" /> Sprint Board
@@ -233,3 +236,4 @@ export const LeadAssignedProjects = ({ onNavigate }) => {
     </div>
   );
 };
+

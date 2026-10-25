@@ -12,6 +12,7 @@ export const DeveloperRoster = ({ onShowToast }) => {
   const [tasksList, setTasksList] = useState([]);
   const [projectsList, setProjectsList] = useState([]);
   const [sprintsList, setSprintsList] = useState([]);
+  const [teamsList, setTeamsList] = useState([]);
   const [loading, setLoading] = useState(true);
 
   // Filter & Sort State
@@ -49,13 +50,19 @@ export const DeveloperRoster = ({ onShowToast }) => {
     const headers = getAuthHeaders();
 
     try {
-      const [availRes, uRes, tRes, pRes, sRes] = await Promise.all([
+      const [availRes, uRes, tRes, pRes, sRes, tmRes] = await Promise.all([
         fetch(`${API_BASE_URL}/team-lead/my-team/availability`, { headers }),
         fetch(`${API_BASE_URL}/users/`, { headers }),
         fetch(`${API_BASE_URL}/tasks/`, { headers }),
         fetch(`${API_BASE_URL}/projects/`, { headers }),
-        fetch(`${API_BASE_URL}/sprints/`, { headers })
+        fetch(`${API_BASE_URL}/sprints/`, { headers }),
+        fetch(`${API_BASE_URL}/teams/`, { headers })
       ]);
+
+      if (tmRes && tmRes.ok) {
+        const tmData = await tmRes.json();
+        setTeamsList(tmData.teams || []);
+      }
 
       let devs = [];
       if (availRes.ok) {
@@ -97,9 +104,16 @@ export const DeveloperRoster = ({ onShowToast }) => {
           : allProjs.filter(p => {
               const uId = String(user?.id || '');
               const uName = (user?.name || user?.full_name || '').toLowerCase().trim();
+              const uEmail = (user?.email || '').toLowerCase().trim();
               const pLeadId = String(p.lead_id || '');
               const pLeadName = (p.lead_name || '').toLowerCase().trim();
-              return (pLeadId && pLeadId === uId) || (pLeadName && uName && (pLeadName === uName || pLeadName.includes(uName) || uName.includes(pLeadName)));
+              const pLeadEmail = (p.lead_email || '').toLowerCase().trim();
+              const isDirect = (pLeadId && uId && pLeadId === uId) ||
+                               (pLeadEmail && uEmail && pLeadEmail === uEmail) ||
+                               (pLeadName && uName && (pLeadName === uName || pLeadName.includes(uName) || uName.includes(pLeadName)));
+              const isTeamProj = (allTeams || []).some(t => String(t.project_id) === String(p.id));
+              const isMember = p.members && Array.isArray(p.members) && p.members.some(m => String(m.id || m.user_id) === uId || (m.email && m.email.toLowerCase() === uEmail));
+              return isDirect || isTeamProj || isMember;
             });
         setProjectsList(loadedProjs);
         if (loadedProjs.length > 0) {
@@ -194,19 +208,22 @@ export const DeveloperRoster = ({ onShowToast }) => {
 
     const foundProj = projectsList.find(p => p.id === sprintFormData.projectId);
 
+    const targetTeam = teamsList.find(t => String(t.project_id) === String(sprintFormData.projectId));
     const newSprint = {
       name: sprintFormData.name,
       goal: sprintFormData.goal,
       capacity: sprintFormData.storyPoints ? Number(sprintFormData.storyPoints) : null,
       velocity: sprintFormData.storyPoints ? Number(sprintFormData.storyPoints) : null,
       project_id: sprintFormData.projectId,
+      team_id: targetTeam ? targetTeam.id : undefined,
       project_name: foundProj ? foundProj.name : 'Engineering Project',
       scrum_master: sprintModalDev.full_name || sprintModalDev.name,
-      assigned_team: 'Engineering Team',
+      assigned_team: targetTeam ? targetTeam.name : 'Engineering Team',
       start_date: sprintFormData.startDate,
       end_date: sprintFormData.endDate,
       status: 'PLANNING'
     };
+    sessionStorage.setItem('aureon_active_project_id', String(sprintFormData.projectId));
 
     try {
       await fetch(`${API_BASE_URL}/sprints/`, {
@@ -463,7 +480,14 @@ export const DeveloperRoster = ({ onShowToast }) => {
                   <Plus className="w-3.5 h-3.5" /> Assign Task
                 </button>
                 <button
-                  onClick={() => setSprintModalDev(u)}
+                  onClick={() => {
+                    setSprintModalDev(u);
+                    const devTeam = teamsList.find(t => String(t.id) === String(u.team_id));
+                    const devProjId = devTeam?.project_id || (u.active_tasks && u.active_tasks[0]?.project_id) || (projectsList[0]?.id || '');
+                    if (devProjId) {
+                      setSprintFormData(prev => ({ ...prev, projectId: devProjId }));
+                    }
+                  }}
                   className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 active:scale-95 text-white text-xs font-bold shadow-xs hover:shadow-md transition-all duration-150 cursor-pointer"
                 >
                   <Layers className="w-3.5 h-3.5" /> Assign Sprint
