@@ -210,13 +210,42 @@ def manage_sprints():
         if e_date < s_date:
             return jsonify({'success': False, 'message': 'Validation Error: End date cannot be before start date.'}), 400
 
-        # Validate Team belongs to selected Project
-        if team.project_id and str(team.project_id) != str(project_id):
-            return jsonify({'success': False, 'message': 'Validation Error: Team does not belong to the selected project.'}), 400
-        elif not team.project_id:
-            # Associate team with project if previously available
+        # Ensure Team strictly belongs to the selected Project
+        if not team.project_id:
             team.project_id = project_id
             team.availability_status = 'ASSIGNED'
+            db.session.flush()
+        elif str(team.project_id) != str(project_id):
+            # Team from another project was referenced; resolve or auto-create the team for this project
+            proj_team = Team.query.filter_by(project_id=project_id, is_deleted=False).first()
+            if not proj_team:
+                proj_name = project.name if project else 'Engineering'
+                proj_team = Team(
+                    name=f"{proj_name} Core Squad",
+                    team_code=f"TEAM-{str(project_id)[:4].upper()}",
+                    description=f"Primary delivery team for {proj_name}",
+                    project_id=project_id,
+                    team_leader_id=user.id if user else None,
+                    lead_id=user.id if user else None,
+                    status='ACTIVE',
+                    availability_status='ASSIGNED',
+                    is_active=True,
+                    is_deleted=False
+                )
+                db.session.add(proj_team)
+                db.session.flush()
+                if user:
+                    tm = TeamMember(team_id=proj_team.id, user_id=user.id, role_in_team='Team Lead')
+                    db.session.add(tm)
+                from models import ProjectMember
+                p_mems = ProjectMember.query.filter_by(project_id=project_id).all()
+                for pm in p_mems:
+                    if pm.user_id and (not user or str(pm.user_id) != str(user.id)):
+                        if not TeamMember.query.filter_by(team_id=proj_team.id, user_id=pm.user_id).first():
+                            db.session.add(TeamMember(team_id=proj_team.id, user_id=pm.user_id, role_in_team='Software Engineer'))
+                db.session.flush()
+            team = proj_team
+            team_id = proj_team.id
 
         # Validate active status vs start date
         if status == 'ACTIVE' and s_date > date.today():
