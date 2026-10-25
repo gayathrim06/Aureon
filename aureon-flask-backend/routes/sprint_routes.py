@@ -97,13 +97,33 @@ def manage_sprints():
 
         # ─── TEAM LEAD SPRINT SCOPE CHECK ───
         if user and user.role_name == 'ROLE_LEAD':
-            lead_team = Team.query.filter((Team.team_leader_id == user.id) | (Team.lead_id == user.id)).first()
-            if lead_team:
-                if team_id and str(team_id) != str(lead_team.id):
-                    return jsonify({'success': False, 'message': '403 Forbidden: Cannot create sprint for another team.'}), 403
-                team_id = lead_team.id
-                if not project_id and lead_team.project_id:
-                    project_id = lead_team.project_id
+            lead_teams = Team.query.filter(
+                (Team.team_leader_id == user.id) | (Team.lead_id == user.id)
+            ).all()
+            lead_team_ids = [str(t.id) for t in lead_teams]
+            lead_project_ids = [str(t.project_id) for t in lead_teams if t.project_id]
+            lead_direct_projs = Project.query.filter_by(lead_id=user.id).all()
+            lead_project_ids += [str(p.id) for p in lead_direct_projs]
+
+            # If team_id is provided, verify it belongs to one of the teams led by this Team Lead
+            if team_id and str(team_id) not in lead_team_ids and str(project_id) not in lead_project_ids and user.role_name != 'ROLE_ADMIN':
+                return jsonify({'success': False, 'message': '403 Forbidden: Cannot create sprint for a team you do not lead.'}), 403
+
+            # If project_id provided, resolve matching team among lead teams
+            if not team_id and project_id:
+                matching_team = next((t for t in lead_teams if str(t.project_id) == str(project_id)), None)
+                if matching_team:
+                    team_id = matching_team.id
+                elif lead_teams:
+                    team_id = lead_teams[0].id
+
+            # If neither provided, default to first lead team and its project
+            if not team_id and lead_teams:
+                team_id = lead_teams[0].id
+            if not project_id and team_id:
+                t_obj = Team.query.get(team_id)
+                if t_obj and t_obj.project_id:
+                    project_id = t_obj.project_id
 
         # Fallback to active project if not explicitly sent
         if not project_id:

@@ -3,13 +3,27 @@ import { Breadcrumb } from '../../components/common/Breadcrumb';
 import { Modal } from '../../components/common/Modal';
 import { useAuth } from '../../context/AuthContext';
 import { logAuditEvent } from '../../services/auditLogger';
-import { Layers, CheckCircle2, ArrowRight, GitBranch, Plus, UserCheck, Calendar, Filter, Target, List, LayoutGrid, Search, Clock, CheckSquare, Users, Edit3, Trash2, X, RefreshCw, RotateCcw, Play, Sparkles } from 'lucide-react';
+import { Layers, FolderKanban, CheckCircle2, ArrowRight, GitBranch, Plus, UserCheck, Calendar, Filter, Target, List, LayoutGrid, Search, Clock, CheckSquare, Users, Edit3, Trash2, X, RefreshCw, RotateCcw, Play, Sparkles } from 'lucide-react';
 import { getAuthHeaders, API_BASE_URL } from '../../services/apiClient';
 import { TaskSkillRecommendationModal } from '../../components/common/TaskSkillRecommendationModal';
 
 export const LeadSprintBoard = ({ onShowToast, initialView = 'kanban' }) => {
   const { user } = useAuth();
   const [sprints, setSprints] = useState([]);
+  const [projects, setProjects] = useState([]);
+  const [selectedProjectId, setSelectedProjectId] = useState(() => {
+    return sessionStorage.getItem('aureon_active_project_id') || 'ALL';
+  });
+  const [isCreateSprintModalOpen, setIsCreateSprintModalOpen] = useState(false);
+  const [isCreatingSprint, setIsCreatingSprint] = useState(false);
+  const [sprintForm, setSprintForm] = useState({
+    name: '',
+    goal: '',
+    projectId: '',
+    storyPoints: 40,
+    startDate: new Date().toISOString().split('T')[0],
+    endDate: new Date(Date.now() + 14 * 86400000).toISOString().split('T')[0]
+  });
   const [selectedSprintId, setSelectedSprintId] = useState('');
   const [tasks, setTasks] = useState([]);
   const [developers, setDevelopers] = useState([]);
@@ -52,11 +66,12 @@ export const LeadSprintBoard = ({ onShowToast, initialView = 'kanban' }) => {
     const headers = getAuthHeaders();
 
     try {
-      const [spRes, tkRes, tmRes, usRes] = await Promise.all([
+      const [spRes, tkRes, tmRes, usRes, prRes] = await Promise.all([
         fetch(`${API_BASE_URL}/sprints/`, { headers }),
         fetch(`${API_BASE_URL}/tasks/`, { headers }),
         fetch(`${API_BASE_URL}/teams/`, { headers }),
-        fetch(`${API_BASE_URL}/users/`, { headers })
+        fetch(`${API_BASE_URL}/users/`, { headers }),
+        fetch(`${API_BASE_URL}/projects/`, { headers })
       ]);
 
       let myTeams = [];
@@ -75,17 +90,64 @@ export const LeadSprintBoard = ({ onShowToast, initialView = 'kanban' }) => {
         setTeamsList(myTeams);
       }
 
+      let myProjects = [];
+      if (prRes && prRes.ok) {
+        const prData = await prRes.json();
+        const allProjs = prData.projects || [];
+        myProjects = user?.role === 'ROLE_ADMIN'
+          ? allProjs
+          : allProjs.filter(p => {
+              const uId = String(user?.id || '');
+              const uName = (user?.name || user?.full_name || '').toLowerCase().trim();
+              const uEmail = (user?.email || '').toLowerCase().trim();
+              const pLeadId = String(p.lead_id || '');
+              const pLeadName = (p.lead_name || '').toLowerCase().trim();
+              const pLeadEmail = (p.lead_email || '').toLowerCase().trim();
+              const isDirect = (pLeadId && uId && pLeadId === uId) ||
+                               (pLeadEmail && uEmail && pLeadEmail === uEmail) ||
+                               (pLeadName && uName && (pLeadName === uName || pLeadName.includes(uName) || uName.includes(pLeadName)));
+              const isTeamProj = myTeams.some(t => String(t.project_id) === String(p.id));
+              const isMember = p.members && Array.isArray(p.members) && p.members.some(m => String(m.id || m.user_id) === uId || (m.email && m.email.toLowerCase() === uEmail));
+              return isDirect || isTeamProj || isMember;
+            });
+        setProjects(myProjects);
+      }
+
       if (spRes.ok) {
         const spData = await spRes.json();
         const spList = spData.sprints || [];
         const myTeamIds = myTeams.map(t => String(t.id));
-        const myProjectIds = myTeams.map(t => String(t.project_id)).filter(Boolean);
+        const myProjectIds = Array.from(new Set([
+          ...myTeams.map(t => String(t.project_id)).filter(Boolean),
+          ...myProjects.map(p => String(p.id)).filter(Boolean)
+        ]));
+
         const scopedSprints = user?.role === 'ROLE_ADMIN'
           ? spList
           : spList.filter(s => myTeamIds.includes(String(s.team_id)) || myProjectIds.includes(String(s.project_id)));
         setSprints(scopedSprints);
-        if (scopedSprints.length > 0 && !selectedSprintId) {
-          setSelectedSprintId(scopedSprints[0].id);
+
+        // Check if there is an active project in sessionStorage
+        const storedPid = sessionStorage.getItem('aureon_active_project_id');
+        const activePid = (storedPid && storedPid !== 'ALL') ? storedPid : (selectedProjectId !== 'ALL' ? selectedProjectId : 'ALL');
+        if (activePid) {
+          setSelectedProjectId(activePid);
+        }
+
+        if (activePid && activePid !== 'ALL') {
+          const projSprints = scopedSprints.filter(s => String(s.project_id) === String(activePid));
+          if (projSprints.length > 0) {
+            setSelectedSprintId(projSprints[0].id);
+          } else {
+            // Target project has zero sprints planned yet — never fallback to another project
+            setSelectedSprintId('');
+          }
+        } else {
+          if (scopedSprints.length > 0) {
+            setSelectedSprintId(scopedSprints[0].id);
+          } else {
+            setSelectedSprintId('');
+          }
         }
       }
 
@@ -113,20 +175,143 @@ export const LeadSprintBoard = ({ onShowToast, initialView = 'kanban' }) => {
   };
 
   useEffect(() => {
+    const handleStorageSync = () => {
+      const stored = sessionStorage.getItem('aureon_active_project_id');
+      if (stored && stored !== selectedProjectId) {
+        setSelectedProjectId(stored);
+      }
+    };
+    handleStorageSync();
+    window.addEventListener('storage', handleStorageSync);
+    return () => window.removeEventListener('storage', handleStorageSync);
+  }, []);
+
+  useEffect(() => {
     fetchData();
   }, []);
 
-  const selectedSprint = sprints.find(s => String(s.id) === String(selectedSprintId)) || sprints[0];
+  const displayedSprints = useMemo(() => {
+    if (!selectedProjectId || selectedProjectId === 'ALL') return sprints;
+    return sprints.filter(s => String(s.project_id) === String(selectedProjectId));
+  }, [sprints, selectedProjectId]);
+
+  const selectedProject = useMemo(() => {
+    if (selectedProjectId && selectedProjectId !== 'ALL') {
+      return projects.find(p => String(p.id) === String(selectedProjectId)) || null;
+    }
+    return null;
+  }, [projects, selectedProjectId]);
+
+  const selectedSprint = useMemo(() => {
+    if (selectedProjectId && selectedProjectId !== 'ALL') {
+      if (displayedSprints.length === 0) return null;
+      return displayedSprints.find(s => String(s.id) === String(selectedSprintId)) || displayedSprints[0] || null;
+    }
+    if (sprints.length === 0) return null;
+    return sprints.find(s => String(s.id) === String(selectedSprintId)) || sprints[0] || null;
+  }, [displayedSprints, selectedSprintId, sprints, selectedProjectId]);
+
+  const handleProjectFilterChange = (newProjId) => {
+    setSelectedProjectId(newProjId);
+    sessionStorage.setItem('aureon_active_project_id', newProjId);
+    if (newProjId === 'ALL') {
+      if (sprints.length > 0) setSelectedSprintId(sprints[0].id);
+    } else {
+      const projSprints = sprints.filter(s => String(s.project_id) === String(newProjId));
+      if (projSprints.length > 0) {
+        setSelectedSprintId(projSprints[0].id);
+      } else {
+        setSelectedSprintId('');
+      }
+    }
+  };
+
+  const handleCreateSprint = async (e) => {
+    e.preventDefault();
+    if (!sprintForm.name.trim() || !sprintForm.projectId) return;
+
+    setIsCreatingSprint(true);
+    const targetProj = projects.find(p => String(p.id) === String(sprintForm.projectId));
+    const targetTeam = teamsList.find(t => String(t.project_id) === String(sprintForm.projectId));
+
+    const payload = {
+      name: sprintForm.name.trim(),
+      goal: sprintForm.goal.trim(),
+      capacity: sprintForm.storyPoints ? Number(sprintForm.storyPoints) : 40,
+      velocity: sprintForm.storyPoints ? Number(sprintForm.storyPoints) : 40,
+      project_id: sprintForm.projectId,
+      team_id: targetTeam ? targetTeam.id : undefined,
+      project_name: targetProj ? targetProj.name : 'Engineering Project',
+      assigned_team: targetTeam ? targetTeam.name : 'Engineering Team',
+      start_date: sprintForm.startDate,
+      end_date: sprintForm.endDate,
+      status: 'PLANNING'
+    };
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/sprints/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeaders()
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        const createdSprint = data.sprint || data;
+        if (onShowToast) {
+          onShowToast({
+            type: 'success',
+            title: 'Sprint Milestone Created',
+            message: `Sprint "${payload.name}" successfully created for ${payload.project_name}.`
+          });
+        }
+        setIsCreateSprintModalOpen(false);
+        setSelectedProjectId(payload.project_id);
+        sessionStorage.setItem('aureon_active_project_id', payload.project_id);
+        if (createdSprint && createdSprint.id) {
+          setSelectedSprintId(createdSprint.id);
+        }
+        await fetchData();
+      } else {
+        const err = await res.json();
+        if (onShowToast) {
+          onShowToast({
+            type: 'error',
+            title: 'Sprint Creation Failed',
+            message: err.message || 'Failed to create sprint milestone.'
+          });
+        }
+      }
+    } catch (err) {
+      if (onShowToast) {
+        onShowToast({
+          type: 'error',
+          title: 'Network Error',
+          message: 'Failed to create sprint milestone.'
+        });
+      }
+    } finally {
+      setIsCreatingSprint(false);
+    }
+  };
 
   // Resolve the sprint's specific assigned team
   const sprintTeam = useMemo(() => {
-    if (!selectedSprint || !teamsList.length) return null;
-    return teamsList.find(t => 
-      (selectedSprint.team_id && String(t.id) === String(selectedSprint.team_id)) ||
-      (selectedSprint.team_name && t.name === selectedSprint.team_name) ||
-      (selectedSprint.team && t.name === selectedSprint.team)
-    ) || null;
-  }, [selectedSprint, teamsList]);
+    if (selectedSprint) {
+      return teamsList.find(t => 
+        (selectedSprint.team_id && String(t.id) === String(selectedSprint.team_id)) ||
+        (selectedSprint.team_name && t.name === selectedSprint.team_name) ||
+        (selectedSprint.team && t.name === selectedSprint.team)
+      ) || null;
+    }
+    if (selectedProjectId && selectedProjectId !== 'ALL') {
+      return teamsList.find(t => String(t.project_id) === String(selectedProjectId)) || null;
+    }
+    return null;
+  }, [selectedSprint, selectedProjectId, teamsList]);
 
   // Strictly filter developers to ONLY those who belong to the sprint's team with live availability stats
   const teamDevelopers = useMemo(() => {
@@ -181,7 +366,7 @@ export const LeadSprintBoard = ({ onShowToast, initialView = 'kanban' }) => {
   }, [teamDevelopers]);
 
   const sprintTasks = useMemo(() => {
-    if (!selectedSprint) return tasks;
+    if (!selectedSprint) return [];
     return tasks.filter(t => (t.sprint_id && String(t.sprint_id) === String(selectedSprint.id)) || (t.sprint_name && t.sprint_name === selectedSprint.name));
   }, [tasks, selectedSprint]);
 
@@ -531,6 +716,18 @@ export const LeadSprintBoard = ({ onShowToast, initialView = 'kanban' }) => {
           </div>
 
           <button
+            onClick={() => {
+              setIsCreateSprintModalOpen(true);
+              setSprintForm(prev => ({
+                ...prev,
+                projectId: selectedProjectId !== 'ALL' ? selectedProjectId : (projects[0]?.id || '')
+              }));
+            }}
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 active:scale-95 text-white text-xs font-bold shadow-xs hover:shadow-md transition-all duration-150 shrink-0 cursor-pointer"
+          >
+            <Layers className="w-3.5 h-3.5" /> Create Sprint
+          </button>
+          <button
             onClick={() => setIsAddModalOpen(true)}
             disabled={!selectedSprint}
             className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white text-xs font-bold shadow-xs hover:shadow-md transition-all duration-150 shrink-0 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
@@ -540,49 +737,84 @@ export const LeadSprintBoard = ({ onShowToast, initialView = 'kanban' }) => {
         </div>
       </div>
 
-      {/* Sprint Selection Toolbar */}
+      {/* Sprint & Target Project Selection Toolbar */}
       <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <span className="text-xs font-bold text-slate-600 dark:text-slate-400 flex items-center gap-1.5">
-            <Target className="w-4 h-4 text-indigo-500" /> Active Sprint:
-          </span>
-          <select
-            value={selectedSprintId}
-            onChange={(e) => setSelectedSprintId(e.target.value)}
-            className="p-2 px-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 text-xs font-bold text-slate-900 dark:text-white"
-          >
-            {sprints.map(s => (
-              <option key={s.id} value={s.id}>
-                ⚡ {s.name} ({s.project_name || 'Project'})
-              </option>
-            ))}
-          </select>
+        <div className="flex flex-wrap items-center gap-4">
+          {/* Target Project Filter Dropdown */}
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold text-slate-600 dark:text-slate-400 flex items-center gap-1.5">
+              <FolderKanban className="w-4 h-4 text-indigo-500" /> Target Project:
+            </span>
+            <select
+              value={selectedProjectId}
+              onChange={(e) => handleProjectFilterChange(e.target.value)}
+              className="p-2 px-3 rounded-xl border border-indigo-300 dark:border-indigo-700 bg-indigo-50/60 dark:bg-indigo-950/40 text-xs font-extrabold text-indigo-700 dark:text-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer shadow-xs"
+            >
+              <option value="ALL">All Assigned Projects ({projects.length})</option>
+              {projects.map(p => (
+                <option key={p.id} value={p.id}>
+                  📁 {p.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Active Sprint Selector Dropdown */}
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold text-slate-600 dark:text-slate-400 flex items-center gap-1.5">
+              <Target className="w-4 h-4 text-purple-500" /> Active Sprint:
+            </span>
+            <select
+              value={selectedSprint?.id || selectedSprintId || ''}
+              onChange={(e) => setSelectedSprintId(e.target.value)}
+              disabled={displayedSprints.length === 0}
+              className="p-2 px-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 text-xs font-bold text-slate-900 dark:text-white cursor-pointer disabled:opacity-50"
+            >
+              {displayedSprints.length === 0 ? (
+                <option value="">No Sprints for this Project</option>
+              ) : (
+                displayedSprints.map(s => (
+                  <option key={s.id} value={s.id}>
+                    ⚡ {s.name} ({s.project_name || 'Project'})
+                  </option>
+                ))
+              )}
+            </select>
+          </div>
         </div>
 
-        {selectedSprint && (
-          <div className="flex items-center gap-4 text-xs">
-            <div>
-              <span className="text-[10px] text-slate-400 uppercase font-bold block">Target Project</span>
-              <span className="font-extrabold text-indigo-600 dark:text-indigo-400">{selectedSprint.project_name || 'General Project'}</span>
-            </div>
-            <div className="border-l border-slate-200 dark:border-slate-800 pl-4">
-              <span className="text-[10px] text-slate-400 uppercase font-bold block">Sprint Capacity</span>
-              <span className="font-extrabold text-slate-700 dark:text-slate-300">
-                {selectedSprint.capacity ? `${selectedSprint.capacity} SP` : 'Not configured'}
-              </span>
-            </div>
-            <div className="border-l border-slate-200 dark:border-slate-800 pl-4">
-              <span className="text-[10px] text-slate-400 uppercase font-bold block">Planned Points</span>
-              <span className="font-extrabold text-indigo-600 dark:text-indigo-400">
-                {selectedSprint.planned_story_points ?? selectedSprint.story_points ?? 0} SP
-              </span>
-            </div>
-            <div className="border-l border-slate-200 dark:border-slate-800 pl-4">
-              <span className="text-[10px] text-slate-400 uppercase font-bold block">Sprint Deliverables</span>
-              <span className="font-extrabold text-slate-900 dark:text-white">{filteredTasks.length} Tickets</span>
-            </div>
+        <div className="flex items-center gap-4 text-xs">
+          <div>
+            <span className="text-[10px] text-slate-400 uppercase font-bold block">Current Project</span>
+            <span className="font-extrabold text-indigo-600 dark:text-indigo-400">
+              {selectedProject?.name || selectedSprint?.project_name || (selectedProjectId === 'ALL' ? 'All Assigned Projects' : 'Project')}
+            </span>
           </div>
-        )}
+          {selectedSprint ? (
+            <>
+              <div className="border-l border-slate-200 dark:border-slate-800 pl-4">
+                <span className="text-[10px] text-slate-400 uppercase font-bold block">Sprint Capacity</span>
+                <span className="font-extrabold text-slate-700 dark:text-slate-300">
+                  {selectedSprint.capacity ? `${selectedSprint.capacity} SP` : 'Not configured'}
+                </span>
+              </div>
+              <div className="border-l border-slate-200 dark:border-slate-800 pl-4">
+                <span className="text-[10px] text-slate-400 uppercase font-bold block">Planned Points</span>
+                <span className="font-extrabold text-indigo-600 dark:text-indigo-400">
+                  {selectedSprint.planned_story_points ?? selectedSprint.story_points ?? 0} SP
+                </span>
+              </div>
+              <div className="border-l border-slate-200 dark:border-slate-800 pl-4">
+                <span className="text-[10px] text-slate-400 uppercase font-bold block">Sprint Deliverables</span>
+                <span className="font-extrabold text-slate-900 dark:text-white">{filteredTasks.length} Tickets</span>
+              </div>
+            </>
+          ) : (
+            <div className="border-l border-slate-200 dark:border-slate-800 pl-4 text-xs text-amber-600 dark:text-amber-400 font-medium">
+              No active sprint — create milestone below
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Sprint Squad Availability & Workload Roster */}
@@ -659,7 +891,34 @@ export const LeadSprintBoard = ({ onShowToast, initialView = 'kanban' }) => {
       )}
 
       {/* Views: Deliverables Table vs Kanban Board Grid */}
-      {viewMode === 'table' ? (
+      {displayedSprints.length === 0 ? (
+        <div className="p-12 text-center rounded-3xl bg-white dark:bg-slate-900 warm:bg-[#e8dbbe] border border-dashed border-indigo-200 dark:border-indigo-900/50 warm:border-[#cbb68e] shadow-xs space-y-4">
+          <div className="w-16 h-16 mx-auto rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
+            <FolderKanban className="w-8 h-8" />
+          </div>
+          <div className="space-y-1">
+            <h3 className="text-base font-bold text-slate-900 dark:text-white">
+              No Sprints Planned Yet for {selectedProject?.name || 'this Project'}
+            </h3>
+            <p className="text-xs text-slate-500 max-w-md mx-auto">
+              This project currently has zero active sprint milestones. Create the first sprint milestone to start allocating deliverables, story points, and squad members.
+            </p>
+          </div>
+          <button
+            onClick={() => {
+              setSprintForm(prev => ({
+                ...prev,
+                name: `${selectedProject?.name || 'Project'} Sprint 1`,
+                projectId: selectedProjectId !== 'ALL' ? selectedProjectId : (projects[0]?.id || '')
+              }));
+              setIsCreateSprintModalOpen(true);
+            }}
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 active:scale-95 text-white text-xs font-bold shadow-md hover:shadow-lg transition cursor-pointer"
+          >
+            <Plus className="w-4 h-4" /> Create First Sprint for {selectedProject?.name || 'Project'}
+          </button>
+        </div>
+      ) : viewMode === 'table' ? (
         <div className="space-y-4">
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
             <div className="relative flex-1 max-w-md">
@@ -1244,6 +1503,92 @@ export const LeadSprintBoard = ({ onShowToast, initialView = 'kanban' }) => {
               className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs cursor-pointer shadow-md active:scale-95"
             >
               Add Deliverable to Sprint
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* MODAL: CREATE SPRINT DIRECTLY ON SPRINT BOARD */}
+      <Modal isOpen={isCreateSprintModalOpen} onClose={() => setIsCreateSprintModalOpen(false)} title="Create New Sprint Milestone">
+        <form onSubmit={handleCreateSprint} className="space-y-4 text-xs">
+          <div>
+            <label className="block font-bold mb-1">Sprint Milestone Title *</label>
+            <input
+              type="text"
+              required
+              placeholder="e.g. Sprint 2: Core Microservices & Telemetry"
+              value={sprintForm.name}
+              onChange={(e) => setSprintForm({ ...sprintForm, name: e.target.value })}
+              className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 font-bold text-slate-900 dark:text-white"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block font-bold mb-1">Target Project *</label>
+              <select
+                required
+                value={sprintForm.projectId}
+                onChange={(e) => setSprintForm({ ...sprintForm, projectId: e.target.value })}
+                className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 font-bold text-slate-900 dark:text-white"
+              >
+                <option value="">-- Select Project --</option>
+                {projects.map(p => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block font-bold mb-1">Story Points Capacity</label>
+              <input
+                type="number"
+                value={sprintForm.storyPoints}
+                onChange={(e) => setSprintForm({ ...sprintForm, storyPoints: e.target.value })}
+                className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 font-bold text-slate-900 dark:text-white"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block font-bold mb-1">Sprint Goal Deliverables</label>
+            <input
+              type="text"
+              placeholder="e.g. Deliver core telemetry exporter endpoints and pass 100% tests."
+              value={sprintForm.goal}
+              onChange={(e) => setSprintForm({ ...sprintForm, goal: e.target.value })}
+              className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs font-medium text-slate-900 dark:text-white"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block font-bold mb-1">Start Date *</label>
+              <input
+                type="date"
+                required
+                value={sprintForm.startDate}
+                onChange={(e) => setSprintForm({ ...sprintForm, startDate: e.target.value })}
+                className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 font-bold text-slate-900 dark:text-white"
+              />
+            </div>
+
+            <div>
+              <label className="block font-bold mb-1">End Date *</label>
+              <input
+                type="date"
+                required
+                value={sprintForm.endDate}
+                onChange={(e) => setSprintForm({ ...sprintForm, endDate: e.target.value })}
+                className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 font-bold text-slate-900 dark:text-white"
+              />
+            </div>
+          </div>
+
+          <div className="pt-3 border-t border-slate-200 dark:border-slate-800 flex justify-end gap-2">
+            <button type="button" onClick={() => setIsCreateSprintModalOpen(false)} className="px-3 py-2 text-xs font-bold text-slate-500 cursor-pointer">Cancel</button>
+            <button type="submit" disabled={isCreatingSprint} className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs shadow-md cursor-pointer disabled:opacity-50">
+              {isCreatingSprint ? 'Creating...' : 'Create Sprint Milestone'}
             </button>
           </div>
         </form>

@@ -383,7 +383,10 @@ export const LeadDashboard = ({ onNavigate }) => {
                       </div>
                       <div className="pt-2 flex gap-2">
                         <button
-                          onClick={() => handleNav('SprintBoard')}
+                          onClick={() => {
+                            sessionStorage.setItem('aureon_active_project_id', String(p.id));
+                            handleNav('SprintBoard');
+                          }}
                           className="flex-1 py-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/50 hover:bg-indigo-600 hover:text-white text-indigo-700 dark:text-indigo-300 text-[11px] font-bold transition-all text-center cursor-pointer"
                         >
                           Sprint Board

@@ -214,7 +214,10 @@ export const LeadAssignedProjects = ({ onNavigate }) => {
               {/* Interactive Action Buttons with Hover State */}
               <div className="pt-3 border-t border-slate-100 dark:border-slate-800 grid grid-cols-2 gap-2">
                 <button
-                  onClick={() => handleNav('SprintBoard')}
+                  onClick={() => {
+                    sessionStorage.setItem('aureon_active_project_id', String(p.id));
+                    handleNav('SprintBoard');
+                  }}
                   className="py-2 px-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white text-xs font-bold shadow-xs hover:shadow-md transition-all duration-150 flex items-center justify-center gap-1.5 cursor-pointer"
                 >
                   <Layers className="w-3.5 h-3.5" /> Sprint Board
