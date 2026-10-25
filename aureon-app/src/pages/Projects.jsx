@@ -242,6 +242,7 @@ export const Projects = () => {
   const [gitCommits, setGitCommits] = useState([]);
   const [gitSyncing, setGitSyncing] = useState(false);
   const [connectModalOpen, setConnectModalOpen] = useState(false);
+  const [connectError, setConnectError] = useState(null);
   const [targetProjForConnect, setTargetProjForConnect] = useState(null);
   const [gitUrlInput, setGitUrlInput] = useState('');
   const [githubRepoUrl, setGithubRepoUrl] = useState('');
@@ -668,9 +669,12 @@ export const Projects = () => {
     e.preventDefault();
     if (!gitUrlInput.trim() || !targetProjForConnect) return;
     setGitSyncing(true);
+    setConnectError(null);
     try {
-      const rawToken = sessionStorage.getItem('aureon_jwt_access_token') || localStorage.getItem('aureon_jwt_access_token') || sessionStorage.getItem('aureon_access_token');
-      const headers = rawToken ? { 'Authorization': `Bearer ${rawToken}`, 'Content-Type': 'application/json' } : { 'Content-Type': 'application/json' };
+      const headers = {
+        'Content-Type': 'application/json',
+        ...getAuthHeaders()
+      };
       const res = await fetch(`${API_BASE_URL}/repositories/connect`, {
         method: 'POST',
         headers,
@@ -679,17 +683,23 @@ export const Projects = () => {
           repository_url: gitUrlInput.trim()
         })
       });
-      const data = await res.json();
-      if (res.ok && data.success) {
-        showToast('GitHub repository connected successfully!', 'success');
+      const data = await res.json().catch(() => ({}));
+      const isSuccess = res.ok && data.success !== false && (data.success || res.status === 201 || res.status === 200 || data.repository);
+      if (isSuccess) {
+        showToast('GitHub repository connected and synchronized successfully!', 'success');
         setConnectModalOpen(false);
         setGitUrlInput('');
+        setConnectError(null);
         await fetchProjectsAndTasks();
       } else {
-        showToast(data.message || 'Failed to connect repository', 'error');
+        const errorMsg = data.message || `Failed to connect repository (HTTP ${res.status})`;
+        setConnectError(errorMsg);
+        showToast(errorMsg, 'error');
       }
     } catch (err) {
-      showToast('Error: ' + err.message, 'error');
+      const errorMsg = 'Error: ' + err.message;
+      setConnectError(errorMsg);
+      showToast(errorMsg, 'error');
     } finally {
       setGitSyncing(false);
     }
@@ -881,6 +891,7 @@ export const Projects = () => {
                         onClick={() => {
                           setTargetProjForConnect(proj);
                           setGitUrlInput('');
+                          setConnectError(null);
                           setConnectModalOpen(true);
                         }}
                         className="px-2.5 py-1.5 rounded-xl border border-dashed border-indigo-300 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 text-[11px] font-bold flex items-center gap-1.5 transition"
@@ -1479,7 +1490,10 @@ export const Projects = () => {
       {/* CONNECT REPOSITORY MODAL */}
       <Modal
         isOpen={connectModalOpen}
-        onClose={() => setConnectModalOpen(false)}
+        onClose={() => {
+          setConnectModalOpen(false);
+          setConnectError(null);
+        }}
         title={`Connect GitHub Repository to ${targetProjForConnect?.name || 'Project'}`}
       >
         <form onSubmit={handleConnectRepoSubmit} className="space-y-4 text-xs">
@@ -1490,7 +1504,10 @@ export const Projects = () => {
               required
               placeholder="https://github.com/aureon-maker/verona-organics"
               value={gitUrlInput}
-              onChange={(e) => setGitUrlInput(e.target.value)}
+              onChange={(e) => {
+                setGitUrlInput(e.target.value);
+                if (connectError) setConnectError(null);
+              }}
               className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs font-mono font-bold"
             />
             <p className="text-[10px] text-slate-500 mt-1">
@@ -1498,12 +1515,33 @@ export const Projects = () => {
             </p>
           </div>
 
+          {connectError && (
+            <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/70 border border-rose-300 dark:border-rose-800 text-rose-700 dark:text-rose-300 text-xs font-semibold flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 shrink-0 text-rose-600 dark:text-rose-400" />
+              <span>{connectError}</span>
+            </div>
+          )}
+
           <div className="pt-3 border-t border-slate-200 dark:border-slate-800 flex justify-end gap-2">
-            <Button type="button" variant="secondary" onClick={() => setConnectModalOpen(false)}>
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={gitSyncing}
+              onClick={() => {
+                setConnectModalOpen(false);
+                setConnectError(null);
+              }}
+            >
               Cancel
             </Button>
-            <Button type="submit" variant="primary" icon={GitBranch} isLoading={gitSyncing}>
-              Connect & Sync Repository
+            <Button
+              type="submit"
+              variant="primary"
+              icon={GitBranch}
+              disabled={gitSyncing}
+              isLoading={gitSyncing}
+            >
+              {gitSyncing ? 'Connecting & Syncing...' : 'Connect & Sync Repository'}
             </Button>
           </div>
         </form>
