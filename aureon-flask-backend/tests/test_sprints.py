@@ -252,3 +252,45 @@ def test_project_isolation_story_points(app):
 
         # Strict isolation: points are non-identical and strictly isolated
         assert d1['planned_story_points'] != d2['planned_story_points']
+
+
+def test_create_sprint_new_project_without_preexisting_team(client, app):
+    """Verifies that creating a sprint for a new project with no team yet auto-provisions or matches a squad without throwing 'Team does not belong to the selected project'."""
+    with app.app_context():
+        import uuid
+        from flask_jwt_extended import create_access_token
+        today = date.today()
+
+        # Create a new standalone project with no teams assigned
+        new_proj = Project(
+            name='Aureon Auto Provision Test',
+            description='Test project for team resolution',
+            is_active=True
+        )
+        db.session.add(new_proj)
+        db.session.commit()
+
+        admin = User.query.filter_by(email='admin@aureon.com').first()
+        token = create_access_token(identity=str(admin.id))
+        headers = {'Authorization': f'Bearer {token}', 'Content-Type': 'application/json'}
+
+        payload = {
+            'name': 'Aureon Test Sprint 1',
+            'goal': 'Test auto-provisioning',
+            'project_id': str(new_proj.id),
+            'start_date': today.isoformat(),
+            'end_date': (today + timedelta(days=14)).isoformat(),
+            'capacity': 40
+        }
+
+        res = client.post('/api/v1/sprints/', json=payload, headers=headers)
+        assert res.status_code in [200, 201], f"Expected 200/201 but got {res.status_code}: {res.get_json()}"
+        data = res.get_json()
+        assert data.get('success') is True
+        sprint_info = data.get('sprint') or data
+        assert sprint_info['name'] == 'Aureon Test Sprint 1'
+        assert str(sprint_info['project_id']) == str(new_proj.id)
+        # Verify team assigned to sprint belongs to new_proj
+        team = Team.query.get(uuid.UUID(str(sprint_info['team_id'])))
+        assert team is not None
+        assert str(team.project_id) == str(new_proj.id)
