@@ -21,6 +21,36 @@ def _parse_uuid(val):
 def _get_auth_user():
     return get_auth_user()
 
+def _heal_null_roles():
+    """Backfills role_id for any user in tbl_user where role_id is None based on designation or email."""
+    try:
+        null_users = User.query.filter(User.role_id.is_(None)).all()
+        if not null_users:
+            return
+        roles = {r.code: r for r in Role.query.all()}
+        changed = False
+        for u in null_users:
+            d = (u.designation or '').upper()
+            em = (u.email or '').lower()
+            r_code = 'ROLE_DEV'
+            if em in ('admin@aureon.com', 'gayathri@aureon.com') or u.is_superuser:
+                r_code = 'ROLE_ADMIN'
+            elif 'LEAD' in d or 'ARCHITECT' in d:
+                r_code = 'ROLE_LEAD'
+            elif 'PM' in d or 'PROJECT MANAGER' in d or 'MANAGER' in d or 'SCRUM' in d or em in ('feba@aureon.com', 'deepak.n@aureon.com', 'gopika@aureon.com', 'sarah.j@aureon.com', 'eli@aureon.com'):
+                r_code = 'ROLE_PM'
+            elif 'QA' in d or 'TEST' in d or 'QUALITY' in d or em in ('ann@aureon.com', 'riya@gmail.com', 'jiya@aureon.com', 'venu.qa@aureon.com', 'ananya.v@aureon.com'):
+                r_code = 'ROLE_QA'
+
+            if r_code in roles:
+                u.role_id = roles[r_code].id
+                changed = True
+        if changed:
+            db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        print(f"[HEAL_NULL_ROLES ERROR] {e}")
+
 @user_bp.route('/', methods=['GET'])
 @user_bp.route('', methods=['GET'])
 @jwt_required(optional=True)
@@ -28,26 +58,47 @@ def list_users():
     user = get_auth_user()
     if not user:
         return jsonify({'success': False, 'message': '401 Unauthorized: Authentication required.'}), 401
+    
+    _heal_null_roles()
     scope = get_user_scope(user)
     role_param = request.args.get('role')
 
     if scope.is_admin:
-        query = User.query
+        query = User.query.outerjoin(Role)
         if role_param:
-            query = query.join(Role).filter(Role.code.ilike(f"%{role_param}%"))
+            clean_role = role_param.upper().replace('ROLE_', '')
+            query = query.filter(
+                (Role.code.ilike(f"%{role_param}%")) |
+                (User.designation.ilike(f"%{clean_role}%"))
+            )
         users = query.all()
     elif scope.is_pm:
-        # PM sees all candidate Team Leads, Developers, and QA engineers for staffing, project creation, and team allocation
-        query = User.query.join(Role).filter(Role.code.in_(['ROLE_LEAD', 'ROLE_DEV', 'ROLE_QA', 'ROLE_PM']))
+        # PM sees all candidate Team Leads, Developers, and QA engineers (and peer PMs) for staffing, project creation, and team allocation
+        query = User.query.outerjoin(Role).filter(
+            (Role.code.in_(['ROLE_LEAD', 'ROLE_DEV', 'ROLE_QA', 'ROLE_PM'])) |
+            (User.role_id.is_(None))
+        )
         if role_param:
-            query = query.filter(Role.code.ilike(f"%{role_param}%"))
-        users = query.all()
+            clean_role = role_param.upper().replace('ROLE_', '')
+            query = query.filter(
+                (Role.code.ilike(f"%{role_param}%")) |
+                (User.designation.ilike(f"%{clean_role}%"))
+            )
+        # Exclude System Administrator from PM staffing pools
+        users = [u for u in query.all() if u.role_name != 'ROLE_ADMIN']
     elif scope.is_lead:
         # TL sees all candidate developers and QA engineers for task delegation and sprint allocation
-        query = User.query.join(Role).filter(Role.code.in_(['ROLE_DEV', 'ROLE_QA', 'ROLE_LEAD']))
+        query = User.query.outerjoin(Role).filter(
+            (Role.code.in_(['ROLE_DEV', 'ROLE_QA', 'ROLE_LEAD'])) |
+            (User.role_id.is_(None))
+        )
         if role_param:
-            query = query.filter(Role.code.ilike(f"%{role_param}%"))
-        users = query.all()
+            clean_role = role_param.upper().replace('ROLE_', '')
+            query = query.filter(
+                (Role.code.ilike(f"%{role_param}%")) |
+                (User.designation.ilike(f"%{clean_role}%"))
+            )
+        users = [u for u in query.all() if u.role_name not in ('ROLE_ADMIN', 'ROLE_PM')]
     else:
         # Developer user scoping: strictly restricted to own profile (/users/me or User.id == user.id)
         users = [user] if user else []
