@@ -13,7 +13,6 @@ import { AdminDashboard } from '../roles/admin/AdminDashboard';
 import { UserManagement } from '../roles/admin/UserManagement';
 import { AuditLogsView } from '../roles/admin/AuditLogsView';
 import { RolesPermissions } from '../roles/admin/RolesPermissions';
-import { OrganizationView } from '../roles/admin/OrganizationView';
 import { TeamsView } from '../roles/admin/TeamsView';
 import { AdminProjectsView } from '../roles/admin/AdminProjectsView';
 import { RepositoriesHub } from '../roles/admin/RepositoriesHub';
@@ -141,8 +140,8 @@ export const AppRouter = () => {
     usermanagement: 'Users',
     auditlogs: 'AuditLogs',
     rolespermissions: 'Users',
-    organization: 'Organization',
-    organizations: 'Organization',
+    organization: 'Dashboard',
+    organizations: 'Dashboard',
     teams: 'Teams',
     sonarqube: 'SonarQube',
     systemlogs: 'SystemLogs',
@@ -261,8 +260,6 @@ export const AppRouter = () => {
         case 'Users': return <UserManagement onShowToast={showToast} onNavigate={navigateTab} />;
         case 'AuditLogs': return <AuditLogsView onNavigate={navigateTab} />;
         case 'RolesPermissions': return <UserManagement onShowToast={showToast} onNavigate={navigateTab} />;
-        case 'Organizations':
-        case 'Organization': return <OrganizationView onNavigate={navigateTab} />;
         case 'Teams': return <TeamsView onNavigate={navigateTab} onShowToast={showToast} />;
         case 'Projects': return <AdminProjectsView onNavigate={navigateTab} />;
         case 'Backlog': return <BacklogView onShowToast={showToast} onNavigate={navigateTab} />;

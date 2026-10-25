@@ -1,7 +1,7 @@
 import React from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { 
-  LayoutDashboard, Building, Users, Users2, FolderKanban, GitBranch, 
+  LayoutDashboard, Users, Users2, FolderKanban, GitBranch, 
   Activity, FileText, Server, Bell, Settings, Calendar, Award, Code2, 
   CheckSquare, GitPullRequest, User, Bug, Layers, ListTodo
 } from 'lucide-react';
@@ -28,7 +28,6 @@ export const Sidebar = ({ activeTab, onSelectTab }) => {
   const roleNavigations = {
     ROLE_ADMIN: [
       { id: 'Dashboard', label: 'Dashboard', icon: LayoutDashboard },
-      { id: 'Organization', label: 'Organization', icon: Building },
       { id: 'Users', label: 'Users', icon: Users },
       { id: 'Teams', label: 'Teams', icon: Users2 },
       { id: 'Projects', label: 'Projects', icon: FolderKanban },
