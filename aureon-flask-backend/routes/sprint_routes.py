@@ -114,16 +114,12 @@ def manage_sprints():
                 matching_team = next((t for t in lead_teams if str(t.project_id) == str(project_id)), None)
                 if matching_team:
                     team_id = matching_team.id
-                elif lead_teams:
-                    team_id = lead_teams[0].id
 
             # If neither provided, default to first lead team and its project
-            if not team_id and lead_teams:
+            if not team_id and not project_id and lead_teams:
                 team_id = lead_teams[0].id
-            if not project_id and team_id:
-                t_obj = Team.query.get(team_id)
-                if t_obj and t_obj.project_id:
-                    project_id = t_obj.project_id
+                if lead_teams[0].project_id:
+                    project_id = lead_teams[0].project_id
 
         # Fallback to active project if not explicitly sent
         if not project_id:
@@ -138,22 +134,65 @@ def manage_sprints():
         if not project:
             return jsonify({'success': False, 'message': 'Validation Error: Project not found.'}), 404
 
-        # Fallback to team assigned to project if not provided
-        if not team_id:
-            first_t = Team.query.filter_by(project_id=project_id, is_deleted=False).first()
-            if first_t:
-                team_id = first_t.id
-            else:
-                first_t = Team.query.filter_by(is_deleted=False).first()
-                if first_t:
-                    team_id = first_t.id
+        # Resolve or auto-provision team assigned to project
+        team = None
+        if team_id:
+            team = Team.query.get(team_id)
+            # If specified team has no project yet, associate it with this project
+            if team and not team.project_id:
+                team.project_id = project_id
+                team.availability_status = 'ASSIGNED'
+                db.session.flush()
 
-        if not team_id:
-            return jsonify({'success': False, 'message': 'Validation Error: A valid team_id is required.'}), 400
+        if not team or (team.project_id and str(team.project_id) != str(project_id)):
+            # Look for existing team assigned to this project
+            team = Team.query.filter_by(project_id=project_id, is_deleted=False).first()
+            if team:
+                team_id = team.id
 
-        team = Team.query.get(team_id)
         if not team:
-            return jsonify({'success': False, 'message': 'Validation Error: Team not found.'}), 404
+            # Check for an unassigned team in tbl_team to assign to this project
+            unassigned_t = Team.query.filter_by(project_id=None, is_deleted=False).first()
+            if unassigned_t:
+                unassigned_t.project_id = project_id
+                unassigned_t.availability_status = 'ASSIGNED'
+                if user and user.role_name == 'ROLE_LEAD':
+                    unassigned_t.team_leader_id = user.id
+                    unassigned_t.lead_id = user.id
+                db.session.flush()
+                team = unassigned_t
+                team_id = team.id
+            else:
+                # Automatically provision a dedicated Engineering Squad for this project
+                proj_name = project.name if project else 'Engineering'
+                team = Team(
+                    name=f"{proj_name} Core Squad",
+                    team_code=f"TEAM-{str(project_id)[:4].upper()}",
+                    description=f"Primary delivery team for {proj_name}",
+                    project_id=project_id,
+                    team_leader_id=user.id if user else None,
+                    lead_id=user.id if user else None,
+                    status='ACTIVE',
+                    availability_status='ASSIGNED',
+                    is_active=True,
+                    is_deleted=False
+                )
+                db.session.add(team)
+                db.session.flush()
+                team_id = team.id
+
+                if user:
+                    tm = TeamMember(team_id=team.id, user_id=user.id, role_in_team='Team Lead')
+                    db.session.add(tm)
+
+                # Sync developers allocated to this project from ProjectMember
+                from models import ProjectMember
+                p_mems = ProjectMember.query.filter_by(project_id=project_id).all()
+                for pm in p_mems:
+                    if pm.user_id and (not user or str(pm.user_id) != str(user.id)):
+                        if not TeamMember.query.filter_by(team_id=team.id, user_id=pm.user_id).first():
+                            db.session.add(TeamMember(team_id=team.id, user_id=pm.user_id, role_in_team='Software Engineer'))
+                db.session.flush()
 
         s_date = None
         e_date = None

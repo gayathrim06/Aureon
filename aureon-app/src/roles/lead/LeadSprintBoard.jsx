@@ -74,23 +74,13 @@ export const LeadSprintBoard = ({ onShowToast, initialView = 'kanban' }) => {
         fetch(`${API_BASE_URL}/projects/`, { headers })
       ]);
 
-      let myTeams = [];
+      let myProjects = [];
+      let allTeams = [];
       if (tmRes.ok) {
         const tmData = await tmRes.json();
-        const allTeams = tmData.teams || [];
-        myTeams = user?.role === 'ROLE_ADMIN' 
-          ? allTeams 
-          : allTeams.filter(t => {
-              const uId = String(user?.id || '');
-              const uName = (user?.name || user?.full_name || '').toLowerCase().trim();
-              const tLeaderId = String(t.team_leader_id || t.lead_id || '');
-              const tLeaderName = (t.leader_name || t.leader || '').toLowerCase().trim();
-              return (tLeaderId && tLeaderId === uId) || (tLeaderName && uName && (tLeaderName === uName || tLeaderName.includes(uName) || uName.includes(tLeaderName)));
-            });
-        setTeamsList(myTeams);
+        allTeams = tmData.teams || [];
       }
 
-      let myProjects = [];
       if (prRes && prRes.ok) {
         const prData = await prRes.json();
         const allProjs = prData.projects || [];
@@ -106,12 +96,29 @@ export const LeadSprintBoard = ({ onShowToast, initialView = 'kanban' }) => {
               const isDirect = (pLeadId && uId && pLeadId === uId) ||
                                (pLeadEmail && uEmail && pLeadEmail === uEmail) ||
                                (pLeadName && uName && (pLeadName === uName || pLeadName.includes(uName) || uName.includes(pLeadName)));
-              const isTeamProj = myTeams.some(t => String(t.project_id) === String(p.id));
+              const isTeamProj = allTeams.some(t => {
+                const tLeaderId = String(t.team_leader_id || t.lead_id || '');
+                return String(t.project_id) === String(p.id) && tLeaderId === uId;
+              });
               const isMember = p.members && Array.isArray(p.members) && p.members.some(m => String(m.id || m.user_id) === uId || (m.email && m.email.toLowerCase() === uEmail));
               return isDirect || isTeamProj || isMember;
             });
         setProjects(myProjects);
       }
+
+      const myProjectIds = myProjects.map(p => String(p.id));
+      const myTeams = user?.role === 'ROLE_ADMIN'
+        ? allTeams
+        : allTeams.filter(t => {
+            const uId = String(user?.id || '');
+            const uName = (user?.name || user?.full_name || '').toLowerCase().trim();
+            const tLeaderId = String(t.team_leader_id || t.lead_id || '');
+            const tLeaderName = (t.leader_name || t.leader || '').toLowerCase().trim();
+            const isDirectLead = (tLeaderId && tLeaderId === uId) || (tLeaderName && uName && (tLeaderName === uName || tLeaderName.includes(uName) || uName.includes(tLeaderName)));
+            const isProjectSquad = t.project_id && myProjectIds.includes(String(t.project_id));
+            return isDirectLead || isProjectSquad;
+          });
+      setTeamsList(myTeams);
 
       if (spRes.ok) {
         const spData = await spRes.json();
