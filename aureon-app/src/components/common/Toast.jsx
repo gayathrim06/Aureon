@@ -21,8 +21,8 @@ export const Toast = ({ toast, onClose }) => {
   };
 
   return (
-    <div className="fixed bottom-5 right-5 z-50 max-w-md animate-bounce-in">
-      <div className={`flex items-start gap-3 p-4 rounded-xl border shadow-xl backdrop-blur-md ${borderColors[type] || borderColors.info}`}>
+    <div className="fixed bottom-5 right-5 z-[9999] max-w-md animate-bounce-in">
+      <div className={`flex items-start gap-3 p-4 rounded-xl border shadow-2xl backdrop-blur-md ${borderColors[type] || borderColors.info}`}>
         {icons[type] || icons.info}
         <div className="flex-1 pr-2">
           {title && <h4 className="text-xs font-bold text-gray-900 dark:text-gray-100">{title}</h4>}

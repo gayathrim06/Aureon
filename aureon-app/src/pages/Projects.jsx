@@ -260,6 +260,8 @@ export const Projects = () => {
   const [memberFilter, setMemberFilter] = useState('ALL'); // 'ALL', 'AVAILABLE', 'DEV', 'QA'
   const [startDate, setStartDate] = useState('2026-09-01');
   const [deadline, setDeadline] = useState('2026-11-30');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState(null);
 
   const [rawLeads, setRawLeads] = useState(DEFAULT_AUREON_LEADS);
   const [rawMembers, setRawMembers] = useState(DEFAULT_AUREON_MEMBERS);
@@ -521,34 +523,19 @@ export const Projects = () => {
 
   const handleCreateProjectSubmit = async (e) => {
     e.preventDefault();
-    if (!projectName.trim()) {
+    setSubmitError(null);
+
+    const trimmedName = projectName.trim();
+    if (!trimmedName) {
+      setSubmitError('Please enter a Project Name to initialize the project.');
       if (showToast) showToast('Please enter a Project Name', 'warning');
       return;
     }
 
-    const leadObj = availableLeads.find(l => l.id === selectedLeadId);
+    const leadObj = availableLeads.find(l => l.id === selectedLeadId) || availableLeads[0];
     const assignedMemberObjs = availableMembers
       .filter(m => selectedMemberIds.includes(m.id))
       .map(m => ({ id: m.id, name: m.name, role: m.role, type: m.type }));
-
-    const newProj = {
-      id: `PROJ-${Math.floor(1000 + Math.random() * 9000)}`,
-      name: projectName,
-      description: projectDesc || 'Enterprise Software Development Module',
-      objectives: projectObjectives || 'Deliver reliable and performant software features on schedule.',
-      requirements: requirementsList,
-      tech_stack: techStack,
-      start_date: startDate,
-      target_deadline: deadline,
-      priority: projectPriority,
-      status: projectStatus,
-      manager_name: `${user?.name || 'Gopika Manoj'} (PM)`,
-      lead_id: leadObj ? leadObj.id : null,
-      lead_name: leadObj ? leadObj.name : 'Unassigned Lead',
-      team_members: assignedMemberObjs,
-      health_score: 100,
-      progress: 0
-    };
 
     // Prepare API Payload with real headers & verified authentication
     const headers = {
@@ -557,8 +544,8 @@ export const Projects = () => {
     };
 
     const payload = {
-      name: projectName.trim(),
-      project_name: projectName.trim(),
+      name: trimmedName,
+      project_name: trimmedName,
       description: projectDesc || 'Enterprise Software Development Module',
       objectives: projectObjectives || 'Deliver reliable and performant software features on schedule.',
       requirements: requirementsList,
@@ -576,6 +563,8 @@ export const Projects = () => {
       github_repo_url: githubRepoUrl.trim()
     };
 
+    setIsSubmitting(true);
+
     try {
       const res = await fetch(`${API_BASE_URL}/projects/`, {
         method: 'POST',
@@ -585,9 +574,12 @@ export const Projects = () => {
 
       const resData = await res.json().catch(() => ({}));
 
-      if (res.ok && resData.success) {
+      // Accept HTTP 200, 201, or resData.success !== false
+      const isSuccess = res.ok && resData.success !== false && (resData.success || res.status === 201 || res.status === 200 || resData.project || resData.data);
+
+      if (isSuccess) {
         if (showToast) {
-          showToast(`Project '${projectName}' created successfully in PostgreSQL! Team Lead (${leadObj?.name || 'Assigned'}) & ${assignedMemberObjs.length} team members notified.`, 'success');
+          showToast(`Project '${trimmedName}' created successfully in PostgreSQL! Team Lead (${leadObj?.name || 'Assigned'}) & ${assignedMemberObjs.length} team members notified.`, 'success');
         }
         // Reset Form
         setProjectName('');
@@ -595,18 +587,24 @@ export const Projects = () => {
         setProjectObjectives('');
         setGithubRepoUrl('');
         setSelectedMemberIds([]);
+        setSubmitError(null);
         setIsModalOpen(false);
 
         // Immediately refresh state directly from PostgreSQL database
         await fetchProjectsAndTasks();
       } else {
-        const errorMsg = resData.message || `Server returned status ${res.status}`;
+        const errorMsg = resData.message || resData.error || `Server returned status ${res.status}`;
         console.error('Project creation failed:', errorMsg);
+        setSubmitError(`Project creation failed: ${errorMsg}`);
         if (showToast) showToast(`Failed to create project: ${errorMsg}`, 'error');
       }
     } catch (err) {
       console.error('Network error during project creation:', err);
-      if (showToast) showToast('Network error: Could not reach Aureon API server', 'error');
+      const networkMsg = 'Network error: Could not reach Aureon API server';
+      setSubmitError(networkMsg);
+      if (showToast) showToast(networkMsg, 'error');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -1336,13 +1334,35 @@ export const Projects = () => {
             </div>
           </div>
 
+          {/* Error Banner inside Modal */}
+          {submitError && (
+            <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/70 border border-rose-300 dark:border-rose-800 text-rose-700 dark:text-rose-300 text-xs font-semibold flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 shrink-0 text-rose-600 dark:text-rose-400" />
+              <span>{submitError}</span>
+            </div>
+          )}
+
           {/* Action Buttons */}
           <div className="pt-3 border-t border-slate-200 dark:border-slate-800 flex justify-end gap-2">
-            <Button type="button" variant="secondary" onClick={() => setIsModalOpen(false)}>
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={isSubmitting}
+              onClick={() => {
+                setIsModalOpen(false);
+                setSubmitError(null);
+              }}
+            >
               Cancel
             </Button>
-            <Button type="submit" variant="primary" icon={Plus}>
-              Save & Initialize Project Structure
+            <Button
+              type="submit"
+              variant="primary"
+              disabled={isSubmitting}
+              isLoading={isSubmitting}
+              icon={Plus}
+            >
+              {isSubmitting ? 'Saving to PostgreSQL...' : 'Save & Initialize Project Structure'}
             </Button>
           </div>
         </form>

@@ -7,7 +7,7 @@ import {
   GitBranch, Bug, Users, Plus, FileText, AlertCircle, TrendingUp, Cpu, BarChart2,
   CheckCircle2, Shield, UserCheck, Code2, AlertTriangle, Send, Edit3, ArrowRight,
   Filter, Sparkles, ChevronRight, Hash, Play, PauseCircle, CheckSquare2, XSquare, ListTodo,
-  Zap, Crown, Check
+  Zap, Crown, Check, RefreshCw, Loader2
 } from 'lucide-react';
 import { getAuthHeaders, API_BASE_URL } from '../../services/apiClient';
 
@@ -265,6 +265,8 @@ export const PmDashboard = ({ onNavigate }) => {
   const [formSelectedLeadId, setFormSelectedLeadId] = useState(DEFAULT_AUREON_LEADS[0].id);
   const [formSelectedMemberIds, setFormSelectedMemberIds] = useState([]);
   const [memberFilter, setMemberFilter] = useState('ALL'); // 'ALL', 'SELECTED', 'AVAILABLE', 'DEV', 'QA'
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState(null);
 
   // Load Projects from Flask Backend API
   const fetchProjects = async () => {
@@ -501,19 +503,23 @@ export const PmDashboard = ({ onNavigate }) => {
   // Handle Project Creation Form Submit with Verified PostgreSQL Persistence & Member Notifications
   const handleCreateProjectSubmit = async (e) => {
     e.preventDefault();
-    if (!formProjectName.trim()) {
+    setSubmitError(null);
+
+    const trimmedName = formProjectName.trim();
+    if (!trimmedName) {
+      setSubmitError('Please enter a Project Name to initialize the project.');
       if (showToast) showToast('Please enter a Project Name', 'warning');
       return;
     }
 
-    const leadObj = availableLeads.find(l => l.id === formSelectedLeadId);
+    const leadObj = availableLeads.find(l => l.id === formSelectedLeadId) || availableLeads[0];
     const assignedMemberObjs = availableMembers
       .filter(m => formSelectedMemberIds.includes(m.id))
       .map(m => ({ id: m.id, name: m.name, email: m.email, role: m.role, type: m.type }));
 
     const payload = {
-      name: formProjectName.trim(),
-      project_name: formProjectName.trim(),
+      name: trimmedName,
+      project_name: trimmedName,
       description: formDescription || 'Enterprise Software Development Module',
       objectives: formObjectives || 'Deliver reliable and performant software features on schedule.',
       requirements: formRequirements,
@@ -530,6 +536,8 @@ export const PmDashboard = ({ onNavigate }) => {
       team_members: assignedMemberObjs
     };
 
+    setIsSubmitting(true);
+
     try {
       const res = await fetch(`${API_BASE_URL}/projects/`, {
         method: 'POST',
@@ -542,24 +550,33 @@ export const PmDashboard = ({ onNavigate }) => {
 
       const resData = await res.json().catch(() => ({}));
 
-      if (res.ok && resData.success) {
+      // Accept HTTP 200, 201, or resData.success !== false
+      const isSuccess = res.ok && resData.success !== false && (resData.success || res.status === 201 || res.status === 200 || resData.project || resData.data);
+
+      if (isSuccess) {
         if (showToast) {
-          showToast(`Project '${formProjectName}' created successfully in PostgreSQL! Team Lead (${leadObj?.name || 'Assigned'}) & ${assignedMemberObjs.length} team members notified.`, 'success');
+          showToast(`Project '${trimmedName}' created successfully in PostgreSQL! Team Lead (${leadObj?.name || 'Assigned'}) & ${assignedMemberObjs.length} team members notified.`, 'success');
         }
         setIsCreateModalOpen(false);
         setFormProjectName('');
         setFormDescription('');
         setFormObjectives('');
         setFormSelectedMemberIds([]);
+        setSubmitError(null);
         await fetchProjects();
       } else {
-        const errorMsg = resData.message || `Server returned error (${res.status})`;
+        const errorMsg = resData.message || resData.error || `Server returned error (${res.status})`;
         console.error('Project creation failed:', errorMsg);
+        setSubmitError(`Project creation failed: ${errorMsg}`);
         if (showToast) showToast(`Failed to create project: ${errorMsg}`, 'error');
       }
     } catch (err) {
       console.error('Network error during project creation:', err);
-      if (showToast) showToast('Network error: Could not reach Aureon API server', 'error');
+      const networkMsg = 'Network error: Could not reach Aureon API server. Please check your connection.';
+      setSubmitError(networkMsg);
+      if (showToast) showToast(networkMsg, 'error');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -1456,20 +1473,47 @@ export const PmDashboard = ({ onNavigate }) => {
             </div>
           </div>
 
+          {/* Error Banner inside Modal */}
+          {submitError && (
+            <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/70 border border-rose-300 dark:border-rose-800 text-rose-700 dark:text-rose-300 text-xs font-semibold flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0 text-rose-600 dark:text-rose-400" />
+              <span>{submitError}</span>
+            </div>
+          )}
+
           {/* Action Buttons */}
           <div className="pt-3 border-t border-slate-200 dark:border-slate-800 flex justify-end gap-2">
             <button
               type="button"
-              onClick={() => setIsCreateModalOpen(false)}
-              className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-xs"
+              disabled={isSubmitting}
+              onClick={() => {
+                setIsCreateModalOpen(false);
+                setSubmitError(null);
+              }}
+              className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs transition-colors cursor-pointer"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold text-xs shadow-md flex items-center gap-2"
+              disabled={isSubmitting}
+              className={`px-5 py-2.5 rounded-xl font-extrabold text-xs shadow-md flex items-center gap-2 transition-all ${
+                isSubmitting
+                  ? 'bg-indigo-400 cursor-not-allowed text-white opacity-80'
+                  : 'bg-indigo-600 hover:bg-indigo-500 text-white cursor-pointer active:scale-95'
+              }`}
             >
-              <Plus className="w-4 h-4" /> Save & Initialize Project
+              {isSubmitting ? (
+                <>
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                  <span>Saving to PostgreSQL...</span>
+                </>
+              ) : (
+                <>
+                  <Plus className="w-4 h-4" />
+                  <span>Save & Initialize Project</span>
+                </>
+              )}
             </button>
           </div>
         </form>

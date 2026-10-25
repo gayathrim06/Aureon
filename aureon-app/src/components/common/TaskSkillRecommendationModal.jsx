@@ -32,8 +32,8 @@ export const TaskSkillRecommendationModal = ({
         }
       });
 
-      const resData = await res.json();
-      if (res.ok && resData.success) {
+      const resData = await res.json().catch(() => ({}));
+      if (res.ok && resData.success !== false && (resData.success || res.status === 200 || res.status === 201 || resData.task)) {
         setData(resData);
         if (resData.recommended_developer) {
           setSelectedDevId(resData.recommended_developer.developer_id);
